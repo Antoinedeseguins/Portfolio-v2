@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 152 114">
+  <!-- Matches the resting 3D cube: 38 degree camera at (4.6, 3.8, 7.5), side 1.72. -->
+  <defs>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ff149f"/><stop offset="1" stop-color="#ff149f"/>
+    </linearGradient>
+    <linearGradient id="front" x1="0" y1="0" x2=".8" y2="1">
+      <stop stop-color="#f50091"/><stop offset="1" stop-color="#f50091"/>
+    </linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#e00082"/><stop offset="1" stop-color="#e00082"/>
+    </linearGradient>
+  </defs>
+  <g stroke="#8c325d" stroke-opacity=".55" stroke-width=".55" stroke-linejoin="round">
+    <polygon points="54.204,44.521 81.753,50.495 81.309,80.569 55.742,72.448" fill="url(#front)"/>
+    <polygon points="81.753,50.495 96.603,41.289 95.223,68.005 81.309,80.569" fill="url(#side)"/>
+    <polygon points="71.457,36.830 96.603,41.289 81.753,50.495 54.204,44.521" fill="url(#top)"/>
+  </g>
+</svg>

@@ -1,0 +1,21 @@
+{
+  "en":  {
+    "title":  "Source",
+    "titleToy": {
+      "id": "source-light"
+    },
+    "context":  "Student Project · ICAN",
+    "pitch":  "",
+    "tags":  [
+      "Game Design",
+      "Level Design",
+      "Prototyping"
+    ],
+    "paragraphs":  [
+      {
+        "title":  "",
+        "content":  ""
+      }
+    ]
+  }
+}

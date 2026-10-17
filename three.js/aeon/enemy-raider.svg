@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="84" height="88" viewBox="0 0 84 88">
+  <defs>
+    <linearGradient id="plate" x2=".8" y2="1"><stop stop-color="#62516e"/><stop offset="1" stop-color="#171321"/></linearGradient>
+    <linearGradient id="ember" x2="0" y2="1"><stop stop-color="#fff4bf"/><stop offset=".5" stop-color="#ffb54a"/><stop offset="1" stop-color="#f2533c"/></linearGradient>
+  </defs>
+  <g stroke="#17121e" stroke-width="2" stroke-linejoin="round">
+    <!-- Split stance, narrow waist and a single high shoulder echo the scout. -->
+    <path fill="#292135" d="m27 54 10 3-7 16-2 11H13l8-9 2-13Zm12 3 10-4 3 16 8 15H44l-4-13Z"/>
+    <path fill="#80677e" stroke="none" d="m24 63 8-3-6 17-6 3Zm20-2 5 8 5 11-7-3Z"/>
+    <path fill="url(#plate)" d="m25 29-9-14-5 19-6 10 11 10 14-15Zm20 0 12-8 8 15-11 12-11-10Z"/>
+    <path fill="#211b2d" d="m9 43 10 3-3 13-9 10-4-5Zm45-5 9 5-3 10 10-2 4 7-16 5-9-12Z"/>
+    <path fill="#92738a" stroke="none" d="m57 44 4 2-5 8 11 1-9 4-6-8Z"/>
+    <path fill="url(#plate)" d="m26 28 10 5 10-4 7 12-9 15-8 10-10-9-7-17Z"/>
+    <path fill="#8b6d86" stroke="none" d="m23 37 11 7-7 4Zm26-1-11 8 6 4Z"/>
+    <path fill="#14121e" d="m28 41 8 5 9-5-5 15-5 5-4-7Z"/>
+    <path fill="url(#ember)" stroke="none" d="m31 44 5 5 6-5-5 12-2 2Z"/>
+    <path fill="#241c31" d="M24 17 42 4l-1 11 9 5-7 13-8 5-9-9Z"/>
+    <path fill="#735570" stroke="none" d="m27 18 11-9-4 12 11-1-8 8Z"/>
+    <path fill="#100f1c" d="m27 23 9 4 11-5-6 11-6 3-6-6Z"/>
+    <path fill="url(#ember)" stroke="none" d="m28 24 8 3 10-4-5 6-6 2Z"/>
+    <!-- The bent arm grips a short axe, clear of the torso. -->
+    <path fill="#493243" d="m68 22 4 1-4 49-5-1Z"/>
+    <path fill="#807287" d="m70 15 10-5 1 10-4 12-9 1 1-9-8-2 2-10Z"/>
+    <path fill="#c6aab4" stroke="none" d="m64 14 5 3-1 4-6-2Z"/>
+    <path fill="url(#ember)" stroke="none" d="m79 13 1 7-4 10-5 1 5-11Z"/>
+    <path fill="#735570" d="m64 51 7 1 2 5-4 5-7-3Z"/>
+    <path fill="#b28b94" stroke="none" d="m65 53 5 1 1 3-6-1Z"/>
+  </g>
+</svg>

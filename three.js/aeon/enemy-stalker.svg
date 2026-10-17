@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="88" viewBox="0 0 72 88">
+  <defs>
+    <linearGradient id="plate" x2=".8" y2="1"><stop stop-color="#62516e"/><stop offset="1" stop-color="#171321"/></linearGradient>
+    <linearGradient id="ember" x2="0" y2="1"><stop stop-color="#fff4bf"/><stop offset=".5" stop-color="#ffb54a"/><stop offset="1" stop-color="#f2533c"/></linearGradient>
+  </defs>
+  <g stroke="#17121e" stroke-width="2" stroke-linejoin="round">
+    <!-- Long split legs and blade-like heels. -->
+    <path fill="#292135" d="m29 53 7 2-5 17-2 11H16l8-8 1-13Zm8 2 7-2 3 15 8 15H42l-3-12Z"/>
+    <path fill="#80677e" stroke="none" d="m27 63 5-4-4 17-6 4Zm15-3 3 8 5 11-6-3Z"/>
+    <!-- High asymmetrical shoulder and tapered forearm blades. -->
+    <path fill="url(#plate)" d="m25 29-8-13-3 19-6 12 9 8 11-16Zm21 1 9-6 8 14-8 11-10-9Z"/>
+    <path fill="#211b2d" d="m10 43 9 3-5 12L4 73l1-20Zm43 0 10-5 3 17 2 14-12-12Z"/>
+    <path fill="url(#ember)" stroke="none" d="m8 49 5 2-6 13Zm52-3 3-2 1 14Z"/>
+    <path fill="url(#plate)" d="m26 29 10 4 10-3 5 11-9 16-6 8-8-8-8-17Z"/>
+    <path fill="#8b6d86" stroke="none" d="m24 37 10 7-6 4Zm24-1-10 8 5 4Z"/>
+    <path fill="#14121e" d="m30 41 6 4 7-6-4 15-4 5-3-7Z"/>
+    <path fill="url(#ember)" stroke="none" d="m32 44 4 4 4-6-3 12-2 2Z"/>
+    <!-- Swept crest, narrow face and one continuous luminous visor. -->
+    <path fill="#241c31" d="M24 16 43 3l-2 11 9 5-6 13-9 6-8-8Z"/>
+    <path fill="#735570" stroke="none" d="m27 17 12-9-4 12 10-1-7 8Z"/>
+    <path fill="#100f1c" d="m27 23 9 4 11-5-6 10-6 4-6-6Z"/>
+    <path fill="url(#ember)" stroke="none" d="m28 24 8 3 10-4-5 6-6 2Z"/>
+  </g>
+</svg>

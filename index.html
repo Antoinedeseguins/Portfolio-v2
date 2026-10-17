@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="theme-color" content="#f4f5f2" />
+		<meta name="description" content="Portfolio créatif — projets, images et expérimentations." />
+		<title>Portfolio — Sélection de projets</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+		<link rel="stylesheet" href="CSS/styles.css?v=20261017-202" />
+		<script src="JS/main.js?v=20261017-387" defer></script>
+	</head>
+	<body>
+		<main class="portfolio">
+			<header class="topline">
+				<a class="wordmark" href="#about" aria-label="Aller à About me">Antoine<span> de Seguins</span></a>
+				<div class="topline-actions">
+					<a class="resume-link" href="Assets/resume/Resume%20-%20Antoine%20de%20Seguins.pdf" download="Resume - Antoine de Seguins.pdf"><span class="resume-copy"><span class="resume-prefix">Download </span><strong>my resume</strong></span><span class="resume-icon" aria-hidden="true">↓</span></a>
+				</div>
+			</header>
+			<section class="project-view" id="project-view" aria-live="polite" aria-busy="false"></section>
+			<nav class="page-arrows" id="page-arrows" aria-label="Navigation entre les projets" hidden>
+				<button class="page-arrow page-arrow-previous" id="previous-project" type="button" aria-label="Projet précédent" aria-controls="project-view" disabled><span aria-hidden="true">‹</span></button>
+				<button class="page-arrow page-arrow-next" id="next-project" type="button" aria-label="Projet suivant" aria-controls="project-view"><span aria-hidden="true">›</span></button>
+			</nav>
+			<nav class="project-dock" aria-label="Navigation des projets">
+				<div class="dock-inner">
+					<button class="project-link about-link" id="about-link" type="button" aria-label="About me" aria-pressed="false" aria-current="false">
+						<span class="about-preview" aria-hidden="true">
+							<img class="about-thumbnail" src="Assets/aboutme/aboutme-logo.png" alt="" />
+						</span>
+					</button>
+					<div class="project-rail" id="project-rail" aria-label="Projets"></div>
+				</div>
+			</nav>
+		</main>
+	</body>
+</html>
