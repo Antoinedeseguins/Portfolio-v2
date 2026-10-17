@@ -1,3 +1,7 @@
+const siteBaseUrl = new URL(".", document.baseURI);
+const siteBaseElement = document.querySelector("base") || document.head.appendChild(document.createElement("base"));
+siteBaseElement.href = siteBaseUrl.href;
+
 const projects = [
   { id: "aeon", folder: "aeonmustdie/img", video: "Assets/aeonmustdie/aeon.mp4", images: ["aeon1.webp", "aeon2.webp", "aeon3.webp", "aeon4.webp", "aeon5.webp", "aeon6.webp", "aeon7.webp", "aeon8.webp", "aeon9.webp", "aeon10.webp", "aeon11.webp", "aeon12.webp", "aeon13.webp", "aeon14.webp", "aeon15.webp", "aeon16.webp", "aeon17.webp", "aeon18.webp"] },
   { id: "age", folder: "ageofsigmar/img", video: "Assets/ageofsigmar/age.mp4", images: ["age1.webp", "age2.webp", "age3.webp", "age4.webp", "age5.webp", "age6.webp", "age7.webp", "age8.webp", "age9.webp", "age10.webp", "age11.webp"] },
@@ -22,6 +26,20 @@ const transparentDockLogos = {
   vahana: "Assets/vahana/vahana-logo.png",
 };
 const aboutMedia = { id: "about", folder: "identity", images: ["background.png"] };
+function projectSlug(title) {
+  const slug = title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return { "Necromunda-Underhive-Wars": "Necromunda", "Age-of-Sigmar-Storm-Ground": "Age-of-Sigmar" }[slug] || slug;
+}
+
+function updatePageUrl(page) {
+  const url = new URL(projectSlug(page.title), document.baseURI);
+  history.replaceState(null, "", url.pathname);
+}
+
+function projectFromUrl() {
+  const name = window.location.hash.slice(1) || decodeURIComponent(window.location.pathname.replace(/\/$/, "").split("/").pop());
+  return projects.find((project) => project.id === name || projectSlug(project.title).toLowerCase() === name.toLowerCase());
+}
 const dockLogoBounds = {
   aeon: [91, 179, 1651, 620],
   age: [0, 134, 1773, 619],
@@ -980,7 +998,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
     button.setAttribute("aria-current", button.dataset.project === project.id ? "page" : "false");
   });
   projectView.setAttribute("aria-busy", "false");
-  history.replaceState(null, "", `#${project.id}`);
+  updatePageUrl(project);
 }
 
 function renderAbout(navigationDirection = -1) {
@@ -996,7 +1014,7 @@ function renderAbout(navigationDirection = -1) {
   enableGalleryDrag(projectView.querySelector(".gallery"));
   enableHeroDrag(projectView.querySelector(".hero-frame"));
   projectView.setAttribute("aria-busy", "false");
-  history.replaceState(null, "", "#about");
+  updatePageUrl(aboutMedia);
 }
 
 const dockSpinDirections = new WeakMap();
@@ -1271,14 +1289,18 @@ projectView.addEventListener("click", (event) => {
   }));
 });
 
-window.addEventListener("hashchange", () => {
-  const hash = window.location.hash.slice(1);
-  if (hash === "about") return renderAbout(-1);
-  const project = projects.find((item) => item.id === hash);
+function renderPageFromUrl() {
+  const project = projectFromUrl();
   if (project) {
     const direction = projectNavigationDirection(project);
     renderProject(project, project.video ? -1 : 0, 0, true, direction);
-  }
+  } else renderAbout(-1);
+}
+window.addEventListener("hashchange", renderPageFromUrl);
+window.addEventListener("popstate", renderPageFromUrl);
+document.querySelector(".wordmark").addEventListener("click", (event) => {
+  event.preventDefault();
+  renderAbout(-1);
 });
 
 async function initializePortfolio() {
@@ -1303,8 +1325,7 @@ async function initializePortfolio() {
     project.titleCube = content.titleCube;
   }));
   renderProjectRail();
-  const initialHash = window.location.hash.slice(1);
-  const initialProject = projects.find((project) => project.id === initialHash);
+  const initialProject = projectFromUrl();
   if (initialProject) renderProject(initialProject);
   else renderAbout();
 }
