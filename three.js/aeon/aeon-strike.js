@@ -1,5 +1,5 @@
 import { createDamage } from "./aeon-damage.js?v=11";
-import { enableBrawler } from "./aeon-brawler.js?v=43";
+import { enableBrawler } from "./aeon-brawler.js?v=44";
 
 export function strikeMove(combo, charge) {
   const charged = charge >= 550;

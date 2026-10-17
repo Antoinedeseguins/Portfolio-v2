@@ -1,9 +1,10 @@
 export function createGame() {
-  return { cubes: [], sparks: [], spawnIn: 0.5, hitFlash: 0, lightFlash: 0, elapsed: 0, status: "ready", defeatTime: 0, lives: 3, invulnerable: 0, beamScale: 1 };
+  return { cubes: [], sparks: [], kills: 0, spawnIn: 0.5, hitFlash: 0, lightFlash: 0, elapsed: 0, status: "ready", defeatTime: 0, lives: 3, invulnerable: 0, beamScale: 1 };
 }
 
 export function resetGame(game) {
   game.cubes.length = 0;
+  game.kills = 0;
   game.sparks.length = 0;
   game.spawnIn = 0.5;
   game.hitFlash = 0;
@@ -123,8 +124,14 @@ export function stepGame(game, dt, active, origin, angle, beam, bounds, random =
       const power = beam.power ?? (beam.color.r > 200 ? 3.5 : 1.8);
       const efficiency = cube.kind === "dense" ? .45 + .95 * focus : 1;
       cube.damage += dt * power * efficiency / (cube.health || 1);
+      const distance = Math.hypot(dx, dy);
+      // Counter the approach, then gently push the illuminated enemy away.
+      const push = (cube.speed + (8 + focus * 6) * (cube.kind === "dense" ? .5 : 1)) * dt;
+      cube.x += dx / Math.max(distance, 1) * push;
+      cube.y += dy / Math.max(distance, 1) * push;
     }
     if (cube.damage >= 1) {
+      game.kills++;
       game.lightFlash = .18;
       for (let i = 0; i < 8 && game.sparks.length < 160; i++) {
         const a = random() * Math.PI * 2, speed = 25 + random() * 65;

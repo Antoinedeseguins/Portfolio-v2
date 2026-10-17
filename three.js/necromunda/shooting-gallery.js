@@ -1,5 +1,9 @@
+import { createGameScore } from "../game-score.js";
+
 export function enableGallery(button) {
   const page = button.closest(".project-layout"), title = page.querySelector(".necro-title");
+  const score = createGameScore(page, "necromunda");
+  let kills = 0;
   const events = new AbortController(), options = { signal: events.signal };
   const original = [...title.childNodes], reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const sprites = ["gunner.svg", "enemy-chemist.svg", "enemy-heavy.svg"].map(asset => {
@@ -40,6 +44,7 @@ export function enableGallery(button) {
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0); measure();
   };
   const stop = () => {
+    score.hide();
     hitAnimation?.cancel(); hitAnimation = null;
     defeatFragments.forEach(fragment => fragment.remove()); defeatFragments = [];
     button.style.visibility = "";
@@ -52,6 +57,7 @@ export function enableGallery(button) {
     page.dispatchEvent(new Event("hero-autoplay-change"));
   };
   const defeat = async () => {
+    score.hide();
     if (reduced) { stop(); return; }
     active = false; held = false;
     recovering = true;
@@ -99,7 +105,10 @@ export function enableGallery(button) {
     cooldown = .17;
     const aim = aimPoint();
     const enemy = [...enemies].reverse().find(target => target.exposure > .4 && Math.abs(aim.x - target.x) < 21 * target.scale + 2 && Math.abs(aim.y - target.y) < 27 * target.scale + 2);
-    if (enemy) { enemy.hp--; enemy.flash = .12; }
+    if (enemy) {
+      enemy.hp--; enemy.flash = .12;
+      if (enemy.hp <= 0) { kills++; score.update(kills); }
+    }
     shots.push({ x: aim.x, y: aim.y, life: .2, hit: Boolean(enemy) });
     enemies = enemies.filter(target => target.hp > 0);
   };
@@ -206,6 +215,7 @@ export function enableGallery(button) {
     canvas = document.createElement("canvas"); canvas.className = "necro-gallery-stage"; canvas.setAttribute("aria-hidden", "true");
     ctx = canvas.getContext("2d"); if (!ctx) { title.replaceChildren(...original); return; }
     document.body.append(canvas); active = true; elapsed = 0; cooldown = 0; spawn = .6; last = null; held = false;
+    kills = 0; score.show();
     escaped = 0; recoil = 0; mouse.inside = false;
     resize(); addEnemy(); addEnemy(); addEnemy();
     button.disabled = true; button.setAttribute("aria-pressed", "true");
@@ -226,5 +236,5 @@ export function enableGallery(button) {
   document.addEventListener("visibilitychange", () => { held = false; last = null; }, options);
   document.documentElement.addEventListener("pointerleave", () => { held = false; mouse.inside = false; page.classList.remove("necro-aiming"); }, options);
   window.addEventListener("resize", resize, options);
-  page.addEventListener("page-dispose", () => { animations.forEach(animation => animation.cancel()); stop(); events.abort(); }, options);
+  page.addEventListener("page-dispose", () => { animations.forEach(animation => animation.cancel()); stop(); score.dispose(); events.abort(); }, options);
 }

@@ -5,7 +5,9 @@
 - `space-age-racer/`: race renderer, obstacle simulation, and podracer model.
 
 Space Age Racer uses solid desert obstacles only. Speed, obstacle density and pattern length increase gradually over 75 seconds, with regular recovery periods. Centre passages appear after 10 seconds and chicanes after 20 seconds.
-- `ARUP/`: runner and its WebP letter logos.
+- `ARUP/`: runner and its cropped PNG letter logos (original WebP sources retained).
+
+ARUP runner: hold Space, Up, or the pointer on the track for a higher jump; release early for a short hop. Inputs just before landing are buffered for 120 ms. Each collision costs one letter, and stars restore letters. Collisions and star pickups use each visible letter's alpha mask, excluding transparent margins and faint shadows, mapped to its rendered size and position. The pace increases gradually, with airborne obstacles introduced after 15 seconds. Distance and HIGH appear below the track only during play. Losing all letters returns to the title automatically; Escape exits. Hidden tabs pause the simulation.
 - `aeon/`: title interaction and damage simulation.
 - `impact/`: magnetic cube, voxel title, spring simulation, text sampling, and cube preview.
 - `necromunda/`: shooting gallery, enemies, rifle, and animated bolt.

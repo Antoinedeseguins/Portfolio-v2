@@ -1,6 +1,6 @@
 export function createRace() {
   return {
-    elapsed: 0, spawnIn: 2,
+    elapsed: 0, distance: 0, spawnIn: 2,
     obstacles: [{x:0,progress:.3,checked:false,hit:false,type:"arch",size:1,opening:.65}],
     defeated: false, defeatTime: 0, lastLane: -1, lastChallenge: null,
   };
@@ -15,6 +15,7 @@ export function stepRace(race, dt, racer, radius = .24, random = Math.random) {
   const phase = race.elapsed % 16;
   const pressure = race.elapsed < 4 ? 0 : phase < 12 ? 1 : -.6;
   const pace = .2 + difficulty * .14 + racer.speed * .13;
+  race.distance += pace * dt * 1000;
   race.spawnIn -= dt;
   const obstacleType = () => {
     const roll = random();

@@ -1,4 +1,6 @@
-import { createGame, resetGame, stepGame, defeatVisual, cloudShadow } from "./source-game.js?v=12";
+import { createGame, resetGame, stepGame, defeatVisual, cloudShadow } from "./source-game.js?v=14";
+import { createGameScore } from "../game-score.js";
+import { createSymbolField } from "./source-symbols.js?v=3";
 
 const smokeColors = {
   normal: { core: "82,77,102", soft: "111,105,129", edge: "130,123,148" },
@@ -28,6 +30,8 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   const avatar = new Image();
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const game = createGame();
+  const symbols = createSymbolField();
+  const score = createGameScore(anchor.closest(".project-layout"), "source");
   const title = anchor.closest(".project-title-row")?.querySelector(".project-title");
   const highlight = title ? document.createElement("span") : null;
   if (highlight) {
@@ -52,6 +56,8 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     target = { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
   const stop = (reset = true) => {
+    symbols.clear();
+    score.hide();
     const captured = pointerId;
     pointerId = null;
     keyboard = false;
@@ -77,6 +83,8 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
         ? 1 - Math.sin(hitProgress * Math.PI) * .25
         : 1 - Math.sin(hitProgress * Math.PI * 2) ** 2 * .85
       : 1;
+    symbols.draw({ active: active && game.status !== "defeated", kills: game.kills,
+      origin, angle, beam: beamSettings(distance, game.beamScale), alpha: titleOpacity * hitLight });
     const showHitHalo = active && game.status !== "defeated" && game.hitFlash > 0;
     if ((anchor.dataset.hit === "true") !== showHitHalo) anchor.dataset.hit = String(showHitHalo);
     if (showHitHalo) anchor.style.setProperty("--source-hit-glow", reducedMotion.matches ? .8 : .25 + .75 * Math.sin(hitProgress * Math.PI * 2) ** 2);
@@ -229,6 +237,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
       Object.assign(canvas.style, { left: `${-rect.left}px`, top: `${-rect.top}px`, width: `${document.documentElement.clientWidth}px`, height: `${Math.max(window.innerHeight, rect.bottom)}px` });
     }
     const rect = canvas.getBoundingClientRect(), bounds = anchor.getBoundingClientRect();
+    const hero = anchor.closest(".project-layout")?.querySelector(".hero-frame")?.getBoundingClientRect();
     if (title) {
       const titleRect = title.getBoundingClientRect();
       titleBounds = { x: titleRect.left - rect.left, y: titleRect.top - rect.top, width: titleRect.width, height: titleRect.height };
@@ -238,6 +247,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     canvas.width = Math.max(1, Math.round(width * ratio));
     canvas.height = Math.max(1, Math.round(height * ratio));
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    symbols.resize(rect, ratio, hero);
     origin = { x: bounds.left - rect.left + bounds.width / 2, y: bounds.top - rect.top + bounds.height / 2, radius: Math.min(bounds.width, bounds.height) * 0.15 };
     draw();
   };
@@ -259,6 +269,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     opacity += ((active ? 1 : 0) - opacity) * easing;
     titleOpacity += ((active ? 1 : 0) - titleOpacity) * easing;
     stepGame(game, dt, active, origin, angle, beamSettings(distance, game.beamScale), { width, height });
+    if (active) score.update(game.kills);
     if (game.status === "defeated" && active) { opacity = titleOpacity = 0; stop(false); }
     draw();
     frame = requestAnimationFrame(tick);
@@ -273,7 +284,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     if (paused || disposed || !avatarArrival(arrivalTime, reducedMotion.matches).ready || game.status === "defeated" || pointerId !== null || !event.isPrimary || event.button !== 0) return;
     updateTarget(event);
     if (Math.hypot(target.x - origin.x, target.y - origin.y) > origin.radius * 1.65) return;
-    pointerId = event.pointerId; active = true;
+    pointerId = event.pointerId; active = true; score.show();
     anchor.setPointerCapture(pointerId);
   }, { signal: events.signal });
   anchor.addEventListener("pointermove", (event) => {
@@ -289,7 +300,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   anchor.addEventListener("keydown", (event) => {
     if (paused || disposed || !avatarArrival(arrivalTime, reducedMotion.matches).ready || game.status === "defeated") return;
     if ((event.key === " " || event.key === "Enter") && event.repeat) { event.preventDefault(); return; }
-    if (event.key === " " || event.key === "Enter") { event.preventDefault(); keyboard = true; active = true; }
+    if (event.key === " " || event.key === "Enter") { event.preventDefault(); if (!active) score.show(); keyboard = true; active = true; }
     else if (active && event.key.startsWith("Arrow")) {
       event.preventDefault();
       if (event.key === "ArrowLeft") angle -= 0.12;
@@ -306,6 +317,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   const intersectionObserver = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; updateLoop(); });
   intersectionObserver.observe(anchor);
   window.addEventListener("resize", resize, { signal: events.signal });
+  window.addEventListener("scroll", resize, { passive: true, signal: events.signal });
   document.addEventListener("visibilitychange", updateLoop, { signal: events.signal });
   avatar.addEventListener("load", () => { if (!disposed && !paused) draw(); }, { signal: events.signal });
   avatar.src = new URL("three.js/source/source-avatar.svg?v=2", document.baseURI).href;
@@ -313,6 +325,6 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   return {
     pause() { paused = true; stop(); updateLoop(); },
     snapshot() { const copy = document.createElement("canvas"); copy.width = canvas.width; copy.height = canvas.height; copy.getContext("2d").drawImage(canvas, 0, 0); return copy; },
-    dispose() { if (disposed) return; disposed = true; stop(); updateLoop(); events.abort(); resizeObserver.disconnect(); intersectionObserver.disconnect(); highlight?.remove(); title?.classList.remove("light-reactive-title"); },
+    dispose() { if (disposed) return; disposed = true; stop(); symbols.dispose(); score.dispose(); updateLoop(); events.abort(); resizeObserver.disconnect(); intersectionObserver.disconnect(); highlight?.remove(); title?.classList.remove("light-reactive-title"); },
   };
 }

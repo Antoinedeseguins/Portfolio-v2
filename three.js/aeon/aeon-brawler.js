@@ -1,7 +1,11 @@
+import { createGameScore } from "../game-score.js";
+
 export function enableBrawler(title) {
   const page = title.closest(".project-layout");
   const logo = page?.querySelector(".aeon-title-logo");
   if (!logo) return;
+  const score = createGameScore(page, "aeon-must-die");
+  let kills = 0;
   const resumeLink = document.querySelector(".resume-link");
   const events = new AbortController();
   const options = { signal: events.signal };
@@ -20,6 +24,11 @@ export function enableBrawler(title) {
   let canvas, ctx, frame, last, active = false;
   let width = 0, height = 0, spawn = 0, cooldown = 0, impact = 0;
   let enemies = [], sparks = [];
+  const removeDefeatedEnemies = () => {
+    const defeated = enemies.filter(enemy => enemy.hp <= 0).length;
+    if (defeated) { kills += defeated; score.update(kills); }
+    enemies = enemies.filter(enemy => enemy.hp > 0);
+  };
   let effects = [], combo = 0, lastPunch = -Infinity;
   let attackCount = 0;
   let launch = 0, launchAnimations = [];
@@ -165,7 +174,9 @@ export function enableBrawler(title) {
     return { left, right, top, bottom };
   };
   const stop = () => {
+    score.hide();
     active = false;
+    document.documentElement.classList.remove("aeon-game-active");
     resumeLink?.removeAttribute("aria-disabled");
     hold = null;
     launchAnimations.forEach(animation => animation.cancel());
@@ -201,6 +212,7 @@ export function enableBrawler(title) {
   const explodeFist = () => {
     if (reduced) { endGame(); return; }
     active = false; recovering = true; hold = null;
+    score.hide();
     document.documentElement.classList.remove("aeon-hand-cursor");
     const origin = { x: hand.x, y: hand.y };
     const fragments = Array.from({ length: 16 }, (_, index) => {
@@ -294,7 +306,7 @@ export function enableBrawler(title) {
     if (playing && !intermission && spawn <= 0 && spawned < waveSize() && enemies.length < Math.min(9, 4 + Math.floor(pressure))) {
       addEnemy(); spawn = Math.max(.28, .7 - pressure * .045);
     }
-    if (hold && !intermission && enemies.length) hold.chargeTime += step * 1000;
+    if (hold?.canCharge && !intermission && enemies.length) hold.chargeTime += step * 1000;
     ctx.clearRect(0, 0, width, height);
     const landings = [];
     for (const enemy of enemies) {
@@ -376,15 +388,14 @@ export function enableBrawler(title) {
       }
       if (!reduced) effects.push({ x: landing.x, y: landing.y, life: .3, duration: .3, kind: "slam", finisher: true, charged: false, hue: 25, tilt: 0, seed: Math.random() * 100 });
     }
-    enemies = enemies.filter(enemy => {
-      return !enemy.escaped && enemy.hp > 0;
-    });
+    removeDefeatedEnemies();
+    enemies = enemies.filter(enemy => !enemy.escaped);
     if (letters.length && letters.every(letter => letter.state === "lost")) {
       explodeFist();
       return;
     } else if (!intermission && spawned >= waveSize() && enemies.length === 0) {
       intermission = 1.4;
-      hold = null;
+      if (hold) { hold.chargeTime = 0; hold.canCharge = false; }
     }
     if (intermission) {
       intermission = Math.max(.001, intermission - step);
@@ -433,6 +444,9 @@ export function enableBrawler(title) {
     if (!ctx) return;
     document.body.append(canvas);
     active = true; enemies = []; sparks = []; spawn = 0; cooldown = impact = 0; last = null;
+    kills = 0; score.show();
+    document.documentElement.classList.add("aeon-game-active");
+    window.getSelection()?.removeAllRanges();
     resumeLink?.setAttribute("aria-disabled", "true");
     effects = []; combo = 0; lastPunch = -Infinity; attackCount = 0;
     wave = 1; spawned = 0; intermission = 0; bossSpawned = false;
@@ -468,8 +482,9 @@ export function enableBrawler(title) {
   const move = event => {
     if (!active) return;
     const bottom = gameBottom();
-    const left = Math.max(0, page.querySelector(".hero-frame")?.getBoundingClientRect().right ?? 0);
-    const right = Math.min(width, page.querySelector(".project-copy > .copy-rule")?.getBoundingClientRect().right ?? width);
+    const arena = enemyArena();
+    const left = Math.max(0, Math.min(arena.left - 60, page.querySelector(".hero-frame")?.getBoundingClientRect().right ?? 0));
+    const right = Math.min(width, Math.max(arena.right + 60, page.querySelector(".project-copy > .copy-rule")?.getBoundingClientRect().right ?? width));
     hand.inside = event.clientX >= left && event.clientX < right && event.clientY >= 0 && event.clientY < bottom;
     document.documentElement.classList.toggle("aeon-hand-cursor", hand.inside);
     if (!hand.inside) hold = null;
@@ -535,22 +550,27 @@ export function enableBrawler(title) {
         sparks.push({ x: enemy.x, y: enemy.y, vx: Math.cos(angle) * 160, vy: Math.sin(angle) * 160, life: .3, color: enemy.hp ? "#ff4166" : "#edaa38" });
       }
     }
-    enemies = enemies.filter(enemy => enemy.hp > 0);
+    removeDefeatedEnemies();
     if (charged) combo = 0;
+  };
+  const isNavigationTarget = target => {
+    // The disabled CV link can sit underneath enemies at the top of the arena.
+    if (target.closest('.resume-link[aria-disabled="true"]')) return false;
+    return Boolean(target.closest("nav, a, .page-arrow"));
   };
   window.addEventListener("pointerdown", event => {
     if (!active || event.button !== 0 || !event.isPrimary) return;
-    if (event.target.closest("header, nav, a, .page-arrow")) return;
+    if (isNavigationTarget(event.target)) return;
     move(event);
     if (!hand.inside) return;
     event.preventDefault(); event.stopImmediatePropagation();
-    if (cooldown > 0 || hold || intermission || !enemies.length) return;
-    hold = { id: event.pointerId, chargeTime: 0 };
+    if (cooldown > 0 || hold) return;
+    hold = { id: event.pointerId, chargeTime: 0, canCharge: !intermission && enemies.length > 0 };
   }, { capture: true, signal: events.signal });
   window.addEventListener("pointerup", event => {
     if (!hold || hold.id !== event.pointerId || event.button !== 0) return;
-    if (event.target.closest("header, nav, a, .page-arrow")) { hold = null; return; }
-    const chargeTime = hold.chargeTime;
+    if (isNavigationTarget(event.target)) { hold = null; return; }
+    const chargeTime = !intermission && enemies.length ? hold.chargeTime : 0;
     move(event);
     hold = null;
     if (!active || !hand.inside) return;
@@ -558,6 +578,12 @@ export function enableBrawler(title) {
     punch(chargeTime);
   }, { capture: true, signal: events.signal });
   window.addEventListener("pointercancel", () => { hold = null; }, options);
+  // Prevent native selection and link dragging from interrupting combat gestures.
+  for (const type of ["selectstart", "dragstart"]) {
+    document.addEventListener(type, event => {
+      if (active) event.preventDefault();
+    }, { capture: true, signal: events.signal });
+  }
   window.addEventListener("blur", () => { hold = null; }, options);
   document.addEventListener("visibilitychange", () => { if (document.hidden) hold = null; }, options);
   // Keep combat clicks from opening the portfolio beneath the arena.
@@ -566,7 +592,7 @@ export function enableBrawler(title) {
       event.preventDefault(); event.stopImmediatePropagation(); return;
     }
     if (!active || event.target === logo) return;
-    if (event.target.closest("header, nav, a, .page-arrow")) return;
+    if (isNavigationTarget(event.target)) return;
     move(event);
     if (hand.inside) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, { capture: true, signal: events.signal });
@@ -582,7 +608,7 @@ export function enableBrawler(title) {
   }, { passive: true, signal: events.signal });
   page.addEventListener("page-dispose", () => {
     returnAnimations.forEach(animation => animation.cancel());
-    stop(); events.abort();
+    stop(); score.dispose(); events.abort();
     for (const attribute of ["tabindex", "role", "aria-label", "aria-pressed"]) logo.removeAttribute(attribute);
     logo.setAttribute("aria-hidden", "true");
   }, options);

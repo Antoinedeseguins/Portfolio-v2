@@ -1,5 +1,6 @@
 import { createPodracerModel } from "./podracer-model.js?v=9";
-import { createRace, stepRace } from "./space-racer-game.js?v=22";
+import { createRace, stepRace } from "./space-racer-game.js?v=23";
+import { createGameScore } from "../game-score.js";
 import { drawDesertTrack, drawDesertObstacle } from "./desert-environment.js?v=12";
 
 export function stepRacer(state, dt, steering, accelerating) {
@@ -25,6 +26,7 @@ export function stepRacer(state, dt, steering, accelerating) {
 
 export function enableRacer(play) {
   const page = play.closest(".project-layout"), events = new AbortController();
+  const score = createGameScore(page, "space-age-racer");
   const zone = play.closest(".space-racer-title-row");
   const title = zone.querySelector(".project-title");
   const titleText = title.textContent;
@@ -190,6 +192,8 @@ export function enableRacer(play) {
     if(!race.defeated)stepRacer(state,dt,steering,accelerating);
     const size=Math.min(25,height*.19,width*.06);
     stepRace(race,dt,state,size*1.65/(width*.35));
+    score.update(race.distance);
+    if (race.defeated) score.hide();
     if(race.defeated&&race.defeatTime>=1.3){stop(true);return;}
     draw();
     frame=requestAnimationFrame(tick);
@@ -213,6 +217,7 @@ export function enableRacer(play) {
     context.setTransform(ratio,0,0,ratio,0,drawingHeadroom*ratio);draw();
   };
   const stop = (restoreTitle = false) => {
+    score.hide();
     running=false;clearLaunch();clearReturn();pause();canvas?.remove();canvas=context=null;
     play.disabled = false;
     play.setAttribute("aria-pressed","false");play.setAttribute("aria-label","Play Space Age Racer");notify();
@@ -238,6 +243,7 @@ export function enableRacer(play) {
     canvas=document.createElement("canvas");canvas.className="space-racer-stage";canvas.setAttribute("aria-hidden","true");context=canvas.getContext("2d");
     if(!context){canvas=null;return;}
     state={x:0,vx:0,speed:0,roll:0,time:0,leftThrust:.1,rightThrust:.1};race=createRace();running=true;focused=true;
+    score.show();
     const podBounds = preview.getBoundingClientRect();
     const zoneBounds = zone.getBoundingClientRect();
     zone.append(canvas);play.disabled=true;play.setAttribute("aria-pressed","true");notify();resize();
@@ -306,5 +312,5 @@ export function enableRacer(play) {
   window.addEventListener("focus",()=>{focused=true;resume();},{signal:events.signal});
   window.addEventListener("resize",resize,{signal:events.signal});
   document.addEventListener("visibilitychange",()=>{if(document.hidden)pause();else resume();},{signal:events.signal});
-  page.addEventListener("page-dispose",()=>{disposed=true;stop();events.abort();},{signal:events.signal});
+  page.addEventListener("page-dispose",()=>{disposed=true;stop();score.dispose();events.abort();},{signal:events.signal});
 }
