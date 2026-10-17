@@ -1,11 +1,13 @@
 const siteBaseUrl = new URL(".", document.baseURI);
+const useHashNavigation = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
+  || window.location.port !== "";
 const siteBaseElement = document.querySelector("base") || document.head.appendChild(document.createElement("base"));
 siteBaseElement.href = siteBaseUrl.href;
 
 const projects = [
   { id: "aeon", folder: "aeonmustdie/img", video: "Assets/aeonmustdie/aeon.mp4", images: ["aeon1.webp", "aeon2.webp", "aeon3.webp", "aeon4.webp", "aeon5.webp", "aeon6.webp", "aeon7.webp", "aeon8.webp", "aeon9.webp", "aeon10.webp", "aeon11.webp", "aeon12.webp", "aeon13.webp", "aeon14.webp", "aeon15.webp", "aeon16.webp", "aeon17.webp", "aeon18.webp"] },
   { id: "age", folder: "ageofsigmar/img", video: "Assets/ageofsigmar/age.mp4", images: ["age1.webp", "age2.webp", "age3.webp", "age4.webp", "age5.webp", "age6.webp", "age7.webp", "age8.webp", "age9.webp", "age10.webp", "age11.webp"] },
-  { id: "arup", folder: "arup/img", images: ["arup1.webp", "arup2.webp", "arup3.webp", "arup4.webp", "arup5.webp"] },
+  { id: "arup", folder: "arup/img", video: "Assets/arup/ARUP.mp4", videoPoster: "arup1-back.webp", images: ["arup1.webp", "arup2.webp", "arup3.webp", "arup4.webp", "arup5.webp"] },
   { id: "impact", folder: "impact/img", video: "Assets/impact/impact.mp4", images: ["impact1.webp", "impact2.webp", "impact3.webp", "impact4.webp", "impact5.webp", "impact6.webp", "impact7.webp", "impact8.webp", "impact9.webp", "impact10.webp", "impact11.webp", "impact12.webp", "impact13.webp"] },
   { id: "necromunda", folder: "necromunda/img", video: "Assets/necromunda/necro.mp4", images: ["necro1.webp", "necro2.webp", "necro3.webp", "necro4.webp", "necro5.webp", "necro6.webp", "necro7.webp", "necro8.webp", "necro9.webp", "necro10.webp", "necro11.webp", "necro12.webp", "necro13.webp", "necro14.webp", "necro15.webp", "necro16.webp", "necro17.webp", "necro18.webp", "necro19.webp", "necro20.webp", "necro21.webp", "necro22.webp", "necro23.webp", "necro24.webp", "necro25.webp", "necro26.webp"] },
   { id: "proteo", folder: "proteo/img", images: ["proteo1.webp", "proteo2.webp", "proteo3.webp", "proteo4.webp", "proteo5.webp", "proteo6.webp", "proteo7.webp", "proteo8.webp", "proteo9.webp", "proteo10.webp", "proteo11.webp"] },
@@ -32,8 +34,12 @@ function projectSlug(title) {
 }
 
 function updatePageUrl(page) {
-  const url = page === aboutMedia ? siteBaseUrl : new URL(projectSlug(page.title), siteBaseUrl);
-  history.replaceState(null, "", url.pathname);
+  const url = new URL(siteBaseUrl);
+  if (page !== aboutMedia) {
+    if (useHashNavigation) url.hash = projectSlug(page.title);
+    else url.pathname = new URL(projectSlug(page.title), siteBaseUrl).pathname;
+  }
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function projectFromUrl() {
@@ -79,7 +85,7 @@ function imagePath(project, imageName) {
 }
 
 function videoPoster(project) {
-  return imagePath(project, project.images[0]);
+  return imagePath(project, project.videoPoster || project.images[0]);
 }
 
 function adjacentMediaIndex(project, currentIndex, direction) {
@@ -535,8 +541,6 @@ function replaceProjectView(markup, navigationDirection, animateTransition) {
 }
 
 function enableHeroAutoplay(frame) {
-  const page = frame.closest(".project-layout");
-  const gameActive = () => page?.dataset.runnerPlaying === "true" || page?.dataset.racerPlaying === "true" || page?.dataset.galleryPlaying === "true";
   const project = aboutLink.getAttribute("aria-pressed") === "true" ? aboutMedia : projects.find((item) => item.id === activeProjectId);
   if (!project) return;
   const currentIndex = project.id === "about" ? activeAboutImageIndex : activeImageIndex;
@@ -549,7 +553,7 @@ function enableHeroAutoplay(frame) {
   };
   const advance = () => {
     clearTimer();
-    if (disposed || !frame.isConnected || document.hidden || gameActive() || !project.images.length) return;
+    if (disposed || !frame.isConnected || document.hidden || !project.images.length) return;
     if (video && !video.ended && !video.error) return;
     if (mediaDragActive || pageDrag || projectView.querySelector(".page-outgoing")) {
       timer = window.setTimeout(advance, 250);
@@ -563,7 +567,7 @@ function enableHeroAutoplay(frame) {
   };
   const schedule = () => {
     clearTimer();
-    if (disposed || document.hidden || gameActive()) return;
+    if (disposed || document.hidden) return;
     if (video) {
       if (video.ended) advance();
     } else if (project.images.length > 1) {
@@ -573,7 +577,6 @@ function enableHeroAutoplay(frame) {
   video?.addEventListener("ended", advance);
 
   document.addEventListener("visibilitychange", schedule);
-  page?.addEventListener("hero-autoplay-change", schedule);
   frame.addEventListener("pointerdown", clearTimer);
   frame.addEventListener("pointerup", schedule);
   frame.addEventListener("pointercancel", schedule);
@@ -583,7 +586,6 @@ function enableHeroAutoplay(frame) {
     disposed = true;
     clearTimer();
     document.removeEventListener("visibilitychange", schedule);
-    page?.removeEventListener("hero-autoplay-change", schedule);
   });
   schedule();
 }
@@ -871,7 +873,7 @@ function renderMediaMarkup(project, imageIndex) {
       <div class="gallery-shell">
         <button class="gallery-arrow" type="button" data-gallery-direction="-1" aria-label="Images précédentes" title="Images précédentes"><span aria-hidden="true">‹</span></button>
         <div class="gallery" aria-label="Images de ${project.title}" tabindex="0">
-          ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Afficher la vidéo de ${project.title}" aria-pressed="${imageIndex === -1}"><img src="${videoPoster(project)}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
+          ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Afficher la vidéo de ${project.title}" aria-pressed="${imageIndex === -1}"><img src="${imagePath(project, project.images[0])}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
           ${(project.toys || []).map((toy) => `<button class="gallery-thumb toy-thumb" type="button" data-image="-2" aria-label="${escapeText(toy.title)}" aria-pressed="${imageIndex === -2}"><img src="three.js/impact/cube.svg?v=6" alt="" /></button>`).join("")}
           ${project.images.map((image, index) => project.video && index === 0 ? "" : `
             <button class="gallery-thumb" type="button" data-image="${index}" aria-label="Afficher l’image ${index + 1} de ${project.title}" aria-pressed="${index === imageIndex}">
