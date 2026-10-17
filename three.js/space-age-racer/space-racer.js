@@ -1,6 +1,7 @@
 import { createPodracerModel } from "./podracer-model.js?v=9";
 import { createRace, stepRace } from "./space-racer-game.js?v=23";
 import { createGameScore } from "../game-score.js";
+import { createResumeLock } from "../game-resume-lock.js";
 import { drawDesertTrack, drawDesertObstacle } from "./desert-environment.js?v=12";
 
 export function stepRacer(state, dt, steering, accelerating) {
@@ -27,6 +28,7 @@ export function stepRacer(state, dt, steering, accelerating) {
 export function enableRacer(play) {
   const page = play.closest(".project-layout"), events = new AbortController();
   const score = createGameScore(page, "space-age-racer");
+  const lockResume = createResumeLock();
   const zone = play.closest(".space-racer-title-row");
   const title = zone.querySelector(".project-title");
   const titleText = title.textContent;
@@ -65,6 +67,7 @@ export function enableRacer(play) {
   let state = {x:0,vx:0,speed:0,roll:0,time:0,leftThrust:.1,rightThrust:.1}, race = createRace();
   const { vertices, faces } = createPodracerModel();
   const notify = () => {
+    lockResume(running);
     zone.classList.toggle("is-playing", running);
     if (running) page.dataset.racerPlaying = "true"; else delete page.dataset.racerPlaying;
     page.dispatchEvent(new Event("hero-autoplay-change"));

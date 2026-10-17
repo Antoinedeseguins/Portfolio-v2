@@ -1,8 +1,10 @@
 import { createGameScore } from "../game-score.js";
+import { createResumeLock } from "../game-resume-lock.js";
 
 export function enableGallery(button) {
   const page = button.closest(".project-layout"), title = page.querySelector(".necro-title");
   const score = createGameScore(page, "necromunda");
+  const lockResume = createResumeLock();
   let kills = 0;
   const events = new AbortController(), options = { signal: events.signal };
   const original = [...title.childNodes], reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -31,7 +33,7 @@ export function enableGallery(button) {
     mouse.x = event.clientX; mouse.y = event.clientY;
     const a = area();
     mouse.inside = active && mouse.x >= a.left && mouse.x <= a.right && mouse.y >= a.top && mouse.y < a.bottom;
-    page.classList.toggle("necro-aiming", mouse.inside);
+    document.documentElement.classList.toggle("necro-aiming", mouse.inside);
     if (!mouse.inside) held = false;
   };
   const measure = () => letters.forEach(letter => { letter.rect = letter.element.getBoundingClientRect(); });
@@ -44,13 +46,14 @@ export function enableGallery(button) {
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0); measure();
   };
   const stop = () => {
+    lockResume(false);
     score.hide();
     hitAnimation?.cancel(); hitAnimation = null;
     defeatFragments.forEach(fragment => fragment.remove()); defeatFragments = [];
     button.style.visibility = "";
     active = false; held = false; recoil = 0;
     cancelAnimationFrame(frame); canvas?.remove();
-    page.classList.remove("necro-aiming");
+    document.documentElement.classList.remove("necro-aiming");
     button.hidden = false; button.disabled = false; button.setAttribute("aria-pressed", "false");
     title.replaceChildren(...original); letters = []; enemies = []; shots = [];
     page.dataset.galleryPlaying = "false";
@@ -60,9 +63,10 @@ export function enableGallery(button) {
     score.hide();
     if (reduced) { stop(); return; }
     active = false; held = false;
+    lockResume(false);
     recovering = true;
     cancelAnimationFrame(frame);
-    page.classList.remove("necro-aiming");
+    document.documentElement.classList.remove("necro-aiming");
     canvas?.remove();
     const bounds = button.getBoundingClientRect();
     const rifle = button.querySelector("img");
@@ -117,6 +121,7 @@ export function enableGallery(button) {
     const dt = document.hidden || last === null ? 0 : Math.min(.035, (now - last) / 1000); last = now;
     elapsed += dt; cooldown = Math.max(0, cooldown - dt); recoil = Math.max(0, recoil - dt); spawn -= dt;
     measure();
+    updateMouse({ clientX: mouse.x, clientY: mouse.y });
     const a = area(), pressure = Math.floor(elapsed / 6);
     if (spawn <= 0 && enemies.length < Math.min(7, 3 + pressure)) { addEnemy(); spawn = Math.max(.25, .85 - pressure * .09); }
     if (held && mouse.inside && cooldown <= 0) shoot();
@@ -201,7 +206,7 @@ export function enableGallery(button) {
     if (escaped >= 3) { defeat(); return; }
     frame = requestAnimationFrame(tick);
   };
-  const start = () => {
+  const start = (event) => {
     if (active || recovering || events.signal.aborted) return;
     const fragment = document.createDocumentFragment();
     letters = [];
@@ -215,14 +220,16 @@ export function enableGallery(button) {
     canvas = document.createElement("canvas"); canvas.className = "necro-gallery-stage"; canvas.setAttribute("aria-hidden", "true");
     ctx = canvas.getContext("2d"); if (!ctx) { title.replaceChildren(...original); return; }
     document.body.append(canvas); active = true; elapsed = 0; cooldown = 0; spawn = .6; last = null; held = false;
+    lockResume(true);
     kills = 0; score.show();
     escaped = 0; recoil = 0; mouse.inside = false;
     resize(); addEnemy(); addEnemy(); addEnemy();
+    updateMouse(event);
     button.disabled = true; button.setAttribute("aria-pressed", "true");
     page.dataset.galleryPlaying = "true"; page.dispatchEvent(new Event("hero-autoplay-change"));
     frame = requestAnimationFrame(tick);
   };
-  button.addEventListener("click", event => { event.stopPropagation(); start(); }, options);
+  button.addEventListener("click", event => { event.stopPropagation(); start(event); }, options);
   button.addEventListener("pointerdown", event => event.stopPropagation(), options);
   window.addEventListener("pointermove", event => { if (active) updateMouse(event); }, options);
   window.addEventListener("pointerdown", event => {
@@ -234,7 +241,12 @@ export function enableGallery(button) {
   window.addEventListener("click", event => { if (active && mouse.inside && event.target !== button && !button.contains(event.target)) { event.preventDefault(); event.stopImmediatePropagation(); } }, { capture: true, signal: events.signal });
   for (const type of ["pointerup", "pointercancel", "blur"]) window.addEventListener(type, () => { held = false; }, options);
   document.addEventListener("visibilitychange", () => { held = false; last = null; }, options);
-  document.documentElement.addEventListener("pointerleave", () => { held = false; mouse.inside = false; page.classList.remove("necro-aiming"); }, options);
+  const leaveArena = () => {
+    held = false; mouse.inside = false; mouse.x = mouse.y = -Infinity;
+    document.documentElement.classList.remove("necro-aiming");
+  };
+  document.documentElement.addEventListener("pointerleave", leaveArena, options);
+  window.addEventListener("blur", leaveArena, options);
   window.addEventListener("resize", resize, options);
   page.addEventListener("page-dispose", () => { animations.forEach(animation => animation.cancel()); stop(); score.dispose(); events.abort(); }, options);
 }

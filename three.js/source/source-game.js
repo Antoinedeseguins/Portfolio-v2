@@ -125,8 +125,9 @@ export function stepGame(game, dt, active, origin, angle, beam, bounds, random =
       const efficiency = cube.kind === "dense" ? .45 + .95 * focus : 1;
       cube.damage += dt * power * efficiency / (cube.health || 1);
       const distance = Math.hypot(dx, dy);
-      // Counter the approach, then gently push the illuminated enemy away.
-      const push = (cube.speed + (8 + focus * 6) * (cube.kind === "dense" ? .5 : 1)) * dt;
+      // Cancel only part of the approach so illuminated enemies keep advancing.
+      const slow = (.3 + focus * .2) * (cube.kind === "dense" ? .5 : 1);
+      const push = Math.min(cube.speed * dt, distance) * slow;
       cube.x += dx / Math.max(distance, 1) * push;
       cube.y += dy / Math.max(distance, 1) * push;
     }

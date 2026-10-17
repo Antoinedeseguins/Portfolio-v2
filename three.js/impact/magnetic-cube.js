@@ -1,9 +1,11 @@
 import * as THREE from "../vendor/three.module.js";
 import { stepSpring, applySpray } from "./spring.js?v=7";
 import { sampleText } from "./text-shape.js?v=4";
+import { createResumeLock } from "../game-resume-lock.js";
 
 export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFamily = "Raleway", fontWeight = "700", anchor = null, surface = null } = {}) {
   const input = anchor || canvas;
+  const lockResume = createResumeLock();
   const interactionSurface = surface || input;
   const interactionTarget = (event) => {
     if (!surface) return input;
@@ -101,6 +103,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
   };
   const stopSpray = () => {
+    lockResume(false);
     const pointerId = sprayPointer;
     sprayPointer = null;
     keyboardSpray = false;
@@ -114,6 +117,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     event.stopPropagation();
     updatePointer(event);
     sprayPointer = event.pointerId;
+    lockResume(true);
     interactionSurface.setPointerCapture(event.pointerId);
     input.classList.add("is-spraying");
   }, { signal: events.signal });
@@ -137,6 +141,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     event.preventDefault();
     if (paused || disposed) return;
     keyboardSpray = true;
+    lockResume(true);
     const rect = target.getBoundingClientRect();
     updatePointer({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
     input.classList.add("is-spraying");

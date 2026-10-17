@@ -1,4 +1,5 @@
 import { createGameScore } from "../game-score.js";
+import { createResumeLock } from "../game-resume-lock.js";
 
 export function enableBrawler(title) {
   const page = title.closest(".project-layout");
@@ -6,6 +7,7 @@ export function enableBrawler(title) {
   if (!logo) return;
   const score = createGameScore(page, "aeon-must-die");
   let kills = 0;
+  const lockResume = createResumeLock();
   const resumeLink = document.querySelector(".resume-link");
   const events = new AbortController();
   const options = { signal: events.signal };
@@ -177,7 +179,7 @@ export function enableBrawler(title) {
     score.hide();
     active = false;
     document.documentElement.classList.remove("aeon-game-active");
-    resumeLink?.removeAttribute("aria-disabled");
+    lockResume(false);
     hold = null;
     launchAnimations.forEach(animation => animation.cancel());
     launchAnimations = [];
@@ -447,7 +449,7 @@ export function enableBrawler(title) {
     kills = 0; score.show();
     document.documentElement.classList.add("aeon-game-active");
     window.getSelection()?.removeAllRanges();
-    resumeLink?.setAttribute("aria-disabled", "true");
+    lockResume(true);
     effects = []; combo = 0; lastPunch = -Infinity; attackCount = 0;
     wave = 1; spawned = 0; intermission = 0; bossSpawned = false;
     enemyAppearance = 0;

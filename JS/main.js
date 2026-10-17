@@ -589,9 +589,9 @@ function enableHeroAutoplay(frame) {
 }
 
 const toyModules = {
-  "source-light": () => import(new URL("three.js/source/source-light.js?v=60", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=33", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=33", document.baseURI).href),
+  "source-light": () => import(new URL("three.js/source/source-light.js?v=62", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=34", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=34", document.baseURI).href),
 };
 
 // Prepare Impact's font and renderer while the visitor browses the portfolio.
@@ -896,7 +896,7 @@ function projectPageMarkup(project, imageIndex) {
     <div class="project-layout${project.title.length >= 24 ? " has-long-title" : ""}">
       ${renderMediaMarkup(project, imageIndex)}
       <div class="project-copy">
-        ${project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Attraper la boule Proteo" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=6" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
+        ${project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Attraper la boule Proteo" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=7" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
           <span class="arup-title-toggle" aria-pressed="false">
             <span class="arup-title-text">${[...project.title].map(letter => `<span>${escapeText(letter)}</span>`).join("")}</span>
             <span class="arup-title-logos" aria-hidden="true">${["A", "R", "U", "P"].map(letter => `<img src="three.js/ARUP/${letter}-logo.png" alt="" draggable="false" decoding="async" />`).join("")}</span>
@@ -966,27 +966,27 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   projectView.querySelectorAll(".toy-widget").forEach(enableToy);
   const arupTitle = projectView.querySelector(".arup-title-toggle");
   const proteoPlay = projectView.querySelector(".proteo-play");
-  if (proteoPlay) import(new URL("three.js/proteo/proteo-shapes.js?v=21", document.baseURI).href)
+  if (proteoPlay) import(new URL("three.js/proteo/proteo-shapes.js?v=22", document.baseURI).href)
     .then(module => { if (proteoPlay.isConnected && !proteoPlay.closest(".page-outgoing")) module.enableShapes(proteoPlay); })
     .catch(error => console.error("Proteo interaction could not be loaded", error));
-  if (arupTitle) import(new URL("three.js/ARUP/arup-runner.js?v=53", document.baseURI).href)
+  if (arupTitle) import(new URL("three.js/ARUP/arup-runner.js?v=54", document.baseURI).href)
     .then(module => { if (arupTitle.isConnected && !arupTitle.closest(".page-outgoing")) module.enableRunner(arupTitle); })
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
   if (racerPlay)
-    import(new URL("three.js/space-age-racer/space-racer.js?v=66", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/space-racer.js?v=67", document.baseURI).href)
       .then(module => { if (racerPlay.isConnected && !racerPlay.closest(".page-outgoing")) module.enableRacer(racerPlay); })
       .catch(error => console.error("Racer interaction could not be loaded", error));
   const necroPlay = projectView.querySelector(".necro-play");
   if (necroPlay && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/necromunda/shooting-gallery.js?v=9", document.baseURI).href)
+    import(new URL("three.js/necromunda/shooting-gallery.js?v=10", document.baseURI).href)
       .then(async module => {
         await document.fonts.ready;
         if (necroPlay.isConnected && !necroPlay.closest(".page-outgoing")) module.enableGallery(necroPlay);
       }).catch(error => console.error("Necromunda interaction could not be loaded", error));
   const aeonTitle = projectView.querySelector(".aeon-strike");
   if (aeonTitle && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/aeon/aeon-strike.js?v=77", document.baseURI).href)
+    import(new URL("three.js/aeon/aeon-strike.js?v=78", document.baseURI).href)
       .then(async module => {
         const logo = aeonTitle.closest(".aeon-title-row")?.querySelector(".aeon-title-logo");
         await Promise.all([document.fonts.ready, logo?.decode().catch(() => {})]);

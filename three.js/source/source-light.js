@@ -1,5 +1,6 @@
-import { createGame, resetGame, stepGame, defeatVisual, cloudShadow } from "./source-game.js?v=14";
+import { createGame, resetGame, stepGame, defeatVisual, cloudShadow } from "./source-game.js?v=15";
 import { createGameScore } from "../game-score.js";
+import { createResumeLock } from "../game-resume-lock.js";
 import { createSymbolField } from "./source-symbols.js?v=3";
 
 const smokeColors = {
@@ -30,6 +31,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   const avatar = new Image();
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const game = createGame();
+  const lockResume = createResumeLock();
   const symbols = createSymbolField();
   const score = createGameScore(anchor.closest(".project-layout"), "source");
   const title = anchor.closest(".project-title-row")?.querySelector(".project-title");
@@ -56,6 +58,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     target = { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
   const stop = (reset = true) => {
+    lockResume(false);
     symbols.clear();
     score.hide();
     const captured = pointerId;
@@ -284,7 +287,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     if (paused || disposed || !avatarArrival(arrivalTime, reducedMotion.matches).ready || game.status === "defeated" || pointerId !== null || !event.isPrimary || event.button !== 0) return;
     updateTarget(event);
     if (Math.hypot(target.x - origin.x, target.y - origin.y) > origin.radius * 1.65) return;
-    pointerId = event.pointerId; active = true; score.show();
+    pointerId = event.pointerId; active = true; score.show(); lockResume(true);
     anchor.setPointerCapture(pointerId);
   }, { signal: events.signal });
   anchor.addEventListener("pointermove", (event) => {
@@ -300,7 +303,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   anchor.addEventListener("keydown", (event) => {
     if (paused || disposed || !avatarArrival(arrivalTime, reducedMotion.matches).ready || game.status === "defeated") return;
     if ((event.key === " " || event.key === "Enter") && event.repeat) { event.preventDefault(); return; }
-    if (event.key === " " || event.key === "Enter") { event.preventDefault(); if (!active) score.show(); keyboard = true; active = true; }
+    if (event.key === " " || event.key === "Enter") { event.preventDefault(); if (!active) score.show(); keyboard = true; active = true; lockResume(true); }
     else if (active && event.key.startsWith("Arrow")) {
       event.preventDefault();
       if (event.key === "ArrowLeft") angle -= 0.12;

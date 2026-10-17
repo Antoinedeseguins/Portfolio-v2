@@ -1,5 +1,6 @@
 import { enableCubeHover } from "./arup-cube.js?v=5";
 import { createAlphaMask, overlapsAlphaMask } from "./alpha-hitbox.js";
+import { createResumeLock } from "../game-resume-lock.js";
 
 export function enableRunner(title) {
   const row = title.closest(".arup-title-row");
@@ -17,7 +18,9 @@ export function enableRunner(title) {
   if (window.matchMedia("(hover: none), (pointer: coarse)").matches) return;
   const page = row.closest(".project-layout");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const lockResume = createResumeLock();
   const setHeroPaused = active => {
+    lockResume(active);
     page.dataset.runnerPlaying = String(active);
     page.dispatchEvent(new Event("hero-autoplay-change"));
   };
@@ -326,6 +329,7 @@ export function enableRunner(title) {
   page.addEventListener("page-dispose", event => {
 
     frozen = true; clearTimeout(resetTimer); resetTimer = null; stopFrame(); observer.disconnect();
+    lockResume(false);
     delete page.dataset.runnerPlaying;
     if (!event.detail?.preserveVisual) { disposed = true; events.abort(); }
   }, { signal: events.signal });

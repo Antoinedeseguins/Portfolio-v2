@@ -1,3 +1,5 @@
+import { createResumeLock } from "../game-resume-lock.js";
+
 // Pixel coordinates; bounds describe the allowed centre of the ball.
 export function stepBall(ball, dt, bounds, target = null) {
   const steps = Math.max(1, Math.ceil(dt * 120));
@@ -27,7 +29,7 @@ export function stepBall(ball, dt, bounds, target = null) {
 
 export function enableShapes(button) {
   const page = button.closest(".project-layout");
-  const resumeLink = document.querySelector(".resume-link");
+  const lockResume = createResumeLock();
   const events = new AbortController(), options = { signal: events.signal };
   const stage = document.createElement("button");
   stage.type = "button"; stage.className = "proteo-shape-stage";
@@ -73,7 +75,7 @@ export function enableShapes(button) {
     stage.remove();
 
     button.style.visibility = ""; button.setAttribute("aria-pressed", "false");
-    resumeLink?.removeAttribute("aria-disabled");
+    lockResume(false);
   };
   const grab = event => {
     if (!event.isPrimary || event.button !== 0 || drag) return;
@@ -84,7 +86,7 @@ export function enableShapes(button) {
       active = true; document.body.append(stage); paint();
 
       button.style.visibility = "hidden"; button.setAttribute("aria-pressed", "true");
-      resumeLink?.setAttribute("aria-disabled", "true");
+      lockResume(true);
     }
     const capture = event.currentTarget;
     drag = { id: event.pointerId, capture, offsetX: ball.x - event.clientX, offsetY: ball.y - event.clientY, target: { x: ball.x, y: ball.y } };
