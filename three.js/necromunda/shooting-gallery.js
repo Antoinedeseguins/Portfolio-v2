@@ -3,6 +3,12 @@ import { createResumeLock } from "../game-resume-lock.js";
 
 export function enableGallery(button) {
   const page = button.closest(".project-layout"), title = page.querySelector(".necro-title");
+  const rifleImage = button.querySelector("img");
+  const boltImage = button.querySelector(".necro-rifle-bolt");
+  const resetRifle = () => {
+    rifleImage.style.removeProperty("transform");
+    boltImage?.style.removeProperty("transform");
+  };
   const score = createGameScore(page, "necromunda");
   const lockResume = createResumeLock();
   let kills = 0;
@@ -17,6 +23,7 @@ export function enableGallery(button) {
   let hitAnimation = null;
   let elapsed = 0, spawn = 0, cooldown = 0, held = false, width = 0, height = 0;
   let escaped = 0, recoil = 0;
+  let gunKick = 0;
   const mouse = { x: 0, y: 0, inside: false };
   const aimPoint = () => {
     const shake = reduced ? 0 : Math.min(1, recoil / .35) * 7;
@@ -34,6 +41,7 @@ export function enableGallery(button) {
     const a = area();
     mouse.inside = active && mouse.x >= a.left && mouse.x <= a.right && mouse.y >= a.top && mouse.y < a.bottom;
     document.documentElement.classList.toggle("necro-aiming", mouse.inside);
+    if (!mouse.inside) resetRifle();
     if (!mouse.inside) held = false;
   };
   const measure = () => letters.forEach(letter => { letter.rect = letter.element.getBoundingClientRect(); });
@@ -46,6 +54,7 @@ export function enableGallery(button) {
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0); measure();
   };
   const stop = () => {
+    resetRifle();
     lockResume(false);
     score.hide();
     hitAnimation?.cancel(); hitAnimation = null;
@@ -60,6 +69,7 @@ export function enableGallery(button) {
     page.dispatchEvent(new Event("hero-autoplay-change"));
   };
   const defeat = async () => {
+    resetRifle();
     score.hide();
     if (reduced) { stop(); return; }
     active = false; held = false;
@@ -107,6 +117,7 @@ export function enableGallery(button) {
   };
   const shoot = () => {
     cooldown = .17;
+    gunKick = .12;
     const aim = aimPoint();
     const enemy = [...enemies].reverse().find(target => target.exposure > .4 && Math.abs(aim.x - target.x) < 21 * target.scale + 2 && Math.abs(aim.y - target.y) < 27 * target.scale + 2);
     if (enemy) {
@@ -120,6 +131,7 @@ export function enableGallery(button) {
     if (!active) return;
     const dt = document.hidden || last === null ? 0 : Math.min(.035, (now - last) / 1000); last = now;
     elapsed += dt; cooldown = Math.max(0, cooldown - dt); recoil = Math.max(0, recoil - dt); spawn -= dt;
+    gunKick = Math.max(0, gunKick - dt);
     measure();
     updateMouse({ clientX: mouse.x, clientY: mouse.y });
     const a = area(), pressure = Math.floor(elapsed / 6);
@@ -191,6 +203,16 @@ export function enableGallery(button) {
     }
     ctx.restore();
     const rifle = button.getBoundingClientRect();
+    if (mouse.inside) {
+      const aim = aimPoint();
+      const dx = aim.x - (rifle.left + rifle.width / 2);
+      const dy = aim.y - (rifle.top + rifle.height / 2);
+      const angle = Math.atan2(dy, dx);
+      const flip = dx < 0 ? -1 : 1;
+      const kick = reduced ? 0 : gunKick / .12;
+      rifleImage.style.transform = `rotate(${angle}rad) scaleY(${flip}) translateX(${-kick * 3}px)`;
+      if (boltImage) boltImage.style.transform = `rotate(${angle}rad) scaleY(${flip}) translateX(${-kick * 6}px)`;
+    }
     const heartsX = Math.min(width - 44, rifle.right + 12), heartsY = rifle.top + rifle.height / 2;
     for (let i = 0; i < 3; i++) {
       ctx.save(); ctx.translate(heartsX + i * 13, heartsY);
@@ -222,7 +244,7 @@ export function enableGallery(button) {
     document.body.append(canvas); active = true; elapsed = 0; cooldown = 0; spawn = .6; last = null; held = false;
     lockResume(true);
     kills = 0; score.show();
-    escaped = 0; recoil = 0; mouse.inside = false;
+    escaped = 0; recoil = 0; gunKick = 0; mouse.inside = false;
     resize(); addEnemy(); addEnemy(); addEnemy();
     updateMouse(event);
     button.disabled = true; button.setAttribute("aria-pressed", "true");
@@ -243,6 +265,7 @@ export function enableGallery(button) {
   document.addEventListener("visibilitychange", () => { held = false; last = null; }, options);
   const leaveArena = () => {
     held = false; mouse.inside = false; mouse.x = mouse.y = -Infinity;
+    if (active) resetRifle();
     document.documentElement.classList.remove("necro-aiming");
   };
   document.documentElement.addEventListener("pointerleave", leaveArena, options);

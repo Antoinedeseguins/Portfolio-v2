@@ -979,7 +979,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
       .catch(error => console.error("Racer interaction could not be loaded", error));
   const necroPlay = projectView.querySelector(".necro-play");
   if (necroPlay && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/necromunda/shooting-gallery.js?v=10", document.baseURI).href)
+    import(new URL("three.js/necromunda/shooting-gallery.js?v=12", document.baseURI).href)
       .then(async module => {
         await document.fonts.ready;
         if (necroPlay.isConnected && !necroPlay.closest(".page-outgoing")) module.enableGallery(necroPlay);

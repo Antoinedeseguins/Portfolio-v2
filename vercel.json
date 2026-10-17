@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/Space-Age-Racer", "destination": "/index.html" },
+    { "source": "/Aeon-Must-Die", "destination": "/index.html" },
+    { "source": "/Age-of-Sigmar", "destination": "/index.html" },
+    { "source": "/Necromunda", "destination": "/index.html" },
+    { "source": "/Impact", "destination": "/index.html" },
+    { "source": "/Vahana", "destination": "/index.html" },
+    { "source": "/Proteo", "destination": "/index.html" },
+    { "source": "/Source", "destination": "/index.html" },
+    { "source": "/ARUP", "destination": "/index.html" },
+    { "source": "/About-me", "destination": "/index.html" }
+  ]
+}
