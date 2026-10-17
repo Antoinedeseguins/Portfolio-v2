@@ -32,7 +32,7 @@ function projectSlug(title) {
 }
 
 function updatePageUrl(page) {
-  const url = new URL(projectSlug(page.title), document.baseURI);
+  const url = page === aboutMedia ? siteBaseUrl : new URL(projectSlug(page.title), siteBaseUrl);
   history.replaceState(null, "", url.pathname);
 }
 
