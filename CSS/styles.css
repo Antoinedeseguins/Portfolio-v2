@@ -427,7 +427,8 @@ img.hero-image { object-fit: cover; }
 .gallery-thumb::after { position: absolute; z-index: 1; inset: 0; border: 1px solid color-mix(in srgb, var(--accent) 65%, transparent); border-radius: 3px; content: ""; opacity: 0; pointer-events: none; transition: opacity 80ms ease; }
 .gallery-thumb:hover, .gallery-thumb[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
 .gallery-thumb:hover::after, .gallery-thumb[aria-pressed="true"]::after { opacity: 1; }
-.project-copy { max-width: 520px; padding: 0; }
+/* Keep text on the same composited layer during page slides and at rest. */
+.project-copy { max-width: 520px; padding: 0; transform: translateZ(0); }
 .project-kicker { display: flex; align-items: center; gap: 12px; margin: 0 0 19px; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; }
 .project-kicker::before { width: 24px; height: 1px; content: ""; background: var(--accent); }
 .project-title, .about-title { --title-size: clamp(34px, 4vw, 64px); margin: 0; font-family: "Raleway", sans-serif; font-size: var(--title-size); font-weight: 700; line-height: 1.02; overflow-wrap: anywhere; }
