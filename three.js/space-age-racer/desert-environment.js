@@ -5,6 +5,25 @@ const rockOutlines = [
 ];
 const desertTints = [[0,0,0], [12,5,-5], [8,-8,-10], [-10,-5,3], [10,10,7]];
 
+function drawCactus(context, x, y, size, mirrored) {
+  context.save();
+  context.translate(x, y);
+  context.scale(mirrored ? -size : size, size);
+  context.fillStyle = "rgba(84,91,53,.13)";
+  context.beginPath();context.ellipse(.3,.05,.85,.16,0,0,Math.PI*2);context.fill();
+  context.lineCap = "round";context.lineJoin = "round";
+  const branches = () => {
+    context.beginPath();context.moveTo(0,0);context.lineTo(0,-2.8);
+    context.moveTo(0,-1.1);context.lineTo(-.65,-1.1);context.lineTo(-.65,-2.05);
+    context.moveTo(0,-1.65);context.lineTo(.65,-1.65);context.lineTo(.65,-2.35);
+    context.stroke();
+  };
+  context.strokeStyle = "#667954";context.lineWidth = .38;branches();
+  context.translate(-.06,-.03);
+  context.strokeStyle = "#91a071";context.lineWidth = .12;branches();
+  context.restore();
+}
+
 export function drawDesertTrack(context, width, height, bottom, time) {
   const horizonY=height*.08, endY=Math.min(height*.94,bottom);
   const fraction=Math.max(0,Math.min(1,(endY-horizonY)/(height*.94-horizonY)));
@@ -36,6 +55,18 @@ export function drawDesertTrack(context, width, height, bottom, time) {
   for(const side of [-1,1]){
     context.beginPath();context.moveTo(width*.5+side*10,horizonY);
     context.lineTo(width*.5+side*edge(fraction),endY);context.stroke();
+  }
+  // Fixed spacing keeps the roadside plants stable as they approach the camera.
+  for(let i=0;i<12;i++){
+    const depth=(i/12+time*.09)%1;
+    const side=i%2 ? 1 : -1;
+    const size=(1.5+depth*depth*height*.055)*( .85+(i%3)*.12);
+    const x=width*.5+side*(edge(depth*depth*fraction)+size*(1.1+(i%3)*.45));
+    const y=horizonY+depth*depth*(endY-horizonY);
+    context.save();
+    context.globalAlpha=Math.min(1,depth*5)*(1-Math.max(0,(depth-.92)/.08));
+    drawCactus(context,x,y,size,side<0);
+    context.restore();
   }
 }
 

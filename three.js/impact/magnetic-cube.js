@@ -1,7 +1,8 @@
 import * as THREE from "../vendor/three.module.js";
-import { stepSpring, applySpray } from "./spring.js?v=7";
+import { stepSpring, applySpray } from "./spring.js?v=8";
 import { sampleText } from "./text-shape.js?v=4";
 import { createResumeLock } from "../game-resume-lock.js";
+import { createContentFragments } from "./content-fragments.js?v=10";
 
 export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFamily = "Raleway", fontWeight = "700", anchor = null, surface = null } = {}) {
   const input = anchor || canvas;
@@ -9,7 +10,10 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
   const interactionSurface = surface || input;
   const interactionTarget = (event) => {
     if (!surface) return input;
-    const target = event.target.closest?.('.toy-widget[data-toy="magnetic-cube"], .toy-widget[data-toy="voxel-title"]');
+    const selector = text
+      ? '.toy-widget[data-toy="magnetic-cube"], .toy-widget[data-toy="voxel-title"], .project-meta > span'
+      : '.toy-widget[data-toy="magnetic-cube"], .toy-widget[data-toy="voxel-title"]';
+    const target = event.target.closest?.(selector);
     return target && surface.contains(target) ? target : null;
   };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -82,10 +86,11 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
   }
   const updateInstances = () => {
     if (!instances) return;
-    bodies.forEach((body, index) => { body.mesh.updateMatrix(); instances.setMatrixAt(index, body.mesh.matrix); });
+    bodies.slice(0, positions.length).forEach((body, index) => { body.mesh.updateMatrix(); instances.setMatrixAt(index, body.mesh.matrix); });
     instances.instanceMatrix.needsUpdate = true;
   };
   updateInstances();
+  const contentFragments = textShape && surface ? createContentFragments(surface, group, bodies) : null;
   const raycaster = new THREE.Raycaster();
   const sprayRay = new THREE.Ray();
   const inverseGroup = new THREE.Matrix4();
@@ -97,6 +102,39 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
   let lastTime = null;
   let sprayPointer = null;
   let keyboardSpray = false;
+  let contentReady = !contentFragments;
+  let preparationQueued = false;
+  let preparationFrame = null;
+  let preparationIdle = null;
+  const cancelContentPreparation = () => {
+    if (preparationFrame !== null) cancelAnimationFrame(preparationFrame);
+    if (preparationIdle !== null) {
+      if (window.cancelIdleCallback) window.cancelIdleCallback(preparationIdle);
+      else window.clearTimeout(preparationIdle);
+    }
+    preparationFrame = preparationIdle = null;
+    preparationQueued = false;
+  };
+  const prepareContent = () => {
+    if (contentReady || preparationQueued || disposed || paused || surface?.classList.contains("page-entering")) return;
+    preparationQueued = true;
+    // Let the completed transition paint before preparing the tag fragments.
+    preparationFrame = requestAnimationFrame(() => {
+      preparationFrame = requestAnimationFrame(() => {
+        preparationFrame = null;
+        const build = () => {
+          preparationIdle = null;
+          preparationQueued = false;
+          if (disposed || paused || !input.isConnected || surface?.classList.contains("page-entering")) return;
+          contentReady = true;
+          resize();
+        };
+        preparationIdle = window.requestIdleCallback
+          ? window.requestIdleCallback(build, { timeout: 500 })
+          : window.setTimeout(build, 0);
+      });
+    });
+  };
 
   const updatePointer = (event) => {
     const rect = canvas.getBoundingClientRect();
@@ -151,6 +189,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
   }, { signal: events.signal });
 
   const render = (time) => {
+    prepareContent();
     if (surface?.classList.contains("page-entering")) resize(false);
     const dt = Math.min(lastTime === null ? 0 : (time - lastTime) / 1000, 1 / 30);
     lastTime = time;
@@ -169,6 +208,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     const separation = Math.max(...bodies.map((body) => body.position.distanceTo(body.home)));
     edgeMaterial.opacity = 0.55 * Math.max(0, 1 - separation / 0.35);
     updateInstances();
+    contentFragments?.update();
     renderer.render(scene, camera);
   };
   const updateLoop = () => {
@@ -198,6 +238,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
       const labelLeft = label ? label.getBoundingClientRect().left - anchorRect.left : 0;
       group.position.x = (labelLeft + textShape.advanceWidth * fontSize / 256 - anchorRect.width / 2) * worldPerPixel;
       camera.fov = THREE.MathUtils.radToDeg(2 * Math.atan(anchorRect.height * worldPerPixel / 2 / (12 - cubeSize / 2)));
+      if (contentReady) contentFragments?.resize(anchorRect, worldPerPixel, cubeSize / 2);
     }
     if (surface) {
       const rect = canvas.getBoundingClientRect();
@@ -217,7 +258,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
   resize();
   updateLoop();
   return {
-    pause() { paused = true; stopSpray(); updateLoop(); },
+    pause() { paused = true; cancelContentPreparation(); stopSpray(); updateLoop(); },
     snapshot() {
       renderer.render(scene, camera);
       const snapshot = document.createElement("canvas");
@@ -229,11 +270,13 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     dispose() {
       if (disposed) return;
       disposed = true;
+      cancelContentPreparation();
       stopSpray();
       renderer.setAnimationLoop(null);
       events.abort();
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
+      contentFragments?.dispose();
       geometry.dispose();
       material.dispose();
       bodies.forEach((body) => { if (body.mesh.material !== material) body.mesh.material.dispose(); });

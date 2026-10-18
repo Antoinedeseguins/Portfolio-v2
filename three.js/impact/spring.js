@@ -31,7 +31,7 @@ export function applySpray(body, ray, dt, reducedMotion = false) {
     z: body.position.z - ray.origin.z,
   };
   const depth = delta.x * ray.direction.x + delta.y * ray.direction.y + delta.z * ray.direction.z;
-  if (depth <= 0 || depth > 20) return;
+  if (depth <= 0 || depth > (body.maxSprayDepth ?? 20)) return;
   const radial = {
     x: delta.x - ray.direction.x * depth,
     y: delta.y - ray.direction.y * depth,

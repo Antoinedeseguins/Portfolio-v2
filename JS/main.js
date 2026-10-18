@@ -592,8 +592,8 @@ function enableHeroAutoplay(frame) {
 
 const toyModules = {
   "source-light": () => import(new URL("three.js/source/source-light.js?v=62", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=34", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=34", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=45", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=45", document.baseURI).href),
 };
 
 // Prepare Impact's font and renderer while the visitor browses the portfolio.
@@ -887,6 +887,10 @@ function renderMediaMarkup(project, imageIndex) {
   `;
 }
 
+function renderProjectTag(tag) {
+  return `<span>${escapeText(tag)}</span>`;
+}
+
 function escapeText(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -898,7 +902,7 @@ function projectPageMarkup(project, imageIndex) {
     <div class="project-layout${project.title.length >= 24 ? " has-long-title" : ""}">
       ${renderMediaMarkup(project, imageIndex)}
       <div class="project-copy">
-        ${project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Attraper la boule Proteo" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=7" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
+        ${project.id === "age" ? `<div class="sigmar-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><span class="sigmar-hammer" aria-hidden="true"><img src="three.js/ageofsigmar/storm-hammer-compact-v2.png?v=1" alt="" draggable="false" decoding="async" /></span></div>` : project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Attraper la boule Proteo" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=7" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
           <span class="arup-title-toggle" aria-pressed="false">
             <span class="arup-title-text">${[...project.title].map(letter => `<span>${escapeText(letter)}</span>`).join("")}</span>
             <span class="arup-title-logos" aria-hidden="true">${["A", "R", "U", "P"].map(letter => `<img src="three.js/ARUP/${letter}-logo.png" alt="" draggable="false" decoding="async" />`).join("")}</span>
@@ -919,8 +923,8 @@ function projectPageMarkup(project, imageIndex) {
           </div>
         </div>` : `<h1 class="project-title">${escapeText(project.title)}</h1>`}
         <div class="copy-rule" aria-hidden="true"></div>
-        ${project.tags.length ? `<div class="project-meta" aria-label="Domaines du projet">${project.tags.map((tag) => `<span>${escapeText(tag)}</span>`).join("")}</div>` : ""}
         ${project.context ? `<p class="project-subtitle">${escapeText(project.context)}</p>` : ""}
+        ${project.tags.length ? `<div class="project-meta" aria-label="Domaines du projet">${project.tags.map(renderProjectTag).join("")}</div>` : ""}
         ${project.pitch ? `<p class="project-description">${escapeText(project.pitch)}</p>` : ""}
         ${(project.paragraphs || []).filter((paragraph) => paragraph.title || paragraph.content).map((paragraph) => `
           <section class="project-paragraph">
@@ -937,15 +941,16 @@ function aboutPageMarkup() {
   return `
     <div class="about-layout">
       ${renderMediaMarkup(aboutMedia, activeAboutImageIndex)}
-      <div class="about-copy-wrap">
-        ${aboutMedia.context ? `<p class="project-kicker">${escapeText(aboutMedia.context)}</p>` : ""}
+      <div class="about-copy-wrap project-copy">
         <h1 class="about-title">${escapeText(aboutMedia.title)}</h1>
-        ${aboutMedia.pitch ? `<p class="about-copy">${escapeText(aboutMedia.pitch)}</p>` : ""}
-        ${(aboutMedia.tags || []).length ? `<div class="project-meta" aria-label="Domaines">${aboutMedia.tags.map((tag) => `<span>${escapeText(tag)}</span>`).join("")}</div>` : ""}
+        <div class="copy-rule" aria-hidden="true"></div>
+        ${aboutMedia.context ? `<p class="project-subtitle">${escapeText(aboutMedia.context)}</p>` : ""}
+        ${(aboutMedia.tags || []).length ? `<div class="project-meta" aria-label="Domaines">${aboutMedia.tags.map(renderProjectTag).join("")}</div>` : ""}
+        ${aboutMedia.pitch ? `<p class="project-description">${escapeText(aboutMedia.pitch)}</p>` : ""}
         ${(aboutMedia.paragraphs || []).filter((paragraph) => paragraph.title || paragraph.content).map((paragraph) => `
           <section class="project-paragraph">
             ${paragraph.title ? `<h2>${escapeText(paragraph.title)}</h2>` : ""}
-            ${paragraph.content ? `<p class="about-copy">${escapeText(paragraph.content)}</p>` : ""}
+            ${paragraph.content ? `<p class="project-description">${escapeText(paragraph.content)}</p>` : ""}
           </section>
         `).join("")}
       </div>
@@ -977,7 +982,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
   if (racerPlay)
-    import(new URL("three.js/space-age-racer/space-racer.js?v=67", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/space-racer.js?v=68", document.baseURI).href)
       .then(module => { if (racerPlay.isConnected && !racerPlay.closest(".page-outgoing")) module.enableRacer(racerPlay); })
       .catch(error => console.error("Racer interaction could not be loaded", error));
   const necroPlay = projectView.querySelector(".necro-play");
@@ -989,7 +994,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
       }).catch(error => console.error("Necromunda interaction could not be loaded", error));
   const aeonTitle = projectView.querySelector(".aeon-strike");
   if (aeonTitle && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/aeon/aeon-strike.js?v=78", document.baseURI).href)
+    import(new URL("three.js/aeon/aeon-strike.js?v=87", document.baseURI).href)
       .then(async module => {
         const logo = aeonTitle.closest(".aeon-title-row")?.querySelector(".aeon-title-logo");
         await Promise.all([document.fonts.ready, logo?.decode().catch(() => {})]);

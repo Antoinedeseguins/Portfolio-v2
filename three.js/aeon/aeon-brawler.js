@@ -84,13 +84,81 @@ export function enableBrawler(title) {
         continue;
       }
       ctx.save(); ctx.translate(effect.x, effect.y); ctx.rotate(effect.tilt);
+      if (effect.areaAttack) {
+        ctx.rotate(-effect.tilt);
+        const expansion=1-(1-Math.min(1,age/.7))**3;
+        const radius=Math.max(1,effect.reach*expansion);
+        const fade=(1-age)**1.5;
+        const wash=ctx.createRadialGradient(0,0,radius*.55,0,0,radius);
+        wash.addColorStop(0,"rgba(249,126,64,0)");
+        wash.addColorStop(.86,`rgba(245,139,70,${fade*.14})`);
+        wash.addColorStop(1,"rgba(255,210,150,0)");
+        ctx.fillStyle=wash;ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();
+        for(let wave=0;wave<2;wave++) {
+          const progress=Math.max(0,(age-wave*.12)/(1-wave*.12));
+          if(wave&&age<.12) continue;
+          const r=Math.max(1,effect.reach*(1-(1-Math.min(1,progress/.7))**3));
+          ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);
+          ctx.strokeStyle=`rgba(255,${wave?170:211},${wave?103:161},${fade*(wave?.35:.8)})`;
+          ctx.lineWidth=wave?1:2.5*(1-age)+.6;
+          ctx.shadowColor="#ed9a57";ctx.shadowBlur=wave?0:7;ctx.stroke();
+        }
+        ctx.shadowBlur=0;
+        for(let i=0;i<12;i++) {
+          const angle=i*Math.PI/6+effect.seed;
+          const distance=radius*(.78+(i%3)*.07);
+          const x=Math.cos(angle)*distance,y=Math.sin(angle)*distance;
+          ctx.beginPath();ctx.moveTo(x,y);
+          ctx.lineTo(x+Math.cos(angle)*5*(1-age),y+Math.sin(angle)*5*(1-age));
+          ctx.strokeStyle=`rgba(247,179,109,${fade*.8})`;ctx.lineWidth=1;ctx.stroke();
+        }
+        ctx.restore();continue;
+      }
+      if (effect.charged || effect.partialCharge) {
+        const powerful=effect.chargeRatio>.5;
+        const strength=powerful?(effect.chargeRatio-.5)*2:effect.chargeRatio*2;
+        const sweep = 1 - (1 - Math.min(1, age / .4)) ** 3;
+        const length = effect.reach * (powerful?1.05+strength*.15:.7+strength*.12) * (.5 + sweep * .5);
+        const thickness = (powerful?14+strength*7:6+strength*3) * (1 - age);
+        const bend=effect.variant?1:-1;
+        const fade = (1 - age) ** 1.8;
+        const glow = ctx.createLinearGradient(-12, 0, length, 0);
+        glow.addColorStop(0, "rgba(255,91,49,0)");
+        glow.addColorStop(.4, `rgba(244,111,64,${fade*(powerful?.5:.35)})`);
+        glow.addColorStop(.8, `rgba(255,206,151,${fade*(powerful?.85:.65)})`);
+        glow.addColorStop(1, "rgba(255,230,194,0)");
+        ctx.beginPath();ctx.moveTo(-12, 0);
+        ctx.bezierCurveTo(length*.2, -thickness*bend, length*.65, -thickness*.8*bend, length, 0);
+        ctx.bezierCurveTo(length*.62, thickness*.2*bend, length*.12, thickness*.5*bend, -12, 0);
+        ctx.fillStyle = glow;ctx.fill();
+        ctx.beginPath();ctx.moveTo(4, 0);
+        ctx.quadraticCurveTo(length*.55, -thickness*.3*bend, length, 0);
+        ctx.strokeStyle = `rgba(255,231,199,${fade*.9})`;
+        ctx.lineWidth = powerful?1.8:1.2;ctx.shadowColor = "#fa995b";ctx.shadowBlur = powerful?8:4;ctx.stroke();
+        ctx.shadowBlur = 0;
+        if(powerful) {
+          // Two fine trailing ribbons make the heavy strike broader, without a radial burst.
+          for(const side of [-1,1]) {
+            ctx.beginPath();ctx.moveTo(0,side*5);
+            ctx.bezierCurveTo(length*.25,side*thickness*1.9,length*.7,side*thickness*.9,length*.96,0);
+            ctx.strokeStyle=`rgba(244,173,108,${fade*.55})`;ctx.lineWidth=.9;ctx.stroke();
+          }
+          const tip=length*(.75+sweep*.25);
+          ctx.beginPath();ctx.moveTo(tip-5,-thickness*.7);ctx.lineTo(tip+3,0);ctx.lineTo(tip-5,thickness*.7);
+          ctx.strokeStyle=`rgba(255,230,185,${fade*.65})`;ctx.lineWidth=1;ctx.stroke();
+        }
+        const sparkCount=powerful?7:3;
+        for (let i=0;i<sparkCount;i++) {
+          const x=length*(.48+i*.45/sparkCount)+age*(powerful?28:12);
+          const y=(i%2?1:-1)*(4+age*(8+i*4))*(powerful?1.3:1);
+          ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+3*(1-age),y-.8);
+          ctx.strokeStyle=`rgba(245,174,108,${fade*.65})`;ctx.lineWidth=1;ctx.stroke();
+        }
+        ctx.restore();continue;
+      }
       if (effect.kind === "uppercut") ctx.scale(.65, 1.5);
       else if (effect.kind === "cross") ctx.scale(1.4, .7);
       const radius = (effect.charged ? 95 : effect.finisher ? 65 : 38) * (.45 + age * .8);
-      if (effect.charged || effect.kind === "burst" || effect.kind === "slam") {
-        ctx.beginPath(); ctx.arc(0, 0, radius * 1.3, 0, Math.PI * 2);
-        ctx.strokeStyle = `hsla(${effect.hue},100%,65%,${alpha})`; ctx.lineWidth = 3 * (1 - age) + 1; ctx.stroke();
-      }
       // Jagged comic impact, without lettering.
       ctx.beginPath();
       for (let i = 0; i < 24; i++) {
@@ -232,8 +300,6 @@ export function enableBrawler(title) {
       ctx.clearRect(0, 0, width, height);
       ctx.save();
       ctx.globalAlpha = Math.max(0, 1 - time / .75);
-      ctx.strokeStyle = "#ff604b"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(origin.x, origin.y, 12 + time * 115, 0, Math.PI * 2); ctx.stroke();
       for (const piece of fragments) {
         ctx.save();
         ctx.translate(origin.x + (piece.column - 1.5) * 13.5 + piece.vx * time, origin.y + (piece.row - 1.5) * 13.5 + piece.vy * time + 100 * time * time);
@@ -418,18 +484,29 @@ export function enableBrawler(title) {
       ctx.rect(0, 0, width, gameBottom());
       ctx.clip();
       const charge = hold ? Math.min(1, hold.chargeTime / 1200) : 0;
-      if (charge > .15) {
-        ctx.beginPath();
-        ctx.arc(hand.x, hand.y, 34 + charge * 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * charge);
-        ctx.strokeStyle = `hsl(${350 + charge * 55},100%,60%)`; ctx.lineWidth = 2 + charge * 2;
-        ctx.shadowColor = "#ff513f"; ctx.shadowBlur = reduced ? 0 : 12; ctx.stroke(); ctx.shadowBlur = 0;
-      }
       const size = !reduced && launch > 0
         ? 54 + Math.sin(Math.min(1, ( .6 - launch) / .6) * Math.PI) * 25
         : !reduced && charge > 0 ? 54 + charge * 14 : impact > 0 && !reduced ? 65 : 54;
-      if (impact > 0 && reduced) {
-        ctx.strokeStyle = `rgba(255,50,90,${impact / .16})`; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(hand.x, hand.y, 30 + (1 - impact / .16) * 48, 0, Math.PI * 2); ctx.stroke();
+      if (charge > .06) {
+        const radius=size*.55+4;
+        const start=Math.PI*.75,span=Math.PI*1.5;
+        const opacity=Math.min(1,(charge-.06)/.08);
+        ctx.save();ctx.translate(hand.x,hand.y);ctx.globalAlpha=opacity;
+        ctx.lineCap="round";
+        ctx.beginPath();ctx.arc(0,0,radius,start,start+span);
+        ctx.strokeStyle="rgba(125,100,88,.18)";ctx.lineWidth=1;ctx.stroke();
+        const gradient=ctx.createLinearGradient(-radius,radius,radius,-radius);
+        gradient.addColorStop(0,"#bd7157");gradient.addColorStop(.65,"#e5ac75");gradient.addColorStop(1,"#ffe0b4");
+        const end=start+span*charge;
+        ctx.beginPath();ctx.arc(0,0,radius,start,end);
+        ctx.strokeStyle=gradient;ctx.lineWidth=charge>=1?1.8:1.4;ctx.stroke();
+        // The small top marker indicates when the charged attack is available.
+        ctx.beginPath();ctx.moveTo(0,-radius-2);ctx.lineTo(0,-radius+2);
+        ctx.strokeStyle=charge>=.5?"rgba(239,196,147,.9)":"rgba(125,100,88,.3)";
+        ctx.lineWidth=1;ctx.stroke();
+        ctx.beginPath();ctx.arc(Math.cos(end)*radius,Math.sin(end)*radius,1.5,0,Math.PI*2);
+        ctx.fillStyle=charge>=1?"#ffe5c3":"#e9ba8b";ctx.fill();
+        ctx.restore();
       }
       ctx.drawImage(logo, hand.x - size / 2, hand.y - size / 2, size, size);
       ctx.restore();
@@ -507,15 +584,21 @@ export function enableBrawler(title) {
     combo = now - lastPunch < 800 ? combo + 1 : 1;
     lastPunch = now;
     const charged = chargeTime >= 600;
+    const partialCharge = !charged && chargeTime >= 150;
+    const chargeRatio = Math.min(1,chargeTime/1200);
+    const areaAttack = chargeRatio > .5;
     const fullCharge = chargeTime >= 1200;
     const kind = charged ? "charged" : attackCount % 5 === 0 ? "burst" : ["jab", "cross", "uppercut", "cross"][(combo - 1) % 4];
     const finisher = charged || kind === "burst";
     const damage = charged ? (fullCharge ? 6 : 4) : kind === "burst" ? 4 : kind === "uppercut" ? 3 : 1;
-    const reach = charged ? (fullCharge ? 140 : 115) : kind === "burst" ? 145 : 90;
-    cooldown = charged ? .6 : .18; impact = .16;
+    const reach = areaAttack ? 160+(chargeRatio-.5)*120 : charged ? 115 : kind === "burst" ? 145 : 90;
+    cooldown = charged ? .4 : .12; impact = .16;
     if (!reduced) {
       if (effects.length >= 8) effects.shift();
-      effects.push({ x: hand.x, y: hand.y, life: charged ? .55 : finisher ? .4 : .28, duration: charged ? .55 : finisher ? .4 : .28, finisher, charged, kind, hue: fullCharge ? 45 : finisher ? 18 : 350, tilt: kind === "uppercut" ? -.3 : combo % 2 ? -.4 : .4, seed: Math.random() * 100 });
+      const nearest = charged || partialCharge ? enemies.filter(enemy=>enemy.hp>0).sort((a,b)=>Math.hypot(a.x-hand.x,a.y-(a.type.boss?44:0)-hand.y)-Math.hypot(b.x-hand.x,b.y-(b.type.boss?44:0)-hand.y))[0] : null;
+      const tilt = charged || partialCharge ? nearest ? Math.atan2(nearest.y-(nearest.type.boss?44:0)-hand.y,nearest.x-hand.x) : -.35 : kind === "uppercut" ? -.3 : combo % 2 ? -.4 : .4;
+      const duration = areaAttack ? .62 : partialCharge || charged ? .28 : finisher ? .4 : .28;
+      effects.push({ x: hand.x, y: hand.y, life: duration, duration, finisher, charged, partialCharge, chargeRatio, areaAttack, variant:attackCount%2, fullCharge, reach, kind, hue: fullCharge ? 45 : finisher ? 18 : 350, tilt, seed: Math.random() * 100 });
     }
     const chainPoints = [{ x: hand.x, y: hand.y }];
     const chained = new Set();
@@ -543,7 +626,7 @@ export function enableBrawler(title) {
         enemy.stun = Math.max(enemy.stun || 0, enemy.type.boss ? .12 : charged ? .4 : finisher ? .5 : .15);
         if (enemy.type.boss) enemy.controlCooldown = 1.4;
         if (!enemy.type.boss && kind === "uppercut" && distance <= reach) { enemy.airborne = .65; enemy.stun = .65; }
-        const knockback = (enemy.type.boss ? 55 : 580) * (charged ? 1.25 : finisher ? 1.4 : 1);
+        const knockback = (enemy.type.boss ? 55 : 580) * (areaAttack ? 1.2 : charged ? 1.25 : finisher ? 1.4 : 1);
         enemy.vx = dx / (distance || 1) * knockback;
         enemy.vy = kind === "uppercut" ? 0 : dy / (distance || 1) * knockback;
       }
