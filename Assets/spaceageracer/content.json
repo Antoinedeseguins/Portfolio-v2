@@ -1,14 +1,14 @@
 {
   "en":  {
     "title":  "Space Age Racer",
-    "context":  "Personal Project",
-    "pitch":  "",
     "tags":  [
-      "Prototyping",
       "Game Design",
       "Level Design",
-      "Custom Controllers"
+      "Prototyping",
+      "Custom Controller"
     ],
+    "context":  "",
+    "pitch":  "",
     "paragraphs":  [
       {
         "title":  "",

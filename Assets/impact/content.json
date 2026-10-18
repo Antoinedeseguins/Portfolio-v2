@@ -1,24 +1,24 @@
 {
   "en":  {
     "title":  "Impact",
-    "titleToy": {
-      "id": "voxel-title"
-    },
-    "titleCube": {
-      "id": "magnetic-cube"
-    },
-    "context":  "Student Project",
-    "pitch":  "",
     "tags":  [
       "Game Design",
-      "Level Design",
-      "Prototyping"
+      "Gameplay Mechanics",
+      "Documentation"
     ],
+    "context":  "",
+    "pitch":  "",
     "paragraphs":  [
       {
         "title":  "",
         "content":  ""
       }
-    ]
+    ],
+    "titleToy":  {
+      "id":  "voxel-title"
+    },
+    "titleCube":  {
+      "id":  "magnetic-cube"
+    }
   }
 }

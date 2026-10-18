@@ -918,9 +918,10 @@ function projectPageMarkup(project, imageIndex) {
             <canvas class="hero-image toy-canvas" tabindex="0" role="button" aria-label="${escapeText(project.title)}"></canvas>
           </div>
         </div>` : `<h1 class="project-title">${escapeText(project.title)}</h1>`}
-        ${project.context ? `<div class="copy-rule" aria-hidden="true"></div><p class="project-subtitle">${escapeText(project.context)}</p>` : ""}
-        ${project.pitch ? `<p class="project-description">${escapeText(project.pitch)}</p>` : ""}
+        <div class="copy-rule" aria-hidden="true"></div>
         ${project.tags.length ? `<div class="project-meta" aria-label="Domaines du projet">${project.tags.map((tag) => `<span>${escapeText(tag)}</span>`).join("")}</div>` : ""}
+        ${project.context ? `<p class="project-subtitle">${escapeText(project.context)}</p>` : ""}
+        ${project.pitch ? `<p class="project-description">${escapeText(project.pitch)}</p>` : ""}
         ${(project.paragraphs || []).filter((paragraph) => paragraph.title || paragraph.content).map((paragraph) => `
           <section class="project-paragraph">
             ${paragraph.title ? `<h2>${escapeText(paragraph.title)}</h2>` : ""}

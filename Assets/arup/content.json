@@ -1,14 +1,14 @@
 {
   "en":  {
     "title":  "ARUP",
-    "context":  "Game jam project",
-    "pitch":  "",
     "tags":  [
-      "Prototyping",
       "Game Design",
-      "Custom Controllers"
+      "Prototyping",
+      "Gameplay Mechanics"
 
     ],
+    "context":  "Game Jam · Prototype",
+    "pitch":  "",
     "paragraphs":  [
       {
         "title":  "",

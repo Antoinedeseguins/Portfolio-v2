@@ -1,12 +1,13 @@
 {
   "en":  {
     "title":  "Vahana",
-    "context":  "Student Project · ICAN",
-    "pitch":  "",
     "tags":  [
       "Game Design",
-      "Board Game"
+      "Board Game",
+      "Documentation"
     ],
+    "context":  "",
+    "pitch":  "",
     "paragraphs":  [
       {
         "title":  "",

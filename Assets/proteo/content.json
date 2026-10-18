@@ -1,12 +1,13 @@
 {
   "en":  {
     "title":  "Proteo",
-    "context":  "Student Project · ICAN",
-    "pitch":  "",
     "tags":  [
-      "",
-      ""
+      "Game Design",
+      "Puzzle Design",
+      "Documentation"
     ],
+    "context":  "",
+    "pitch":  "",
     "paragraphs":  [
       {
         "title":  "",
