@@ -26,14 +26,11 @@ export function enableRunner(title) {
   };
   const logos = title.querySelector(".arup-title-logos");
   const logoLetters = [...logos.querySelectorAll("img")];
-  const shieldBubbles = logoLetters.map((letter, index) => {
-    const bubble = document.createElement("span");
-    bubble.className = "arup-shield-bubble";
-    bubble.hidden = true;
-    bubble.style.setProperty("--shield-phase", `${index * -.23}s`);
-    logos.append(bubble);
-    return bubble;
-  });
+  const shieldBubble = document.createElement("span");
+  shieldBubble.className = "arup-shield-bubble";
+  shieldBubble.hidden = true;
+  shieldBubble.style.setProperty("--shield-phase", "0s");
+  logos.append(shieldBubble);
   let letterMasks = [];
   const textLetters = [...title.querySelectorAll(".arup-title-text > span")];
   const resetLetters = () => {
@@ -85,15 +82,16 @@ export function enableRunner(title) {
   let remainingLetters = logoLetters.length, invincible = 0, shield = 0;
   let shieldBurst = 0;
   const renderShield = () => {
-    shieldBubbles.forEach((bubble, index) => {
-      bubble.hidden = index >= remainingLetters || (shield <= 0 && shieldBurst <= 0);
-      if (bubble.hidden) return;
-      const letter = logoLetters[index];
-      bubble.style.left = `${letter.offsetLeft}px`;
-      bubble.style.width = `${letter.offsetWidth}px`;
-      bubble.classList.toggle("is-breaking", shieldBurst > 0);
-      bubble.classList.toggle("is-fading", shield > 0 && shield < 1.5);
-    });
+    shieldBubble.hidden = remainingLetters === 0 || (shield <= 0 && shieldBurst <= 0);
+    if (shieldBubble.hidden) return;
+    const livingLetters = logoLetters.slice(0, remainingLetters);
+    const left = Math.min(...livingLetters.map(letter => letter.offsetLeft));
+    const right = Math.max(...livingLetters.map(letter => letter.offsetLeft + letter.offsetWidth));
+    const padding = parseFloat(scene.style.fontSize) * .12;
+    shieldBubble.style.left = `${left - padding}px`;
+    shieldBubble.style.width = `${right - left + padding * 2}px`;
+    shieldBubble.classList.toggle("is-breaking", shieldBurst > 0);
+    shieldBubble.classList.toggle("is-fading", shield > 0 && shield < 1.5);
   };
   let frame = null, last = 0, elapsed = 0, spawn = 1, lift = 0, velocity = 0, obstacles = [];
   let landingTime = .18;
@@ -329,7 +327,7 @@ export function enableRunner(title) {
     running = true; row.classList.add("is-running"); ground.classList.add("is-running"); row.classList.remove("is-crashed");
     setHeroPaused(true);
     title.setAttribute("aria-pressed", "true"); control.setAttribute("aria-label", "Jump ARUP");control.setAttribute("aria-pressed", "true");
-    logos.style.setProperty("--jump", "0em"); control.focus({ preventScroll: true });
+    logos.style.setProperty("--jump", "0em");
     stopFrame(); frame = requestAnimationFrame(tick);
   };
   control.addEventListener("pointerdown", event => {
@@ -356,12 +354,6 @@ export function enableRunner(title) {
   document.addEventListener("keydown", event => {
     if (!available() || event.target.closest("input, textarea, select, [contenteditable]")) return;
     if (event.code === "Escape" && row.classList.contains("is-running")) { event.preventDefault(); stop(); return; }
-    if (!["Space", "ArrowUp"].includes(event.code) || !row.classList.contains("is-running")) return;
-    event.preventDefault();
-    if (!event.repeat && running) jump();
-  }, { signal: events.signal });
-  document.addEventListener("keyup", event => {
-    if (["Space", "ArrowUp"].includes(event.code)) releaseJump();
   }, { signal: events.signal });
   window.addEventListener("blur", () => { releaseJump(); jumpBuffer = 0; last = 0; }, { signal: events.signal });
   document.addEventListener("visibilitychange", () => {

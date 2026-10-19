@@ -271,5 +271,25 @@ export function enableGallery(button) {
   document.documentElement.addEventListener("pointerleave", leaveArena, options);
   window.addEventListener("blur", leaveArena, options);
   window.addEventListener("resize", resize, options);
+  window.addEventListener("keydown", event => {
+    if (!active || event.key !== "Escape") return;
+    event.preventDefault();
+    stop();
+    if (reduced) return;
+    recovering = true;
+    animations = [
+      title.animate([
+        { opacity: 0, transform: "translateY(8px)", filter: "blur(3px)" },
+        { opacity: 1, transform: "translateY(0)", filter: "blur(0px)" },
+      ], { duration: 550, easing: "cubic-bezier(.22,1,.36,1)" }),
+      button.animate([
+        { opacity: 0, translate: "-8px 0" },
+        { opacity: 1, translate: "0 0" },
+      ], { duration: 500, delay: 150, fill: "backwards", easing: "ease-out" }),
+    ];
+    Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
+      recovering = false; animations = [];
+    });
+  }, options);
   page.addEventListener("page-dispose", () => { animations.forEach(animation => animation.cancel()); stop(); score.dispose(); events.abort(); }, options);
 }

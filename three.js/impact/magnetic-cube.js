@@ -172,21 +172,6 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     if (keyboardSpray) stopSpray();
   }, { signal: events.signal });
   window.addEventListener("blur", stopSpray, { signal: events.signal });
-  interactionSurface.addEventListener("keydown", (event) => {
-    if (event.key !== " " && event.key !== "Enter") return;
-    const target = interactionTarget(event);
-    if (!target) return;
-    event.preventDefault();
-    if (paused || disposed) return;
-    keyboardSpray = true;
-    lockResume(true);
-    const rect = target.getBoundingClientRect();
-    updatePointer({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
-    input.classList.add("is-spraying");
-  }, { signal: events.signal });
-  interactionSurface.addEventListener("keyup", (event) => {
-    if (event.key === " " || event.key === "Enter") stopSpray();
-  }, { signal: events.signal });
 
   const render = (time) => {
     prepareContent();

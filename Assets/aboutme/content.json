@@ -1,15 +1,7 @@
 {
-  "en": {
-    "title": "Antoine de Seguins",
-    "context": "Game Designer · QA Analyst",
-    "tags": [],
-    "pitch": "",
-    "paragraphs": [
-      {
-        "title": "",
-        "content": ""
-      }
-      
-    ]
-  }
+    "en":  {
+               "title1":  "Antoine de Seguins",
+               "title2":  "Game Designer & QA Analyst",
+               "texte":  ""
+           }
 }

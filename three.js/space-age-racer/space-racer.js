@@ -307,7 +307,7 @@ export function enableRacer(play) {
     accelerating=true;event.preventDefault();event.stopPropagation();
   },{capture:true,signal:events.signal});
   for(const type of ["pointerup","pointercancel"])window.addEventListener(type,()=>{accelerating=false;},{signal:events.signal});
-  window.addEventListener("keydown",event=>{if(running&&event.key==="Escape"){event.preventDefault();stop();}},{signal:events.signal});
+  window.addEventListener("keydown",event=>{if(running&&event.key==="Escape"){event.preventDefault();stop(true);}},{signal:events.signal});
   window.addEventListener("blur",()=>{focused=false;pause();},{signal:events.signal});
   window.addEventListener("focus",()=>{focused=true;resume();},{signal:events.signal});
   window.addEventListener("resize",resize,{signal:events.signal});

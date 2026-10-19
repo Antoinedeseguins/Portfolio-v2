@@ -109,7 +109,7 @@ export function enableShapes(button) {
     if (active && event.target.closest(".resume-link")) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, { capture: true, signal: events.signal });
   window.addEventListener("keydown", event => {
-    if (active && event.key === "Escape") { event.preventDefault(); stop(); button.focus({ preventScroll: true }); }
+    if (active && event.key === "Escape") { event.preventDefault(); stop(); }
   }, options);
   for (const type of ["resize", "scroll"]) window.addEventListener(type, wake, { passive: true, signal: events.signal });
   window.addEventListener("blur", stop, options);

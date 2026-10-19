@@ -91,13 +91,13 @@ function videoPoster(project) {
 function adjacentMediaIndex(project, currentIndex, direction) {
   const indices = project.images.map((_, index) => index);
   if (project.video) indices[0] = -1;
-  if (project.toys?.length) indices.push(-2);
+  if (supportsMiniGames() && project.toys?.length) indices.push(-2);
   const position = indices.indexOf(currentIndex);
   return indices[(position + direction + indices.length) % indices.length];
 }
 
 function renderHeroMarkup(project, imageIndex) {
-  if (imageIndex === -2 && project.toys?.length) {
+  if (supportsMiniGames() && imageIndex === -2 && project.toys?.length) {
     const toy = project.toys[0];
     return `<div class="hero-frame toy-frame" data-toy="${escapeText(toy.id)}">
       <div class="hero-track"><canvas class="hero-image toy-canvas" tabindex="0" role="button" aria-label="${escapeText(project.title)}"></canvas></div>
@@ -600,15 +600,19 @@ function enableHeroAutoplay(frame) {
 
 const toyModules = {
   "source-light": () => import(new URL("three.js/source/source-light.js?v=62", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=47", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=47", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=48", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=48", document.baseURI).href),
 };
+const supportsMiniGames = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
 // Prepare Impact's font and renderer while the visitor browses the portfolio.
-void toyModules["voxel-title"]().catch(() => {});
-void document.fonts.load('700 128px "Raleway"', "Impact").catch(() => {});
+if (supportsMiniGames()) {
+  void toyModules["voxel-title"]().catch(() => {});
+  void document.fonts.load('700 128px "Raleway"', "Impact").catch(() => {});
+}
 
 function enableToy(frame) {
+  if (!supportsMiniGames()) return;
   let disposed = false;
   let frozen = false;
   let instance = null;
@@ -625,7 +629,7 @@ function enableToy(frame) {
       const surface = frame.classList.contains("toy-widget") ? frame.closest(".project-layout") : null;
       if (surface) {
         surface.classList.add("toy-stage");
-        frame.tabIndex = 0;
+        frame.tabIndex = -1;
         frame.setAttribute("role", "button");
         frame.setAttribute("aria-label", canvas.getAttribute("aria-label"));
         canvas.tabIndex = -1;
@@ -888,7 +892,7 @@ function renderMediaMarkup(project, imageIndex) {
         <button class="gallery-arrow" type="button" data-gallery-direction="-1" aria-label="Images précédentes" title="Images précédentes"><span aria-hidden="true">‹</span></button>
         <div class="gallery" aria-label="Images de ${project.title}" tabindex="0">
           ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Afficher la vidéo de ${project.title}" aria-pressed="${imageIndex === -1}"><img src="${imagePath(project, project.images[0])}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
-          ${(project.toys || []).map((toy) => `<button class="gallery-thumb toy-thumb" type="button" data-image="-2" aria-label="${escapeText(toy.title)}" aria-pressed="${imageIndex === -2}"><img src="three.js/impact/cube.svg?v=6" alt="" /></button>`).join("")}
+          ${(supportsMiniGames() ? project.toys || [] : []).map((toy) => `<button class="gallery-thumb toy-thumb" type="button" data-image="-2" aria-label="${escapeText(toy.title)}" aria-pressed="${imageIndex === -2}"><img src="three.js/impact/cube.svg?v=6" alt="" /></button>`).join("")}
           ${project.images.map((image, index) => project.video && index === 0 ? "" : `
             <button class="gallery-thumb" type="button" data-image="${index}" aria-label="Afficher l’image ${index + 1} de ${project.title}" aria-pressed="${index === imageIndex}">
               <img src="${imagePath(project, image)}" alt="" loading="${index < 5 ? "eager" : "lazy"}" />
@@ -916,7 +920,7 @@ function projectPageMarkup(project, imageIndex) {
     <div class="project-layout${project.title.length >= 24 ? " has-long-title" : ""}">
       ${renderMediaMarkup(project, imageIndex)}
       <div class="project-copy">
-        ${project.id === "age" ? `<div class="sigmar-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><span class="sigmar-hammer" aria-hidden="true"><img src="three.js/ageofsigmar/storm-hammer-compact-v2.png?v=1" alt="" draggable="false" decoding="async" /></span></div>` : project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Attraper la boule Proteo" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=7" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
+        ${!supportsMiniGames() ? `<h1 class="project-title">${escapeText(project.title)}</h1>` : project.id === "age" ? `<div class="sigmar-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><span class="sigmar-hammer" aria-hidden="true"><img src="three.js/ageofsigmar/storm-hammer-compact-v2.png?v=1" alt="" draggable="false" decoding="async" /></span></div>` : project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Attraper la boule Proteo" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=7" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
           <span class="arup-title-toggle" aria-pressed="false">
             <span class="arup-title-text">${[...project.title].map(letter => `<span>${escapeText(letter)}</span>`).join("")}</span>
             <span class="arup-title-logos" aria-hidden="true">${["A", "R", "U", "P"].map(letter => `<img src="three.js/ARUP/${letter}-logo.png" alt="" draggable="false" decoding="async" />`).join("")}</span>
@@ -939,7 +943,7 @@ function projectPageMarkup(project, imageIndex) {
         <div class="copy-rule" aria-hidden="true"></div>
         ${project.context ? `<p class="project-subtitle">${escapeText(project.context)}</p>` : ""}
         ${project.tags.length ? `<div class="project-meta" aria-label="Domaines du projet">${project.tags.map(renderProjectTag).join("")}</div>` : ""}
-        ${project.pitch ? `<p class="project-description">${project.title ? project.pitch.split(project.title).map(escapeText).join(`<strong>${escapeText(project.title)}</strong>`) : escapeText(project.pitch)}</p>` : ""}
+        ${project.pitch ? `<p class="project-description">${(project.title ? project.pitch.split(project.title).map(escapeText).join(`<strong>${escapeText(project.title)}</strong>`) : escapeText(project.pitch)).replace(/Arduino controller/gi, phrase => `<strong>${phrase}</strong>`)}</p>` : ""}
         ${(project.paragraphs || []).filter((paragraph) => paragraph.title || paragraph.content).map((paragraph) => `
           <section class="project-paragraph">
             ${paragraph.title ? `<h2>${escapeText(paragraph.title)}</h2>` : ""}
@@ -954,19 +958,11 @@ function projectPageMarkup(project, imageIndex) {
 function aboutPageMarkup() {
   return `
     <div class="about-layout">
-      ${renderMediaMarkup(aboutMedia, activeAboutImageIndex)}
       <div class="about-copy-wrap project-copy">
-        <h1 class="about-title">${escapeText(aboutMedia.title)}</h1>
+        <h1 class="about-title">${escapeText(aboutMedia.title1)}</h1>
         <div class="copy-rule" aria-hidden="true"></div>
-        ${aboutMedia.context ? `<p class="project-subtitle">${escapeText(aboutMedia.context)}</p>` : ""}
-        ${(aboutMedia.tags || []).length ? `<div class="project-meta" aria-label="Domaines">${aboutMedia.tags.map(renderProjectTag).join("")}</div>` : ""}
-        ${aboutMedia.pitch ? `<p class="project-description">${escapeText(aboutMedia.pitch)}</p>` : ""}
-        ${(aboutMedia.paragraphs || []).filter((paragraph) => paragraph.title || paragraph.content).map((paragraph) => `
-          <section class="project-paragraph">
-            ${paragraph.title ? `<h2>${escapeText(paragraph.title)}</h2>` : ""}
-            ${paragraph.content ? `<p class="project-description">${escapeText(paragraph.content)}</p>` : ""}
-          </section>
-        `).join("")}
+        ${aboutMedia.title2 ? `<p class="project-subtitle">${escapeText(aboutMedia.title2)}</p>` : ""}
+        ${aboutMedia.texte ? `<p class="project-description">${escapeText(aboutMedia.texte)}</p>` : ""}
       </div>
     </div>
   `;
@@ -982,33 +978,34 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   projectView.setAttribute("aria-busy", "true");
   const projectMarkup = projectPageMarkup(project, imageIndex);
   replaceProjectView(projectMarkup, navigationDirection, animateTransition);
+  projectView.querySelectorAll(".arup-play, .space-racer-play, .necro-play, .proteo-play, .aeon-strike, .toy-canvas, .toy-widget").forEach(control => { control.tabIndex = -1; });
   const gallery = projectView.querySelector(".gallery");
   enableGalleryDrag(gallery, galleryScrollLeft);
   enableHeroDrag(projectView.querySelector(".hero-frame"));
   projectView.querySelectorAll(".toy-widget").forEach(enableToy);
   const arupTitle = projectView.querySelector(".arup-title-toggle");
   const proteoPlay = projectView.querySelector(".proteo-play");
-  if (proteoPlay) import(new URL("three.js/proteo/proteo-shapes.js?v=25", document.baseURI).href)
+  if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=26", document.baseURI).href)
     .then(module => { if (proteoPlay.isConnected && !proteoPlay.closest(".page-outgoing")) module.enableShapes(proteoPlay); })
     .catch(error => console.error("Proteo interaction could not be loaded", error));
-  if (arupTitle) import(new URL("three.js/ARUP/arup-runner.js?v=61", document.baseURI).href)
+  if (arupTitle && supportsMiniGames()) import(new URL("three.js/ARUP/arup-runner.js?v=63", document.baseURI).href)
     .then(module => { if (arupTitle.isConnected && !arupTitle.closest(".page-outgoing")) module.enableRunner(arupTitle); })
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
-  if (racerPlay)
-    import(new URL("three.js/space-age-racer/space-racer.js?v=70", document.baseURI).href)
+  if (racerPlay && supportsMiniGames())
+    import(new URL("three.js/space-age-racer/space-racer.js?v=71", document.baseURI).href)
       .then(module => { if (racerPlay.isConnected && !racerPlay.closest(".page-outgoing")) module.enableRacer(racerPlay); })
       .catch(error => console.error("Racer interaction could not be loaded", error));
   const necroPlay = projectView.querySelector(".necro-play");
   if (necroPlay && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/necromunda/shooting-gallery.js?v=12", document.baseURI).href)
+    import(new URL("three.js/necromunda/shooting-gallery.js?v=13", document.baseURI).href)
       .then(async module => {
         await document.fonts.ready;
         if (necroPlay.isConnected && !necroPlay.closest(".page-outgoing")) module.enableGallery(necroPlay);
       }).catch(error => console.error("Necromunda interaction could not be loaded", error));
   const aeonTitle = projectView.querySelector(".aeon-strike");
   if (aeonTitle && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/aeon/aeon-strike.js?v=87", document.baseURI).href)
+    import(new URL("three.js/aeon/aeon-strike.js?v=90", document.baseURI).href)
       .then(async module => {
         const logo = aeonTitle.closest(".aeon-title-row")?.querySelector(".aeon-title-logo");
         await Promise.all([document.fonts.ready, logo?.decode().catch(() => {})]);
@@ -1033,8 +1030,6 @@ function renderAbout(navigationDirection = -1) {
   projectView.setAttribute("aria-busy", "true");
   const aboutMarkup = aboutPageMarkup();
   replaceProjectView(aboutMarkup, navigationDirection, true);
-  enableGalleryDrag(projectView.querySelector(".gallery"));
-  enableHeroDrag(projectView.querySelector(".hero-frame"));
   projectView.setAttribute("aria-busy", "false");
   updatePageUrl(aboutMedia);
 }
@@ -1335,6 +1330,13 @@ async function initializePortfolio() {
     if (!response.ok) throw new Error(`Assets/${folder}/content.json: HTTP ${response.status}`);
     const translations = await response.json();
     const content = translations[language];
+    if (project === aboutMedia) {
+      if (!content || !["title1", "title2", "texte"].every(key => typeof content[key] === "string")) {
+        throw new Error(`Contenu JSON invalide ou langue absente : ${folder}/${language}`);
+      }
+      Object.assign(project, content, { title: content.title1 });
+      return;
+    }
     if (!content || typeof content.title !== "string" || typeof content.context !== "string"
       || typeof content.pitch !== "string" || !Array.isArray(content.tags) || !Array.isArray(content.paragraphs)) {
       throw new Error(`Contenu JSON invalide ou langue absente : ${folder}/${language}`);

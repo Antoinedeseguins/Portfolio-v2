@@ -542,16 +542,9 @@ export function enableBrawler(title) {
       const titleColor = getComputedStyle(title).color;
       launchAnimations.push(title.animate([
         { color: titleColor, textShadow: "0 0 0 transparent" },
-        { color: "#ff345a", textShadow: "0 0 8px #ff345a, 0 0 20px #ff345a99", offset: .25 },
-        { color: "#ee2447", textShadow: "0 0 12px #ff345a88", offset: .5 },
+        { color: "#ff345a", textShadow: "0 0 8px #ff345a, 0 0 20px #ff345a99", offset: .5 },
         { color: titleColor, textShadow: "0 0 0 transparent" },
-      ], { duration: 600, easing: "ease-out" }));
-      const rule = page.querySelector(".project-copy > .copy-rule");
-      if (rule) launchAnimations.push(rule.animate([
-        { backgroundColor: "#ff345a", boxShadow: "0 0 12px 3px #ff345a99" },
-        { backgroundColor: "#ff9755", boxShadow: "0 0 5px 1px #ff345a55", offset: .4 },
-        { backgroundColor: getComputedStyle(rule).backgroundColor, boxShadow: "0 0 0 0 transparent" },
-      ], { duration: 650, easing: "ease-out" }));
+      ], { duration: 320, iterations: 3, easing: "ease-in-out" }));
     }
     logo.style.visibility = "hidden";
     logo.setAttribute("aria-pressed", "true");
@@ -570,13 +563,10 @@ export function enableBrawler(title) {
     hand.x = event.clientX;
     hand.y = event.clientY;
   };
-  logo.tabIndex = 0; logo.removeAttribute("aria-hidden");
+  logo.tabIndex = -1; logo.removeAttribute("aria-hidden");
   logo.setAttribute("role", "button"); logo.setAttribute("aria-label", "Jouer au mini beat 'em all"); logo.setAttribute("aria-pressed", "false");
   logo.addEventListener("pointerdown", event => event.stopPropagation(), options);
   logo.addEventListener("click", event => { event.stopPropagation(); start(); }, options);
-  logo.addEventListener("keydown", event => {
-    if (["Enter", " "].includes(event.key)) { event.preventDefault(); if (!event.repeat) start(); }
-  }, options);
   window.addEventListener("pointermove", move, options);
   const punch = chargeTime => {
     attackCount++;
@@ -669,6 +659,11 @@ export function enableBrawler(title) {
       if (active) event.preventDefault();
     }, { capture: true, signal: events.signal });
   }
+  window.addEventListener("keydown", event => {
+    if (!active || event.key !== "Escape") return;
+    event.preventDefault();
+    endGame();
+  }, options);
   window.addEventListener("blur", () => { hold = null; }, options);
   document.addEventListener("visibilitychange", () => { if (document.hidden) hold = null; }, options);
   // Keep combat clicks from opening the portfolio beneath the arena.

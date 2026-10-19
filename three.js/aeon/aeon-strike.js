@@ -1,5 +1,5 @@
 import { createDamage } from "./aeon-damage.js?v=11";
-import { enableBrawler } from "./aeon-brawler.js?v=54";
+import { enableBrawler } from "./aeon-brawler.js?v=57";
 
 export function strikeMove(combo, charge) {
   const charged = charge >= 550;
@@ -21,7 +21,7 @@ export function enableCursorFollow(title) {
   let active = false;
   let offsetX = 0, offsetY = 0;
   row.classList.add("aeon-follow-mode");
-  logo.tabIndex = 0;
+  logo.tabIndex = -1;
   logo.removeAttribute("aria-hidden");
   logo.setAttribute("role", "button");
   logo.setAttribute("aria-label", "Activer le suivi du curseur");
@@ -36,12 +36,6 @@ export function enableCursorFollow(title) {
   logo.addEventListener("click", event => {
     event.stopPropagation();
     toggle();
-  }, options);
-  logo.addEventListener("keydown", event => {
-    if (["Enter", " "].includes(event.key)) {
-      event.preventDefault();
-      if (!event.repeat) toggle();
-    }
   }, options);
   window.addEventListener("pointermove", event => {
     if (!active || (event.pointerType !== "mouse" && event.pointerType !== "pen")) return;
@@ -97,7 +91,7 @@ export function enableLegacyStrikes(title) {
   const logo = page.querySelector(".aeon-title-logo");
   const logoTarget = logo?.complete && logo.naturalWidth ? logo : null;
   if (logoTarget) {
-    logoTarget.tabIndex = 0;
+    logoTarget.tabIndex = -1;
     logoTarget.removeAttribute("aria-hidden");
     logoTarget.setAttribute("role", "button");
     logoTarget.setAttribute("aria-label", "Frapper le logo Aeon");
@@ -481,10 +475,6 @@ export function enableLegacyStrikes(title) {
   }, { signal: events.signal });
   target.addEventListener("pointerup", event => { if (hold?.id === event.pointerId) release(); }, { signal: events.signal });
   for (const type of ["pointercancel", "lostpointercapture", "blur"]) target.addEventListener(type, () => release(true), { signal: events.signal });
-  target.addEventListener("keydown", event => {
-    if (!frozen && [" ", "Enter"].includes(event.key)) { event.preventDefault(); if (!hold && !event.repeat) { const bounds = target.getBoundingClientRect(), origin = title.getBoundingClientRect(); hold = { id: null, target, started: performance.now(), point: { x: bounds.left-origin.left+bounds.width/2, y: bounds.top-origin.top+bounds.height/2 } }; wake(); } }
-  }, { signal: events.signal });
-  target.addEventListener("keyup", event => { if ([" ", "Enter"].includes(event.key) && hold?.id === null) { event.preventDefault(); release(); } }, { signal: events.signal });
   }
   const observer = new ResizeObserver(resize); observer.observe(title);
   if (logoTarget) observer.observe(logoTarget);
