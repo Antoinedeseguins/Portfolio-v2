@@ -2,7 +2,7 @@ import { createPodracerModel } from "./podracer-model.js?v=9";
 import { createRace, stepRace } from "./space-racer-game.js?v=23";
 import { createGameScore } from "../game-score.js";
 import { createResumeLock } from "../game-resume-lock.js";
-import { drawDesertTrack, drawDesertObstacle } from "./desert-environment.js?v=13";
+import { drawDesertTrack, drawDesertObstacle } from "./desert-environment.js?v=14";
 
 export function stepRacer(state, dt, steering, accelerating) {
   dt = Math.max(0, Math.min(.035, dt));
@@ -98,9 +98,6 @@ export function enableRacer(play) {
       context.restore();
     }
     }
-    context.save(); context.translate(x, y + size * 1.3); context.scale(1.3, .25);
-    const shadow = context.createRadialGradient(0,0,0,0,0,size*1.4); shadow.addColorStop(0,"rgba(30,50,60,.18)"); shadow.addColorStop(1,"rgba(30,50,60,0)");
-    context.fillStyle=shadow; context.beginPath(); context.arc(0,0,size*1.4,0,Math.PI*2); context.fill(); context.restore();
     const yaw = view.yaw ?? (preview ? Math.PI / 8 : reduced.matches ? 0 : state.vx * .22);
     const pitch = view.pitch ?? (preview ? .12 : .1);
     const project = ([vx,vy,vz]) => {

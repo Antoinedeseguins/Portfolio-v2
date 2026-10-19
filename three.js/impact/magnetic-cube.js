@@ -259,12 +259,15 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
   updateLoop();
   return {
     pause() { paused = true; cancelContentPreparation(); stopSpray(); updateLoop(); },
-    snapshot() {
+    snapshot({ hideTitle = false } = {}) {
+      const titleVisible = instances?.visible;
+      if (hideTitle && instances) instances.visible = false;
       renderer.render(scene, camera);
       const snapshot = document.createElement("canvas");
       snapshot.width = canvas.width;
       snapshot.height = canvas.height;
       snapshot.getContext("2d").drawImage(canvas, 0, 0);
+      if (instances) instances.visible = titleVisible;
       return snapshot;
     },
     dispose() {

@@ -461,6 +461,15 @@ function replaceProjectView(markup, navigationDirection, animateTransition) {
   pendingHeroDirection = null;
   pendingHeroIndex = null;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const outgoingPage = animateTransition && !reducedMotion ? projectView.firstElementChild : null;
+  if (outgoingPage) {
+    // Preserve the grid position before switching to absolute positioning.
+    // Recentring with percentages can shift at fractional browser zoom levels.
+    const bounds = outgoingPage.getBoundingClientRect();
+    const viewBounds = projectView.getBoundingClientRect();
+    outgoingPage.style.setProperty("--page-outgoing-top", `${bounds.top - viewBounds.top}px`);
+    outgoingPage.style.width = `${bounds.width}px`;
+  }
   projectView.querySelectorAll("video").forEach((video) => {
     video.controls = false;
     video.pause();
@@ -472,7 +481,6 @@ function replaceProjectView(markup, navigationDirection, animateTransition) {
     detail: { preserveVisual: animateTransition && !reducedMotion },
   })));
   projectView.querySelectorAll(".gallery").forEach((gallery) => gallery.dispatchEvent(new Event("gallery-dispose")));
-  const outgoingPage = animateTransition && !reducedMotion ? projectView.firstElementChild : null;
   const outgoingScrollPositions = outgoingPage
     ? [...outgoingPage.querySelectorAll(".gallery")].map((gallery) => [gallery, gallery.scrollLeft])
     : [];
@@ -592,8 +600,8 @@ function enableHeroAutoplay(frame) {
 
 const toyModules = {
   "source-light": () => import(new URL("three.js/source/source-light.js?v=62", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=45", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=45", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=47", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=47", document.baseURI).href),
 };
 
 // Prepare Impact's font and renderer while the visitor browses the portfolio.
@@ -606,6 +614,7 @@ function enableToy(frame) {
   let instance = null;
   let frozenCanvas = null;
   const canvas = frame.querySelector("canvas");
+  if (!canvas) return;
   const start = async () => {
     if (disposed || frozen || !frame.isConnected || frame.closest(".page-outgoing, .page-drag-preview")) return;
     try {
@@ -647,8 +656,13 @@ function enableToy(frame) {
     frozen = true;
     if (event.detail?.preserveVisual) {
       instance?.pause();
+      const title = frame.closest(".voxel-title");
+      if (title) {
+        title.classList.remove("is-ready");
+        title.querySelector(".voxel-title-label")?.style.removeProperty("visibility");
+      }
       if (instance && canvas.isConnected && !frozenCanvas) {
-        frozenCanvas = instance.snapshot();
+        frozenCanvas = instance.snapshot({ hideTitle: Boolean(title) });
         frozenCanvas.className = canvas.className;
         frozenCanvas.style.cssText = canvas.style.cssText;
         frozenCanvas.dataset.ready = "true";
@@ -670,7 +684,7 @@ function enableToy(frame) {
     const nextIndex = event.detail.imageIndex ?? adjacentMediaIndex(aboutMedia, activeAboutImageIndex, event.detail.direction);
     if (nextIndex !== activeAboutImageIndex) selectMediaImage(aboutMedia, nextIndex);
   });
-  if (frame.closest(".page-entering") && frame.dataset.toy !== "voxel-title") frame.addEventListener("hero-ready", start, { once: true });
+  if (frame.closest(".page-entering")) frame.addEventListener("hero-ready", start, { once: true });
   else start();
 }
 
@@ -974,7 +988,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   projectView.querySelectorAll(".toy-widget").forEach(enableToy);
   const arupTitle = projectView.querySelector(".arup-title-toggle");
   const proteoPlay = projectView.querySelector(".proteo-play");
-  if (proteoPlay) import(new URL("three.js/proteo/proteo-shapes.js?v=22", document.baseURI).href)
+  if (proteoPlay) import(new URL("three.js/proteo/proteo-shapes.js?v=25", document.baseURI).href)
     .then(module => { if (proteoPlay.isConnected && !proteoPlay.closest(".page-outgoing")) module.enableShapes(proteoPlay); })
     .catch(error => console.error("Proteo interaction could not be loaded", error));
   if (arupTitle) import(new URL("three.js/ARUP/arup-runner.js?v=54", document.baseURI).href)
@@ -982,7 +996,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
   if (racerPlay)
-    import(new URL("three.js/space-age-racer/space-racer.js?v=68", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/space-racer.js?v=70", document.baseURI).href)
       .then(module => { if (racerPlay.isConnected && !racerPlay.closest(".page-outgoing")) module.enableRacer(racerPlay); })
       .catch(error => console.error("Racer interaction could not be loaded", error));
   const necroPlay = projectView.querySelector(".necro-play");

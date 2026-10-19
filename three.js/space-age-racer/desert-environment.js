@@ -57,8 +57,8 @@ export function drawDesertTrack(context, width, height, bottom, time) {
     context.lineTo(width*.5+side*edge(fraction),endY);context.stroke();
   }
   // Fixed spacing keeps the roadside plants stable as they approach the camera.
-  for(let i=0;i<12;i++){
-    const depth=(i/12+time*.09)%1;
+  for(let i=0;i<4;i++){
+    const depth=(i/4+time*.09)%1;
     const side=i%2 ? 1 : -1;
     const size=(1.5+depth*depth*height*.055)*( .85+(i%3)*.12);
     const x=width*.5+side*(edge(depth*depth*fraction)+size*(1.1+(i%3)*.45));
