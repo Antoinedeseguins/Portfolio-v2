@@ -939,7 +939,7 @@ function projectPageMarkup(project, imageIndex) {
         <div class="copy-rule" aria-hidden="true"></div>
         ${project.context ? `<p class="project-subtitle">${escapeText(project.context)}</p>` : ""}
         ${project.tags.length ? `<div class="project-meta" aria-label="Domaines du projet">${project.tags.map(renderProjectTag).join("")}</div>` : ""}
-        ${project.pitch ? `<p class="project-description">${escapeText(project.pitch)}</p>` : ""}
+        ${project.pitch ? `<p class="project-description">${project.title ? project.pitch.split(project.title).map(escapeText).join(`<strong>${escapeText(project.title)}</strong>`) : escapeText(project.pitch)}</p>` : ""}
         ${(project.paragraphs || []).filter((paragraph) => paragraph.title || paragraph.content).map((paragraph) => `
           <section class="project-paragraph">
             ${paragraph.title ? `<h2>${escapeText(paragraph.title)}</h2>` : ""}
