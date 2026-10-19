@@ -991,7 +991,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   if (proteoPlay) import(new URL("three.js/proteo/proteo-shapes.js?v=25", document.baseURI).href)
     .then(module => { if (proteoPlay.isConnected && !proteoPlay.closest(".page-outgoing")) module.enableShapes(proteoPlay); })
     .catch(error => console.error("Proteo interaction could not be loaded", error));
-  if (arupTitle) import(new URL("three.js/ARUP/arup-runner.js?v=54", document.baseURI).href)
+  if (arupTitle) import(new URL("three.js/ARUP/arup-runner.js?v=61", document.baseURI).href)
     .then(module => { if (arupTitle.isConnected && !arupTitle.closest(".page-outgoing")) module.enableRunner(arupTitle); })
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
@@ -1322,6 +1322,8 @@ window.addEventListener("hashchange", renderPageFromUrl);
 window.addEventListener("popstate", renderPageFromUrl);
 document.querySelector(".wordmark").addEventListener("click", (event) => {
   event.preventDefault();
+  if (finishActivePageTransition || pageDrag || mediaDragActive
+    || aboutLink.getAttribute("aria-pressed") === "true") return;
   renderAbout(-1);
 });
 

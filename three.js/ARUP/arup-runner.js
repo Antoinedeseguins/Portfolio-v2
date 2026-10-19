@@ -26,6 +26,14 @@ export function enableRunner(title) {
   };
   const logos = title.querySelector(".arup-title-logos");
   const logoLetters = [...logos.querySelectorAll("img")];
+  const shieldBubbles = logoLetters.map((letter, index) => {
+    const bubble = document.createElement("span");
+    bubble.className = "arup-shield-bubble";
+    bubble.hidden = true;
+    bubble.style.setProperty("--shield-phase", `${index * -.23}s`);
+    logos.append(bubble);
+    return bubble;
+  });
   let letterMasks = [];
   const textLetters = [...title.querySelectorAll(".arup-title-text > span")];
   const resetLetters = () => {
@@ -74,28 +82,41 @@ export function enableRunner(title) {
   const events = new AbortController();
   let running = false, frozen = false, disposed = false, loading = null;
   let entering = false, entryTime = 0;
-  let remainingLetters = logoLetters.length, invincible = 0;
+  let remainingLetters = logoLetters.length, invincible = 0, shield = 0;
+  let shieldBurst = 0;
+  const renderShield = () => {
+    shieldBubbles.forEach((bubble, index) => {
+      bubble.hidden = index >= remainingLetters || (shield <= 0 && shieldBurst <= 0);
+      if (bubble.hidden) return;
+      const letter = logoLetters[index];
+      bubble.style.left = `${letter.offsetLeft}px`;
+      bubble.style.width = `${letter.offsetWidth}px`;
+      bubble.classList.toggle("is-breaking", shieldBurst > 0);
+      bubble.classList.toggle("is-fading", shield > 0 && shield < 1.5);
+    });
+  };
   let frame = null, last = 0, elapsed = 0, spawn = 1, lift = 0, velocity = 0, obstacles = [];
   let landingTime = .18;
   const enemyColors = [["#43a66a", "#26603d"], ["#468ed0", "#28557f"], ["#cb5b52", "#793630"]];
   let enemyColorIndex = 0;
   let nextIsAirborne = false;
   let previousWasAirborne = false;
-  let nextBonus = 12;
+  let nextBonus = 10;
   const planEnemy = () => {
-    if (!nextIsAirborne && !previousWasAirborne && remainingLetters < logoLetters.length && elapsed >= nextBonus && Math.random() < .18) {
-      nextBonus = elapsed + 12;
+    if (!nextIsAirborne && elapsed >= nextBonus) {
+      nextBonus = elapsed + 15;
       previousWasAirborne = false;
-      return { bonus: true, count: 1, airborne: false, delay: 1.25 };
+      const bonus = Math.random() < .6 || remainingLetters === logoLetters.length ? "star" : "heart";
+      return { bonus, count: 1, airborne: false, delay: 1.25 };
     }
     const followUp = nextIsAirborne;
-    const startsPattern = !followUp && elapsed >= 20 && Math.random() < .35;
-    const airborne = followUp || (!previousWasAirborne && !startsPattern && elapsed >= 15 && Math.random() < .25);
+    const startsPattern = !followUp && elapsed >= 12 && Math.random() < .35;
+    const airborne = followUp || (!previousWasAirborne && !startsPattern && elapsed >= 9 && Math.random() < .25);
     nextIsAirborne = startsPattern;
     previousWasAirborne = airborne;
-    const group = !airborne && elapsed >= 5 && Math.random() < .4;
-    const count = group ? elapsed >= 12 && Math.random() < .3 ? 3 : 2 : 1;
-    const pressure = Math.min(1, elapsed / 22);
+    const group = !airborne && elapsed >= 3 && Math.random() < .4;
+    const count = group ? elapsed >= 7 && Math.random() < .3 ? 3 : 2 : 1;
+    const pressure = Math.min(1, elapsed / 13);
     const baseDelay = startsPattern ? (group ? 1 : .88) + Math.random() * .1
       : (1.1 - pressure * .2) + Math.random() * (1.3 - pressure * .85);
     // Short quiet stretches alternate with denser passages; paired timings stay fixed.
@@ -133,10 +154,12 @@ export function enableRunner(title) {
     elapsed = 0; spawn = 1; lift = velocity = 0;
     jumpHeld = false; jumpBuffer = 0;
     landingTime = .18;
-    remainingLetters = logoLetters.length; invincible = 0;
+    remainingLetters = logoLetters.length; invincible = 0; shield = 0;
+    logos.classList.remove("is-shielded");
+    shieldBurst = 0; renderShield();
     nextIsAirborne = false;
     previousWasAirborne = false;
-    nextBonus = 12;
+    nextBonus = 10;
     entering = false; entryTime = 0; logos.style.removeProperty("--entry-offset");
     running = false; stopFrame(); row.classList.remove("is-running", "is-crashed", "is-entering"); ground.classList.remove("is-running"); resetLetters();
     setHeroPaused(false);
@@ -171,6 +194,10 @@ export function enableRunner(title) {
       return;
     }
     elapsed += dt; spawn -= dt;
+    shield = Math.max(0, shield - dt);
+    shieldBurst = Math.max(0, shieldBurst - dt);
+    renderShield();
+    logos.classList.toggle("is-shielded", shield > 0);
     invincible = Math.max(0, invincible - dt);
     if (invincible === 0) logos.classList.remove("is-hit");
     const previousLift = lift;
@@ -183,7 +210,7 @@ export function enableRunner(title) {
     if (lift === 0 && jumpBuffer > 0) { velocity = 5.6; jumpBuffer = 0; landingTime = .18; }
     const rebound = reducedMotion.matches ? 0 : Math.sin(landingTime / .18 * Math.PI) * .055;
     logos.style.setProperty("--jump", `${-(lift + rebound)}em`);
-    const speed = Math.min(7.4, 4.6 + elapsed * .035);
+    const speed = Math.min(7.4, 4.6 + elapsed * .12);
     distance += speed * dt * 10;
     renderScore();
     if (spawn <= 0 && obstacles.length < 21) {
@@ -195,7 +222,8 @@ export function enableRunner(title) {
         const [background, borderColor] = enemyColors[enemyColorIndex++ % enemyColors.length];
         Object.assign(element.style, { background, borderColor });
         element.classList.toggle("is-airborne", airborne);
-        element.classList.toggle("is-bonus", bonus);
+        element.classList.toggle("is-bonus", Boolean(bonus));
+        element.classList.toggle("is-heart", bonus === "heart");
         const height = bonus ? .2 : airborne ? .3 : count === 3 ? .2 + Math.random() * .04 : count === 2 ? .24 + Math.random() * .04 : shape < .33 ? .24 : shape > .7 ? .4 : .32;
         const width = bonus ? .2 : airborne ? .3 : count === 3 ? .18 : count === 2 ? .26 : shape < .33 ? .4 : shape > .7 ? .18 : .26;
         const bottom = bonus ? 1.3 : airborne ? 1.2 : 0;
@@ -231,15 +259,27 @@ export function enableRunner(title) {
       if (item.bonus) {
         if (!item.collected && collides) {
           item.collected = true;
-          if (remainingLetters < logoLetters.length) {
+          if (item.bonus === "star") {
+            shield = 6;
+            logos.classList.add("is-shielded");
+            shieldBurst = 0; renderShield();
+          } else if (remainingLetters < logoLetters.length) {
             const letter = logoLetters[remainingLetters++];
             letter.classList.remove("is-lost"); letter.classList.add("is-restored");
+            renderShield();
           }
         }
         continue;
       }
       if (!item.hit && invincible === 0 && collides) {
         item.hit = true;
+        if (shield > 0) {
+          shield = 0;
+          logos.classList.remove("is-shielded");
+          shieldBurst = .35; renderShield();
+          invincible = .95;
+          continue;
+        }
         remainingLetters -= 1;
         logoLetters[remainingLetters].classList.remove("is-restored");
         logoLetters[remainingLetters].classList.add("is-lost");
@@ -274,9 +314,11 @@ export function enableRunner(title) {
     enemyColorIndex = 0;
     nextIsAirborne = false;
     previousWasAirborne = false;
-    nextBonus = 12;
+    nextBonus = 10;
     spawn = .8 + Math.random() * .7;
-    remainingLetters = logoLetters.length; invincible = 0;
+    remainingLetters = logoLetters.length; invincible = 0; shield = 0;
+    logos.classList.remove("is-shielded");
+    shieldBurst = 0; renderShield();
     measure();
     entering = !reducedMotion.matches && !row.classList.contains("is-crashed");
     entryTime = 0;
