@@ -582,3 +582,6 @@ img.hero-image { object-fit: cover; }
 }
 
 :is(.toy-canvas, .toy-widget, .space-racer-play, .aeon-title-logo, .aeon-strike, .proteo-play, .necro-play, .arup-play, .arup-title-toggle):focus-visible { outline: none; }
+
+.project-dock { opacity: 1; translate: 0 0; visibility: visible; transition: opacity 420ms ease, translate 600ms cubic-bezier(.22, 1, .36, 1), visibility 0s; }
+.is-about-page .project-dock { opacity: 0; translate: 0 24px; visibility: hidden; pointer-events: none; transition: opacity 220ms ease, translate 350ms ease, visibility 0s 350ms; }

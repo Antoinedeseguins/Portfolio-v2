@@ -434,6 +434,7 @@ function renderProjectRail() {
 }
 
 function setAboutSelected(selected) {
+  document.body.classList.toggle("is-about-page", selected);
   aboutLink.setAttribute("aria-pressed", String(selected));
   aboutLink.setAttribute("aria-current", selected ? "page" : "false");
 }
