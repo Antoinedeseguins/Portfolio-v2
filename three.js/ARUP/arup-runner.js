@@ -1,4 +1,4 @@
-import { enableCubeHover } from "./arup-cube.js?v=5";
+import { enableCubeHover } from "./arup-cube.js?v=6";
 import { createAlphaMask, overlapsAlphaMask } from "./alpha-hitbox.js";
 import { createResumeLock } from "../game-resume-lock.js";
 
@@ -26,11 +26,6 @@ export function enableRunner(title) {
   };
   const logos = title.querySelector(".arup-title-logos");
   const logoLetters = [...logos.querySelectorAll("img")];
-  const shieldBubble = document.createElement("span");
-  shieldBubble.className = "arup-shield-bubble";
-  shieldBubble.hidden = true;
-  shieldBubble.style.setProperty("--shield-phase", "0s");
-  logos.append(shieldBubble);
   let letterMasks = [];
   const textLetters = [...title.querySelectorAll(".arup-title-text > span")];
   const resetLetters = () => {
@@ -82,16 +77,9 @@ export function enableRunner(title) {
   let remainingLetters = logoLetters.length, invincible = 0, shield = 0;
   let shieldBurst = 0;
   const renderShield = () => {
-    shieldBubble.hidden = remainingLetters === 0 || (shield <= 0 && shieldBurst <= 0);
-    if (shieldBubble.hidden) return;
-    const livingLetters = logoLetters.slice(0, remainingLetters);
-    const left = Math.min(...livingLetters.map(letter => letter.offsetLeft));
-    const right = Math.max(...livingLetters.map(letter => letter.offsetLeft + letter.offsetWidth));
-    const padding = parseFloat(scene.style.fontSize) * .12;
-    shieldBubble.style.left = `${left - padding}px`;
-    shieldBubble.style.width = `${right - left + padding * 2}px`;
-    shieldBubble.classList.toggle("is-breaking", shieldBurst > 0);
-    shieldBubble.classList.toggle("is-fading", shield > 0 && shield < 1.5);
+    logos.classList.toggle("is-shielded", remainingLetters > 0 && shield > 0);
+    logos.classList.toggle("is-shield-breaking", remainingLetters > 0 && shieldBurst > 0);
+    logos.classList.toggle("is-shield-fading", shield > 0 && shield < 1.5);
   };
   let frame = null, last = 0, elapsed = 0, spawn = 1, lift = 0, velocity = 0, obstacles = [];
   let landingTime = .18;

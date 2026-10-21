@@ -18,8 +18,6 @@ export function sampleText(text, fontFamily, fontWeight) {
     if (data[(y * canvas.width + x) * 4 + 3] >= 128) points.push({ x, y });
   }
   if (!points.length) throw new Error("The title could not be sampled");
-  const minX = Math.min(...points.map((point) => point.x));
-  const maxX = Math.max(...points.map((point) => point.x));
   const minY = Math.min(...points.map((point) => point.y));
   const maxY = Math.max(...points.map((point) => point.y));
   const scale = 6 / metrics.width;

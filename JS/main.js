@@ -27,7 +27,7 @@ const transparentDockLogos = {
   proteo: "Assets/proteo/proteo-logo.png",
   vahana: "Assets/vahana/vahana-logo.png",
 };
-const aboutMedia = { id: "about", folder: "identity", images: ["background.png"] };
+const aboutMedia = { id: "about" };
 function projectSlug(title) {
   const slug = title.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "");
   return { "Necromunda-Underhive-Wars": "Necromunda", "Age-of-Sigmar-Storm-Ground": "Age-of-Sigmar" }[slug] || slug;
@@ -74,7 +74,6 @@ const previousProjectButton = document.querySelector("#previous-project");
 const nextProjectButton = document.querySelector("#next-project");
 let activeProjectId = "spaceage";
 let activeImageIndex = 0;
-let activeAboutImageIndex = 0;
 let pageDrag = null;
 let mediaDragActive = false;
 let pendingHeroDirection = null;
@@ -91,18 +90,48 @@ function videoPoster(project) {
 function adjacentMediaIndex(project, currentIndex, direction) {
   const indices = project.images.map((_, index) => index);
   if (project.video) indices[0] = -1;
-  if (supportsMiniGames() && project.toys?.length) indices.push(-2);
+  if (project.id === "spaceage") indices.splice(1, 0, -2);
   const position = indices.indexOf(currentIndex);
   return indices[(position + direction + indices.length) % indices.length];
 }
 
+function mediaPreview(project, index) {
+  if (index === -2 && project.id === "spaceage") return "Assets/spaceageracer/controller/1.png";
+  return index === -1 ? videoPoster(project) : imagePath(project, project.images[index]);
+}
+
 function renderHeroMarkup(project, imageIndex) {
-  if (supportsMiniGames() && imageIndex === -2 && project.toys?.length) {
-    const toy = project.toys[0];
-    return `<div class="hero-frame toy-frame" data-toy="${escapeText(toy.id)}">
-      <div class="hero-track"><canvas class="hero-image toy-canvas" tabindex="0" role="button" aria-label="${escapeText(project.title)}"></canvas></div>
+  if (project.id === "spaceage" && imageIndex === -2) return `
+    <div class="hero-frame controller-frame">
+      <div class="controller-viewer">
+        <img class="controller-poster" src="Assets/spaceageracer/controller/1.png" alt="Space Age Racer dual-lever controller" />
+        <canvas class="controller-canvas" tabindex="0" aria-label="3D controller: drag to rotate, arrow keys to orbit, plus and minus to zoom"></canvas>
+        <div class="controller-overlay">
+          <span class="controller-view-label" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9M8 5.3l8 4.5"/></svg></span>
+          <svg class="controller-detail-connector" aria-hidden="true" style="display:none"><path/></svg>
+          <div class="controller-hotspots" role="group" aria-label="Explore controller components">
+            <button class="controller-hotspot" type="button" data-hotspot="left" aria-label="About the left lever" aria-pressed="false" aria-controls="controller-detail" hidden></button>
+            <button class="controller-hotspot" type="button" data-hotspot="right" aria-label="About the right lever" aria-pressed="false" aria-controls="controller-detail" hidden></button>
+            <button class="controller-hotspot" type="button" data-hotspot="boost" aria-label="About the boost button" aria-pressed="false" aria-controls="controller-detail" hidden></button>
+            <button class="controller-hotspot" type="button" data-hotspot="body" aria-label="Remove front cover" aria-pressed="false" aria-controls="controller-detail" hidden></button>
+            <button class="controller-hotspot" type="button" data-hotspot="potentiometers" aria-label="About the left potentiometer" aria-pressed="false" aria-controls="controller-detail" hidden></button>
+            <button class="controller-hotspot" type="button" data-hotspot="potentiometerRight" aria-label="About the right potentiometer" aria-pressed="false" aria-controls="controller-detail" hidden></button>
+          </div>
+          <aside class="controller-detail" id="controller-detail" aria-label="Selected component" hidden>
+            <div class="controller-detail-copy" aria-live="polite" aria-atomic="true"><h3></h3><p></p></div>
+          </aside>
+          <span class="controller-gesture" aria-hidden="true">Drag to rotate <i>·</i> Click a point to explore</span>
+          <div class="controller-view-actions">
+            <button class="controller-replace" type="button" data-viewer-action="open" aria-pressed="false" hidden>Replace cover <span aria-hidden="true">↗</span></button>
+            <button type="button" data-viewer-action="reset" aria-label="Reset controller view" title="Reset view"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 8a6 6 0 1 1 .5 5M4 3v5h5"/></svg></button>
+            <button type="button" data-viewer-action="fullscreen" aria-label="View controller in fullscreen" title="Fullscreen"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 7V3h4m6 0h4v4m0 6v4h-4m-6 0H3v-4"/></svg></button>
+          </div>
+        </div>
+        <p class="controller-error" hidden>The 3D viewer is not available in this browser.</p>
+      </div>
+      <button class="hero-arrow" type="button" data-media-direction="-1" aria-label="Previous media">‹</button>
+      <button class="hero-arrow" type="button" data-media-direction="1" aria-label="Next media">›</button>
     </div>`;
-  }
   const media = imageIndex === -1 && project.video
     ? `<video class="hero-image" src="${project.video}" poster="${videoPoster(project)}" muted playsinline controlslist="nodownload" preload="metadata" aria-label="Vidéo de ${project.title}"></video><img class="hero-video-fallback" hidden src="${videoPoster(project)}" alt="" aria-hidden="true" fetchpriority="high" />`
     : `<img class="hero-image" src="${imagePath(project, project.images[imageIndex])}" alt="${project.title} — visuel ${imageIndex + 1}" fetchpriority="high" />`;
@@ -146,9 +175,22 @@ function enableGalleryDrag(gallery, initialScrollLeft = 0) {
   gallery.prepend(makeCopies());
   gallery.append(makeCopies());
   const cycleWidth = () => gallery.children[cycle.length].getBoundingClientRect().left - gallery.firstElementChild.getBoundingClientRect().left;
+  const canScroll = () => {
+    if (gallery !== projectRail) return true;
+    const styles = getComputedStyle(gallery);
+    const availableWidth = gallery.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight);
+    const contentWidth = cycle[cycle.length - 1].getBoundingClientRect().right - cycle[0].getBoundingClientRect().left;
+    const overflows = contentWidth > availableWidth + 1;
+    gallery.classList.toggle("is-static", !overflows);
+    return overflows;
+  };
   const wrapScroll = (position = gallery.scrollLeft) => {
     const width = cycleWidth();
     if (width <= 0) return;
+    if (!canScroll()) {
+      if (Math.abs(gallery.scrollLeft - width) > .1) gallery.scrollLeft = width;
+      return;
+    }
     const wrapped = width + ((position - width) % width + width) % width;
     if (drag) drag.scrollLeft += wrapped - position;
     if (Math.abs(gallery.scrollLeft - wrapped) > .1) gallery.scrollLeft = wrapped;
@@ -180,6 +222,7 @@ function enableGalleryDrag(gallery, initialScrollLeft = 0) {
   let previousWidth = cycleWidth();
   const resizeObserver = new ResizeObserver(() => {
     const width = cycleWidth();
+    canScroll();
     if (previousWidth > 0 && width > 0 && width !== previousWidth) {
       wrapScroll(gallery.scrollLeft / previousWidth * width);
     }
@@ -316,6 +359,7 @@ function enableGalleryDrag(gallery, initialScrollLeft = 0) {
     resizeObserver.disconnect();
   });
   gallery.addEventListener("gallery-nudge", (event) => {
+    if (!canScroll()) return;
     stopMomentum();
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       wrapScroll(gallery.scrollLeft + event.detail.direction * 120);
@@ -325,11 +369,16 @@ function enableGalleryDrag(gallery, initialScrollLeft = 0) {
     startMomentum(event.detail.direction * 1.4);
   });
   gallery.addEventListener("dragstart", (event) => event.preventDefault());
-  gallery.addEventListener("wheel", () => {
+  gallery.addEventListener("wheel", (event) => {
+    if (!canScroll()) {
+      if (event.deltaX) event.preventDefault();
+      return;
+    }
     stopMomentum();
     nativeScrollActive = true;
-  }, { passive: true });
+  }, { passive: false });
   gallery.addEventListener("pointerdown", (event) => {
+    if (!canScroll()) return;
     if (event.pointerType !== "mouse") {
       stopMomentum();
       nativeScrollActive = true;
@@ -550,9 +599,9 @@ function replaceProjectView(markup, navigationDirection, animateTransition) {
 }
 
 function enableHeroAutoplay(frame) {
-  const project = aboutLink.getAttribute("aria-pressed") === "true" ? aboutMedia : projects.find((item) => item.id === activeProjectId);
+  const project = projects.find((item) => item.id === activeProjectId);
   if (!project) return;
-  const currentIndex = project.id === "about" ? activeAboutImageIndex : activeImageIndex;
+  const currentIndex = activeImageIndex;
   const video = frame.querySelector("video");
   let timer = null;
   let disposed = false;
@@ -600,9 +649,9 @@ function enableHeroAutoplay(frame) {
 }
 
 const toyModules = {
-  "source-light": () => import(new URL("three.js/source/source-light.js?v=62", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=48", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=48", document.baseURI).href),
+  "source-light": () => import(new URL("three.js/source/source-light.js?v=64", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=50", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=50", document.baseURI).href),
 };
 const supportsMiniGames = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
@@ -684,18 +733,25 @@ function enableToy(frame) {
     }
     frame.removeEventListener("hero-ready", start);
   });
-  frame.addEventListener("hero-navigate", (event) => {
-    if (disposed || frozen || projectView.querySelector(".page-outgoing")) return;
-    const nextIndex = event.detail.imageIndex ?? adjacentMediaIndex(aboutMedia, activeAboutImageIndex, event.detail.direction);
-    if (nextIndex !== activeAboutImageIndex) selectMediaImage(aboutMedia, nextIndex);
-  });
   if (frame.closest(".page-entering")) frame.addEventListener("hero-ready", start, { once: true });
   else start();
 }
 
 function enableHeroDrag(frame) {
-  if (frame.dataset.toy) {
-    enableToy(frame);
+  if (frame.classList.contains("controller-frame")) {
+    let disposed = false;
+    frame.addEventListener("hero-dispose", () => { disposed = true; }, { once: true });
+    frame.addEventListener("hero-navigate", event => {
+      if (disposed || projectView.querySelector(".page-outgoing")) return;
+      const project = projects.find(item => item.id === activeProjectId);
+      if (project) selectMediaImage(project, event.detail.imageIndex ?? adjacentMediaIndex(project, -2, event.detail.direction));
+    });
+    import(new URL("three.js/space-age-racer/controller-viewer.js?v=40", document.baseURI).href)
+      .then(module => { if (!disposed && frame.isConnected) return module.enableController(frame); })
+      .catch(error => {
+        if (!disposed) { frame.querySelector(".controller-error").hidden = false; frame.classList.add("controller-unavailable"); }
+        console.error("Controller 3D could not be loaded", error);
+      });
     return;
   }
   const image = frame.querySelector(".hero-image");
@@ -759,7 +815,7 @@ function enableHeroDrag(frame) {
     const preview = document.createElement("img");
     const index = adjacentMediaIndex(project, currentIndex, direction);
     preview.className = "hero-image hero-preview";
-    preview.src = index === -2 ? "three.js/impact/cube.svg?v=6" : index === -1 ? videoPoster(project) : imagePath(project, project.images[index]);
+    preview.src = mediaPreview(project, index);
     preview.alt = "";
     preview.setAttribute("aria-hidden", "true");
     preview.style.left = `${direction * 100}%`;
@@ -771,9 +827,9 @@ function enableHeroDrag(frame) {
     if (event.pointerType !== "mouse" || event.button !== 0 || event.target.closest("button")) return;
     if (image.tagName === "VIDEO" && event.clientY > frame.getBoundingClientRect().bottom - 48) return;
     if (settling || projectView.querySelector(".page-outgoing")) return;
-    const project = aboutLink.getAttribute("aria-pressed") === "true" ? aboutMedia : projects.find((item) => item.id === activeProjectId);
+    const project = projects.find((item) => item.id === activeProjectId);
     if (!project) return;
-    const currentIndex = project.id === "about" ? activeAboutImageIndex : activeImageIndex;
+    const currentIndex = activeImageIndex;
     const width = frame.getBoundingClientRect().width;
     drag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, deltaX: 0, moved: false, width, project, currentIndex };
     if (!previews.length) previews = createPreviews(project, currentIndex);
@@ -842,15 +898,15 @@ function enableHeroDrag(frame) {
       return;
     }
     if (drag || projectView.querySelector(".page-outgoing")) return;
-    const project = aboutLink.getAttribute("aria-pressed") === "true" ? aboutMedia : projects.find((item) => item.id === activeProjectId);
+    const project = projects.find((item) => item.id === activeProjectId);
     if (!project) return;
-    const currentIndex = project.id === "about" ? activeAboutImageIndex : activeImageIndex;
+    const currentIndex = activeImageIndex;
     if (event.detail.imageIndex != null && event.detail.imageIndex === currentIndex) return;
     const width = frame.getBoundingClientRect().width;
     if (!previews.length) previews = createPreviews(project, currentIndex);
     const targetIndex = event.detail.imageIndex ?? null;
     if (targetIndex !== null) {
-      previews[event.detail.direction === 1 ? 1 : 0].src = targetIndex === -2 ? "three.js/impact/cube.svg?v=6" : targetIndex === -1 ? videoPoster(project) : imagePath(project, project.images[targetIndex]);
+      previews[event.detail.direction === 1 ? 1 : 0].src = mediaPreview(project, targetIndex);
     }
     drag = { pointerId: -1, deltaX: 0, moved: true, width, project, currentIndex, targetIndex };
     mediaDragActive = true;
@@ -876,9 +932,9 @@ function enableHeroDrag(frame) {
   frame.addEventListener("pointercancel", (event) => finish(event, true));
   frame.addEventListener("lostpointercapture", (event) => finish(event, true));
   frame.addEventListener("hero-dispose", cleanup);
-  const warmProject = aboutLink.getAttribute("aria-pressed") === "true" ? aboutMedia : projects.find(item => item.id === activeProjectId);
+  const warmProject = projects.find(item => item.id === activeProjectId);
   if (warmProject) {
-    const warmIndex = warmProject.id === "about" ? activeAboutImageIndex : activeImageIndex;
+    const warmIndex = activeImageIndex;
     previews = createPreviews(warmProject, warmIndex);
     previews.forEach(preview => { preview.decoding = "async"; preview.decode().catch(() => {}); });
   }
@@ -893,7 +949,7 @@ function renderMediaMarkup(project, imageIndex) {
         <button class="gallery-arrow" type="button" data-gallery-direction="-1" aria-label="Images précédentes" title="Images précédentes"><span aria-hidden="true">‹</span></button>
         <div class="gallery" aria-label="Images de ${project.title}" tabindex="0">
           ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Afficher la vidéo de ${project.title}" aria-pressed="${imageIndex === -1}"><img src="${imagePath(project, project.images[0])}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
-          ${(supportsMiniGames() ? project.toys || [] : []).map((toy) => `<button class="gallery-thumb toy-thumb" type="button" data-image="-2" aria-label="${escapeText(toy.title)}" aria-pressed="${imageIndex === -2}"><img src="three.js/impact/cube.svg?v=6" alt="" /></button>`).join("")}
+          ${project.id === "spaceage" ? `<button class="gallery-thumb controller-thumb" type="button" data-image="-2" aria-label="Explore the controller in 3D" aria-pressed="${imageIndex === -2}"><img src="Assets/spaceageracer/controller/1.png" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
           ${project.images.map((image, index) => project.video && index === 0 ? "" : `
             <button class="gallery-thumb" type="button" data-image="${index}" aria-label="Afficher l’image ${index + 1} de ${project.title}" aria-pressed="${index === imageIndex}">
               <img src="${imagePath(project, image)}" alt="" loading="${index < 5 ? "eager" : "lazy"}" />
@@ -916,9 +972,14 @@ function escapeText(value) {
   })[character]);
 }
 
+function formatProjectText(value) {
+  return escapeText(value).replace(/\*\*([^*]+)\*\*/g, '<strong class="project-text-bold">$1</strong>');
+}
+
 function projectPageMarkup(project, imageIndex) {
+  const tags = project.tags || [];
   return `
-    <div class="project-layout${project.title.length >= 24 ? " has-long-title" : ""}">
+    <div class="project-layout${tags.includes("Quality Assurance") ? " is-qa-project" : ""}" data-project-id="${escapeText(project.id)}">
       ${renderMediaMarkup(project, imageIndex)}
       <div class="project-copy">
         ${!supportsMiniGames() ? `<h1 class="project-title">${escapeText(project.title)}</h1>` : project.id === "age" ? `<div class="sigmar-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><span class="sigmar-hammer" aria-hidden="true"><img src="three.js/ageofsigmar/storm-hammer-compact-v2.png?v=1" alt="" draggable="false" decoding="async" /></span></div>` : project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Attraper la boule Proteo" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=7" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
@@ -926,7 +987,7 @@ function projectPageMarkup(project, imageIndex) {
             <span class="arup-title-text">${[...project.title].map(letter => `<span>${escapeText(letter)}</span>`).join("")}</span>
             <span class="arup-title-logos" aria-hidden="true">${["A", "R", "U", "P"].map(letter => `<img src="three.js/ARUP/${letter}-logo.png" alt="" draggable="false" decoding="async" />`).join("")}</span>
           </span>
-        </h1><button class="arup-play" type="button" aria-label="Play ARUP" aria-pressed="false"><svg class="arup-play-cube" viewBox="0 0 64 72" aria-hidden="true" focusable="false"><path fill="#ffe680" d="M32 4 59 19 32 35 5 19Z"/><path fill="#df493e" d="M5 19 32 35 32 67 5 51Z"/><path fill="#49a868" d="M32 35 59 19 59 51 32 67Z"/><path fill="none" stroke="#000" stroke-width="1" stroke-linejoin="round" d="M32 4 59 19V51L32 67 5 51V19ZM5 19 32 35 59 19M32 35V67"/></svg></button></div>` : project.titleToy?.id === "voxel-title" ? `<div class="project-title-row"><h1 class="project-title voxel-title">
+        </h1><button class="arup-play" type="button" aria-label="Play ARUP" aria-pressed="false"><svg class="arup-play-cube" viewBox="0 0 64 72" aria-hidden="true" focusable="false"><path fill="#ffe680" d="M32 4 59 19 32 35 5 19Z"/><path fill="#df493e" d="M5 19 32 35 32 67 5 51Z"/><path fill="#49a868" d="M32 35 59 19 59 51 32 67Z"/><path fill="none" stroke="#000" stroke-width="1.4" stroke-linejoin="round" d="M32 4 59 19V51L32 67 5 51V19ZM5 19 32 35 59 19M32 35V67"/></svg></button></div>` : project.titleToy?.id === "voxel-title" ? `<div class="project-title-row"><h1 class="project-title voxel-title">
           <span class="voxel-title-label">${escapeText(project.title)}</span>
           <span class="toy-widget" data-toy="voxel-title" data-toy-text="${escapeText(project.title)}" data-toy-color="#111111">
             <canvas class="hero-image toy-canvas" tabindex="0" role="button" aria-label="${escapeText(project.title)}"></canvas>
@@ -943,12 +1004,12 @@ function projectPageMarkup(project, imageIndex) {
         </div>` : `<h1 class="project-title">${escapeText(project.title)}</h1>`}
         <div class="copy-rule" aria-hidden="true"></div>
         ${project.context ? `<p class="project-subtitle">${escapeText(project.context)}</p>` : ""}
-        ${project.tags.length ? `<div class="project-meta" aria-label="Domaines du projet">${project.tags.map(renderProjectTag).join("")}</div>` : ""}
-        ${project.pitch ? `<p class="project-description">${(project.title ? project.pitch.split(project.title).map(escapeText).join(`<strong>${escapeText(project.title)}</strong>`) : escapeText(project.pitch)).replace(/Arduino controller/gi, phrase => `<strong>${phrase}</strong>`)}</p>` : ""}
-        ${(project.paragraphs || []).filter((paragraph) => paragraph.title || paragraph.content).map((paragraph) => `
+        ${tags.length ? `<div class="project-meta" aria-label="Domaines du projet">${tags.map(renderProjectTag).join("")}</div>` : ""}
+        ${(project.sections || []).filter((section) => section.title || section.content).map((section) => `
           <section class="project-paragraph">
-            ${paragraph.title ? `<h2>${escapeText(paragraph.title)}</h2>` : ""}
-            ${paragraph.content ? `<p class="project-description">${escapeText(paragraph.content)}</p>` : ""}
+            ${section.title ? `<h2 class="project-subtitle"><span class="section-dot" aria-hidden="true"></span>${escapeText(section.title)}</h2>` : ""}
+            <div class="copy-rule" aria-hidden="true"></div>
+            ${section.content ? `<p class="project-description">${formatProjectText(section.content)}</p>` : ""}
           </section>
         `).join("")}
       </div>
@@ -961,13 +1022,18 @@ function aboutPageMarkup() {
     <div class="about-layout">
       <div class="about-copy-wrap project-copy">
         <h1 class="about-title">${escapeText(aboutMedia.title1)}</h1>
-        <div class="copy-rule" aria-hidden="true"></div>
         ${aboutMedia.title2 ? `<p class="project-subtitle">${escapeText(aboutMedia.title2)}</p>` : ""}
         ${aboutMedia.texte ? `<p class="project-description">${escapeText(aboutMedia.texte)}</p>` : ""}
       </div>
     </div>
   `;
 }
+
+projectView.addEventListener("click", (event) => {
+  if (!event.target.closest(".about-discover") || finishActivePageTransition) return;
+  const project = orderedProjects[0];
+  if (project) renderProject(project, project.video ? -1 : 0, 0, true, 1);
+});
 
 function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScrollLeft = 0, animateTransition = true, navigationDirection = 1) {
   activeProjectId = project.id;
@@ -986,10 +1052,10 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   projectView.querySelectorAll(".toy-widget").forEach(enableToy);
   const arupTitle = projectView.querySelector(".arup-title-toggle");
   const proteoPlay = projectView.querySelector(".proteo-play");
-  if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=26", document.baseURI).href)
+  if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=32", document.baseURI).href)
     .then(module => { if (proteoPlay.isConnected && !proteoPlay.closest(".page-outgoing")) module.enableShapes(proteoPlay); })
     .catch(error => console.error("Proteo interaction could not be loaded", error));
-  if (arupTitle && supportsMiniGames()) import(new URL("three.js/ARUP/arup-runner.js?v=63", document.baseURI).href)
+  if (arupTitle && supportsMiniGames()) import(new URL("three.js/ARUP/arup-runner.js?v=65", document.baseURI).href)
     .then(module => { if (arupTitle.isConnected && !arupTitle.closest(".page-outgoing")) module.enableRunner(arupTitle); })
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
@@ -1006,11 +1072,11 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
       }).catch(error => console.error("Necromunda interaction could not be loaded", error));
   const aeonTitle = projectView.querySelector(".aeon-strike");
   if (aeonTitle && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/aeon/aeon-strike.js?v=90", document.baseURI).href)
+    import(new URL("three.js/aeon/aeon-brawler.js?v=57", document.baseURI).href)
       .then(async module => {
         const logo = aeonTitle.closest(".aeon-title-row")?.querySelector(".aeon-title-logo");
         await Promise.all([document.fonts.ready, logo?.decode().catch(() => {})]);
-        if (aeonTitle.isConnected && !aeonTitle.closest(".page-outgoing")) module.enableStrikes(aeonTitle);
+        if (aeonTitle.isConnected && !aeonTitle.closest(".page-outgoing")) module.enableBrawler(aeonTitle);
       })
       .catch(error => console.error("Aeon interaction could not be loaded", error));
 
@@ -1022,7 +1088,6 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
 }
 
 function renderAbout(navigationDirection = -1) {
-  activeAboutImageIndex = 0;
   pageArrows.hidden = false;
   previousProjectButton.disabled = false;
   nextProjectButton.disabled = false;
@@ -1134,6 +1199,10 @@ function navigateWithKeyboard(direction) {
 }
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Tab") {
+    event.preventDefault();
+    return;
+  }
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
   if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
   if (event.target.closest("input, textarea, select, canvas") || event.target.isContentEditable) return;
@@ -1254,8 +1323,7 @@ function selectMediaImage(project, imageIndex, resetNavigation = true, preparedI
   const currentFrame = projectView.querySelector(".hero-frame");
   currentFrame.dispatchEvent(new Event("hero-dispose"));
   currentFrame.querySelector("video")?.pause();
-  if (project.id === "about") activeAboutImageIndex = imageIndex;
-  else activeImageIndex = imageIndex;
+  activeImageIndex = imageIndex;
   const template = document.createElement("template");
   template.innerHTML = renderHeroMarkup(project, imageIndex);
   const newFrame = template.content.firstElementChild;
@@ -1291,10 +1359,10 @@ projectView.addEventListener("click", (event) => {
 
   const button = event.target.closest("[data-image]");
   if (!button) return;
-  const project = aboutLink.getAttribute("aria-pressed") === "true" ? aboutMedia : projects.find((item) => item.id === activeProjectId);
+  const project = projects.find((item) => item.id === activeProjectId);
   if (!project) return;
   const imageIndex = Number(button.dataset.image);
-  const currentIndex = project.id === "about" ? activeAboutImageIndex : activeImageIndex;
+  const currentIndex = activeImageIndex;
   if (imageIndex === currentIndex) return;
   const gallery = button.closest(".gallery");
   const bounds = gallery.getBoundingClientRect();
@@ -1339,15 +1407,14 @@ async function initializePortfolio() {
       return;
     }
     if (!content || typeof content.title !== "string" || typeof content.context !== "string"
-      || typeof content.pitch !== "string" || !Array.isArray(content.tags) || !Array.isArray(content.paragraphs)) {
+      || !Array.isArray(content.tags) || !Array.isArray(content.sections)
+      || !content.sections.every(section => typeof section.title === "string" && typeof section.content === "string")) {
       throw new Error(`Contenu JSON invalide ou langue absente : ${folder}/${language}`);
     }
     project.title = content.title;
-    project.context = content.context;
     project.tags = content.tags;
-    project.pitch = content.pitch;
-    project.paragraphs = content.paragraphs;
-    project.toys = content.toys || [];
+    project.context = content.context;
+    project.sections = content.sections;
     project.titleToy = content.titleToy;
     project.titleCube = content.titleCube;
   }));

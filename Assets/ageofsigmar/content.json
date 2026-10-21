@@ -1,18 +1,25 @@
 {
-  "en":  {
-    "title":  "Age of Sigmar : Storm Ground",
-    "context":  "Gasket Games · Focus Entertainment",
-    "tags":  [
-      "Quality Assurance",
-      "Multiplayer Testing",
-      "Test Planning"
-    ],
-    "pitch":  "Age of Sigmar : Storm Ground is a turn-based strategy game set in the dark fantasy universe of Warhammer. Lead highly customizable armies through tactical battles, challenging roguelike campaigns, and competitive online multiplayer.",
-    "paragraphs":  [
-      {
-        "title":  "",
-        "content":  ""
-      }
-    ]
-  }
+    "en": {
+        "title": "Age of Sigmar : Storm Ground",
+        "tags": [
+            "Quality Assurance",
+            "Multiplayer Testing",
+            "Test Planning"
+        ],
+        "context": "Gasket Games · Focus Entertainment",
+        "sections": [
+            {
+                "title": "THE GAME",
+                "content": "**Age of Sigmar : Storm Ground** is a turn-based strategy game set in the dark fantasy universe of Warhammer. Lead highly customizable armies through tactical battles, challenging roguelike campaigns, and competitive online multiplayer."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Age of Sigmar : Storm Ground** is a turn-based strategy game set in the dark fantasy universe of Warhammer. Lead highly customizable armies through tactical battles, challenging roguelike campaigns, and competitive online multiplayer."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Age of Sigmar : Storm Ground** is a turn-based strategy game set in the dark fantasy universe of Warhammer. Lead highly customizable armies through tactical battles, challenging roguelike campaigns, and competitive online multiplayer."
+            }
+        ]
+    }
 }

@@ -29,7 +29,7 @@ export function enableCubeHover(button) {
       const [x,y,z] = rotate(point); return [(x-z)*27, (x+z)*15.75-y*31.5];
     }) }));
     const scale = Math.min(1, 27 / Math.max(...projected.flatMap(face => face.points.map(point => Math.abs(point[0])))), 31.5 / Math.max(...projected.flatMap(face => face.points.map(point => Math.abs(point[1])))));
-    svg.innerHTML = projected.map(face => `<polygon points="${face.points.map(([x,y]) => `${32+x*scale},${35.5+y*scale}`).join(" ")}" fill="${face.color}" stroke="#000" stroke-width="1" stroke-linejoin="round"/>`).join("");
+    svg.innerHTML = projected.map(face => `<polygon points="${face.points.map(([x,y]) => `${32+x*scale},${35.5+y*scale}`).join(" ")}" fill="${face.color}" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/>`).join("");
   };
   const tick = time => {
     frame = null;

@@ -1,18 +1,25 @@
 {
-  "en":  {
-    "title":  "Necromunda Underhive Wars",
-    "context":  "Rogue Factor · Focus Entertainment",
-    "tags":  [
-      "Quality Assurance",
-      "Regression Testing",
-      "Certification Testing"
-    ],
-    "pitch":  "Necromunda Underhive Wars is a turn-based tactical RPG set in the dystopian universe of Warhammer 40,000. Lead and customize rival gangs through brutal tactical battles, using strategic positioning, environmental hazards, and unique abilities to dominate the Underhive.",
-    "paragraphs":  [
-      {
-        "title":  "",
-        "content":  ""
-      }
-    ]
-  }
+    "en": {
+        "title": "Necromunda Underhive Wars",
+        "tags": [
+            "Quality Assurance",
+            "Regression Testing",
+            "Certification Testing"
+        ],
+        "context": "Rogue Factor · Focus Entertainment",
+        "sections": [
+            {
+                "title": "THE GAME",
+                "content": "**Necromunda Underhive Wars** is a turn-based tactical RPG set in the dystopian universe of Warhammer 40,000. Lead and customize rival gangs through brutal tactical battles, using strategic positioning, environmental hazards, and unique abilities to dominate the Underhive."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Necromunda Underhive Wars** is a turn-based tactical RPG set in the dystopian universe of Warhammer 40,000. Lead and customize rival gangs through brutal tactical battles, using strategic positioning, environmental hazards, and unique abilities to dominate the Underhive."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Necromunda Underhive Wars** is a turn-based tactical RPG set in the dystopian universe of Warhammer 40,000. Lead and customize rival gangs through brutal tactical battles, using strategic positioning, environmental hazards, and unique abilities to dominate the Underhive."
+            }
+        ]
+    }
 }

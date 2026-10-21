@@ -1,18 +1,25 @@
 {
-  "en":  {
-    "title":  "ARUP",
-    "context":  "Game Jam Project",
-    "tags":  [
-      "Game Design",
-      "Prototyping",
-      "Gameplay Mechanics"
-    ],
-    "pitch":  "ARUP is a party game where players must jump over an increasingly fast cube and be the last one standing. Each player gets one key on a shared keyboard, making things even more chaotic.",
-    "paragraphs":  [
-      {
-        "title":  "",
-        "content":  ""
-      }
-    ]
-  }
+    "en": {
+        "title": "ARUP",
+        "tags": [
+            "Game Design",
+            "Prototyping",
+            "Gameplay Mechanics"
+        ],
+        "context": "Game Jam Project",
+        "sections": [
+            {
+                "title": "THE GAME",
+                "content": "**ARUP** is a party game where players must jump over an increasingly fast cube and be the last one standing. Each player gets one key on a shared keyboard, making things even more chaotic."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**ARUP** is a party game where players must jump over an increasingly fast cube and be the last one standing. Each player gets one key on a shared keyboard, making things even more chaotic."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**ARUP** is a party game where players must jump over an increasingly fast cube and be the last one standing. Each player gets one key on a shared keyboard, making things even more chaotic."
+            }
+        ]
+    }
 }

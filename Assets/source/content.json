@@ -1,21 +1,28 @@
 {
-  "en":  {
-    "title":  "Source",
-    "context":  "Student Projet · ICAN Design School",
-    "tags":  [
-      "Game Design",
-      "Level Design",
-      "Sound Design"
-    ],
-    "pitch":  "Source is a 2D exploration and puzzle game where the player is the only source of light in a dark labyrinth. Players must navigate the maze, using their light to reveal hidden paths and protect themselves from creatures lurking in the shadows.",
-    "paragraphs":  [
-      {
-        "title":  "",
-        "content":  ""
-      }
-    ],
-    "titleToy":  {
-      "id":  "source-light"
+    "en": {
+        "title": "Source",
+        "tags": [
+            "Game Design",
+            "Level Design",
+            "Sound Design"
+        ],
+        "context": "Student Projet · ICAN Design School",
+        "sections": [
+            {
+                "title": "THE GAME",
+                "content": "**Source** is a 2D exploration and puzzle game where the player is the only source of light in a dark labyrinth. Players must navigate the maze, using their light to reveal hidden paths and protect themselves from creatures lurking in the shadows."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Source** is a 2D exploration and puzzle game where the player is the only source of light in a dark labyrinth. Players must navigate the maze, using their light to reveal hidden paths and protect themselves from creatures lurking in the shadows."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Source** is a 2D exploration and puzzle game where the player is the only source of light in a dark labyrinth. Players must navigate the maze, using their light to reveal hidden paths and protect themselves from creatures lurking in the shadows."
+            }
+        ],
+        "titleToy": {
+            "id": "source-light"
+        }
     }
-  }
 }

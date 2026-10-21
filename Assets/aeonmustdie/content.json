@@ -1,18 +1,25 @@
 {
-  "en":  {
-    "title":  "Aeon Must Die!",
-    "context":  "Limestone Games · Focus Entertainment",
-    "tags":  [
-      "Quality Assurance",
-      "Bug Tracking",
-      "Platform Compliance"
-    ],
-    "pitch":  "Aeon Must Die! is a sci-fi beat 'em up combining fast-paced tactical combat, risk-reward mechanics, and a distinctive anime-inspired art style. Set in a futuristic universe, the game tells a story of betrayal, revenge, and the struggle for free will.",
-    "paragraphs":  [
-      {
-        "title":  "",
-        "content":  ""
-      }
-    ]
-  }
+    "en": {
+        "title": "Aeon Must Die!",
+        "tags": [
+            "Quality Assurance",
+            "Bug Tracking",
+            "Platform Compliance"
+        ],
+        "context": "Limestone Games · Focus Entertainment",
+        "sections": [
+            {
+                "title": "THE GAME",
+                "content": "**Aeon Must Die!** is a sci-fi beat 'em up combining fast-paced tactical combat, risk-reward mechanics, and a distinctive anime-inspired art style. Set in a futuristic universe, the game tells a story of betrayal, revenge, and the struggle for free will."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Aeon Must Die!** is a sci-fi beat 'em up combining fast-paced tactical combat, risk-reward mechanics, and a distinctive **anime-inspired** art style. Set in a futuristic universe, the game tells a story of betrayal, revenge, and the struggle for free will."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Aeon Must Die!** is a sci-fi beat 'em up combining fast-paced tactical combat, risk-reward mechanics, and a distinctive **anime-inspired** art style. Set in a futuristic universe, the game tells a story of betrayal, revenge, and the struggle for free will."
+            }
+        ]
+    }
 }

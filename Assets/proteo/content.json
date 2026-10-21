@@ -1,18 +1,25 @@
 {
-  "en":  {
-    "title":  "Proteo",
-    "context":  "Student Projet · ICAN Design School",
-    "tags":  [
-      "Game Design",
-      "Puzzle Design",
-      "Documentation"
-    ],
-    "pitch":  "Proteo is a 3D platformer built around exploration and transformation. Players can switch between different forms, each with unique abilities, to interact with the environment, overcome obstacles, and solve puzzles in creative ways.",
-    "paragraphs":  [
-      {
-        "title":  "",
-        "content":  ""
-      }
-    ]
-  }
+    "en": {
+        "title": "Proteo",
+        "tags": [
+            "Game Design",
+            "Puzzle Design",
+            "Documentation"
+        ],
+        "context": "Student Projet · ICAN Design School",
+        "sections": [
+            {
+                "title": "THE GAME",
+                "content": "**Proteo** is a 3D platformer built around exploration and transformation. Players can switch between different forms, each with unique abilities, to interact with the environment, overcome obstacles, and solve puzzles in creative ways."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Proteo** is a 3D platformer built around exploration and transformation. Players can switch between different forms, each with unique abilities, to interact with the environment, overcome obstacles, and solve puzzles in creative ways."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Proteo** is a 3D platformer built around exploration and transformation. Players can switch between different forms, each with unique abilities, to interact with the environment, overcome obstacles, and solve puzzles in creative ways."
+            }
+        ]
+    }
 }

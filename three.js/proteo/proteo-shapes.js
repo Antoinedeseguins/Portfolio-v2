@@ -39,6 +39,9 @@ export function enableShapes(button) {
   const ball = { x: 0, y: 0, vx: 0, vy: 0, angle: 0 };
   const radius = 52 * 25 / 72;
   let active = false, drag = null, frame = null, previousTime = null;
+  let activeBounds = null;
+  let origin = { x: 0, y: 0 };
+  let pagePointer = null;
   const playBounds = () => {
     const rule = page.querySelector(".project-copy > .copy-rule")?.getBoundingClientRect();
     const left = Math.max(0, page.querySelector(".hero-frame")?.getBoundingClientRect().right ?? 0);
@@ -48,15 +51,20 @@ export function enableShapes(button) {
   };
   const clamp = (point, bounds) => ({ x: Math.max(bounds.left, Math.min(bounds.right, point.x)), y: Math.max(bounds.top, Math.min(bounds.bottom, point.y)) });
   const paint = () => {
-    stage.style.translate = `${ball.x - 26}px ${ball.y - 26}px`;
+    stage.style.translate = `${ball.x - origin.x - 26}px ${ball.y - origin.y - 26}px`;
     avatar.style.rotate = `${ball.angle}rad`;
   };
   const tick = time => {
     frame = null;
     if (!active || document.hidden) return;
+    if (pagePointer !== null) {
+      previousTime = null;
+      frame = requestAnimationFrame(tick);
+      return;
+    }
     const dt = previousTime === null ? 0 : Math.min(.04, (time - previousTime) / 1000);
     previousTime = time;
-    const bounds = playBounds();
+    const bounds = activeBounds;
     stepBall(ball, dt, bounds, drag ? clamp(drag.target, bounds) : null);
 
     paint();
@@ -82,8 +90,12 @@ export function enableShapes(button) {
     event.preventDefault(); event.stopPropagation();
     if (!active) {
       const rect = button.getBoundingClientRect();
-      Object.assign(ball, clamp({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }, playBounds()), { vx: 0, vy: 0, angle: 0 });
-      active = true; document.body.append(stage); paint();
+      // Simulate in the initial coordinate space; the page carries the stage.
+      activeBounds = playBounds();
+      const pageRect = page.getBoundingClientRect();
+      origin = { x: pageRect.left, y: pageRect.top };
+      Object.assign(ball, clamp({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }, activeBounds), { vx: 0, vy: 0, angle: 0 });
+      active = true; page.append(stage); paint();
 
       button.style.visibility = "hidden"; button.setAttribute("aria-pressed", "true");
       lockResume(true);
@@ -98,11 +110,25 @@ export function enableShapes(button) {
     control.addEventListener("lostpointercapture", event => { if (drag?.id === event.pointerId) release(); }, options);
     control.addEventListener("click", event => event.stopPropagation(), options);
   }
+  document.addEventListener("pointerdown", event => {
+    if (!active || drag || event.pointerType !== "mouse" || event.button !== 0) return;
+    if (event.target.closest("button, a, .gallery-shell, .hero-frame, .toy-widget, .topline, .project-dock")) return;
+    const rect = page.closest(".project-view")?.getBoundingClientRect();
+    if (!rect || event.clientY < rect.top || event.clientY > rect.bottom) return;
+    pagePointer = event.pointerId;
+    wake();
+  }, { capture: true, signal: events.signal });
   window.addEventListener("pointermove", event => {
     if (event.pointerId !== drag?.id) return;
-    drag.target = { x: event.clientX + drag.offsetX, y: event.clientY + drag.offsetY };
+    const pageRect = page.getBoundingClientRect();
+    drag.target = { x: event.clientX + drag.offsetX - (pageRect.left - origin.x), y: event.clientY + drag.offsetY - (pageRect.top - origin.y) };
   }, options);
   for (const type of ["pointerup", "pointercancel"]) window.addEventListener(type, event => {
+    if (event.pointerId === pagePointer) {
+      pagePointer = null;
+      previousTime = null;
+      wake();
+    }
     if (event.pointerId === drag?.id) release();
   }, options);
   window.addEventListener("click", event => {
@@ -111,8 +137,32 @@ export function enableShapes(button) {
   window.addEventListener("keydown", event => {
     if (active && event.key === "Escape") { event.preventDefault(); stop(); }
   }, options);
-  for (const type of ["resize", "scroll"]) window.addEventListener(type, wake, { passive: true, signal: events.signal });
+  window.addEventListener("resize", () => {
+    if (active) {
+      const rect = page.getBoundingClientRect();
+      ball.x += rect.left - origin.x;
+      ball.y += rect.top - origin.y;
+      origin = { x: rect.left, y: rect.top };
+      activeBounds = playBounds();
+    }
+    wake();
+  }, { passive: true, signal: events.signal });
   window.addEventListener("blur", stop, options);
   document.addEventListener("visibilitychange", () => { if (document.hidden) stop(); }, options);
-  page.addEventListener("page-dispose", () => { stop(); events.abort(); }, { once: true });
+  page.addEventListener("page-dispose", event => {
+    if (active && event.detail?.preserveVisual) {
+      // Preserve the ball at its current page position during the transition.
+      active = false;
+      release();
+      cancelAnimationFrame(frame);
+      frame = null;
+      previousTime = null;
+      lockResume(false);
+      events.abort();
+      page.addEventListener("page-dispose", stop, { once: true });
+      return;
+    }
+    stop();
+    events.abort();
+  }, { once: true });
 }

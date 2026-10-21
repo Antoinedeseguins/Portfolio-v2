@@ -1,24 +1,31 @@
 {
-  "en":  {
-    "title":  "Impact",
-    "context":  "Student Projet · ICAN Design School",
-    "tags":  [
-      "Game Design",
-      "Gameplay Mechanics",
-      "Documentation"
-    ],
-    "pitch":  "Impact is a first-person shooter built around the ability to reshape and manipulate the environment. Combining fast-paced action with environmental puzzles, players must overcome evolving challenges while uncovering the mysteries behind their journey.",
-    "paragraphs":  [
-      {
-        "title":  "",
-        "content":  ""
-      }
-    ],
-    "titleToy":  {
-      "id":  "voxel-title"
-    },
-    "titleCube":  {
-      "id":  "magnetic-cube"
+    "en": {
+        "title": "Impact",
+        "tags": [
+            "Game Design",
+            "Gameplay Mechanics",
+            "Documentation"
+        ],
+        "context": "Student Projet · ICAN Design School",
+        "sections": [
+            {
+                "title": "THE GAME",
+                "content": "**Impact** is a first-person shooter built around the ability to reshape and manipulate the environment. Combining fast-paced action with environmental puzzles, players must overcome evolving challenges while uncovering the mysteries behind their journey."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Impact** is a first-person shooter built around the ability to reshape and manipulate the environment. Combining fast-paced action with environmental puzzles, players must overcome evolving challenges while uncovering the mysteries behind their journey."
+            },
+            {
+                "title": "MY CONTRIBUTIONS",
+                "content": "**Impact** is a first-person shooter built around the ability to reshape and manipulate the environment. Combining fast-paced action with environmental puzzles, players must overcome evolving challenges while uncovering the mysteries behind their journey."
+            }
+        ],
+        "titleToy": {
+            "id": "voxel-title"
+        },
+        "titleCube": {
+            "id": "magnetic-cube"
+        }
     }
-  }
 }

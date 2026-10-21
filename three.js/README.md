@@ -1,5 +1,7 @@
 # Interactive media
 
+Space Age Racer's gallery includes a 3D controller entry (`-2`) after the video. `space-age-racer/controller-model.js` reconstructs its exterior from `Assets/spaceageracer/controller/1.webp` and its simplified interior from the four prototype photos in that folder. `controller-viewer.js` provides orbit/zoom, a removable enclosure, independent lever input and the right-handle boost button directly on the model. Hovering the front-cover point highlights only the front panel without moving it. Clicking that point or the front panel withdraws and fades only the access cover; sides, top and base stay assembled. The Replace cover command restores the panel; dragging the levers moves them. Orbit and zoom are also available with the keyboard. A minimal overlay provides clickable white component points, an enclosure toggle, reset and fullscreen. Clicking a point opens its English description in the upper-right corner, temporarily replacing the enclosure toggle. A thin white connector follows the selected point to the panel. Showing details never changes camera position or scale. The access-cover point switches to the Arduino when opened, and one potentiometer point appears at the left sensor. Points follow the actual lever positions. Replacing the cover closes any active interior description. No floating labels or lever sliders are displayed. This is an explanatory reconstruction, not exact CAD or a live hardware connection. Rendering is demand-driven, pauses offscreen/in hidden tabs and disposes when the gallery or project changes. The interactive entry does not auto-advance while being explored; arrows and thumbnails keep normal gallery navigation available.
+
 ## Folder layout
 
 - `space-age-racer/`: race renderer, obstacle simulation, and podracer model.
@@ -7,8 +9,8 @@
 Space Age Racer uses solid desert obstacles only. Speed, obstacle density and pattern length increase gradually over 75 seconds, with regular recovery periods. Centre passages appear after 10 seconds and chicanes after 20 seconds.
 - `ARUP/`: runner and its cropped PNG letter logos (original WebP sources retained).
 
-ARUP runner: hold Space, Up, or the pointer on the track for a higher jump; release early for a short hop. Inputs just before landing are buffered for 120 ms. Each collision costs one letter, and stars restore letters. Collisions and star pickups use each visible letter's alpha mask, excluding transparent margins and faint shadows, mapped to its rendered size and position. The pace increases gradually, with airborne obstacles introduced after 15 seconds. Distance and HIGH appear below the track only during play. Losing all letters returns to the title automatically; Escape exits. Hidden tabs pause the simulation.
-- `aeon/`: title interaction and damage simulation.
+ARUP runner: hold Space, Up, or the pointer on the track for a higher jump; release early for a short hop. Inputs just before landing are buffered for 120 ms. Each unshielded collision costs one letter. Stars grant a temporary shield that glows along the letter contours; hearts restore letters. Collisions and pickups use each visible letter's alpha mask, excluding transparent margins and faint shadows, mapped to its rendered size and position. The pace increases gradually, with airborne obstacles introduced after 9 seconds. Distance and HIGH appear below the track only during play. Losing all letters returns to the title automatically; Escape exits. Hidden tabs pause the simulation.
+- `aeon/`: brawler, fist interaction, enemies, and combat effects.
 - `impact/`: magnetic cube, voxel title, spring simulation, text sampling, and cube preview.
 - `necromunda/`: shooting gallery, enemies, rifle, and animated bolt.
 - `proteo/`: red ball with drag physics, gravity, inertia, and bounded rebounds beside the project title. Escape resets the interaction.
@@ -31,4 +33,4 @@ Impact's title is sampled from the loaded Raleway font and rebuilt with small bl
 
 Run the site through a local HTTP server, as required for JSON requests and JavaScript modules.
 
-To add another toy, extend the module registry and media selection in `JS/main.js`. The initial integration reserves media index `-2` for this first toy; additional toys will need distinct indices.
+Title interactions use the module registry and `titleToy`/`titleCube` configuration in `JS/main.js`. The media gallery contains only images and videos; index `-1` selects the video when present.

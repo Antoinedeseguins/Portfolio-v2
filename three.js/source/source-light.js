@@ -20,10 +20,6 @@ export function beamSettings(distance, scale = 1) {
   };
 }
 
-export function avatarArrival() {
-  return { core: 1, halo: 1, rings: 1, scale: 1, ready: true };
-}
-
 export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas 2D unavailable");
@@ -50,7 +46,6 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   let hovered = false, focused = false, hoverAmount = 0;
   let target = { x: 0, y: 0 };
   let angle = 0, distance = 180, opacity = 0, titleOpacity = 0, phase = 0;
-  let arrivalTime = 0;
   let origin = { x: 0, y: 0, radius: 22 };
 
   const updateTarget = (event) => {
@@ -65,19 +60,17 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     pointerId = null;
     keyboard = false;
     active = false;
+    hovered = false;
+    focused = false;
     if (reset !== false && game.status !== "defeated") resetGame(game);
     if (captured !== null && anchor.hasPointerCapture(captured)) anchor.releasePointerCapture(captured);
   };
   const draw = () => {
     context.clearRect(0, 0, width, height);
-    const arrival = avatarArrival(arrivalTime, reducedMotion.matches);
-    const hint = { rotation: 0, scaleX: 1, scaleY: 1, glow: 0 };
     const hoverPulse = reducedMotion.matches ? 0 : Math.sin(phase * 2.2);
-    hint.scaleX += hoverAmount * hoverPulse * .12;
-    hint.scaleY += hoverAmount * hoverPulse * .12;
+    const hoverScale = 1 + hoverAmount * hoverPulse * .12;
     anchor.style.setProperty("--source-hover-glow", 1 + hoverAmount * (hoverPulse * .12 - .12));
-    hint.glow += hoverAmount * .6;
-    const x = origin.x, y = origin.y, radius = origin.radius * arrival.scale;
+    const x = origin.x, y = origin.y, radius = origin.radius;
     const ending = game.status === "defeated" ? defeatVisual(game.defeatTime, reducedMotion.matches) : { light: 1, fog: 0, others: 1 };
     const flicker = active && !reducedMotion.matches && game.lightFlash > 0 ? 1 + Math.sin((.18 - game.lightFlash) * 45) * .12 * game.lightFlash / .18 : 1;
     const hitProgress = 1 - game.hitFlash / .65;
@@ -211,10 +204,10 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     }
     context.save();
     context.translate(x, y);
-    context.scale(hint.scaleX, hint.scaleY);
+    context.scale(hoverScale, hoverScale);
     anchor.style.setProperty("--source-light-alpha", Math.min(1, ending.light * flicker));
-    context.rotate(angle + hint.rotation);
-    context.globalAlpha = (0.35 + ending.light * 0.65) * arrival.rings;
+    context.rotate(angle);
+    context.globalAlpha = 0.35 + ending.light * 0.65;
     if (avatar.complete && avatar.naturalWidth > 0) {
       const scale = radius / 22;
       context.drawImage(avatar, -76 * scale, -57 * scale, 152 * scale, 114 * scale);
@@ -260,8 +253,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     const dt = Math.min(previousTime === null ? 0 : (time - previousTime) / 1000, 0.05);
     previousTime = time;
     hoverAmount += ((hovered || focused) && !active && game.status === "ready" ? 1 - hoverAmount : -hoverAmount) * (1 - Math.exp(-dt * 12));
-    if (avatar.complete && avatar.naturalWidth > 0) arrivalTime += dt;
-    if (avatarArrival(arrivalTime, reducedMotion.matches).ready) phase += dt * 1.6;
+    phase += dt * 1.6;
     const easing = 1 - Math.exp(-dt * 14);
     if (active && !keyboard) {
       const dx = target.x - origin.x, dy = target.y - origin.y;
@@ -284,7 +276,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     if (!disposed && !paused && visible && !document.hidden) frame = requestAnimationFrame(tick);
   };
   anchor.addEventListener("pointerdown", (event) => {
-    if (paused || disposed || !avatarArrival(arrivalTime, reducedMotion.matches).ready || game.status === "defeated" || pointerId !== null || !event.isPrimary || event.button !== 0) return;
+    if (paused || disposed || game.status === "defeated" || pointerId !== null || !event.isPrimary || event.button !== 0) return;
     updateTarget(event);
     if (Math.hypot(target.x - origin.x, target.y - origin.y) > origin.radius * 1.65) return;
     pointerId = event.pointerId; active = true; score.show(); lockResume(true);
@@ -296,12 +288,12 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
     hovered = event.pointerType === "mouse" && Math.hypot(event.clientX - bounds.left - origin.x, event.clientY - bounds.top - origin.y) <= origin.radius * 1.65;
   }, { signal: events.signal });
   anchor.addEventListener("pointerleave", () => { hovered = false; }, { signal: events.signal });
-  anchor.addEventListener("focus", () => { focused = true; }, { signal: events.signal });
+  anchor.addEventListener("focus", () => { focused = anchor.matches(":focus-visible"); }, { signal: events.signal });
   anchor.addEventListener("blur", () => { focused = false; hovered = false; }, { signal: events.signal });
   for (const type of ["pointerup", "pointercancel", "lostpointercapture", "blur"]) anchor.addEventListener(type, stop, { signal: events.signal });
   window.addEventListener("blur", stop, { signal: events.signal });
   anchor.addEventListener("keydown", (event) => {
-    if (paused || disposed || !avatarArrival(arrivalTime, reducedMotion.matches).ready || game.status === "defeated") return;
+    if (paused || disposed || game.status === "defeated") return;
     if ((event.key === " " || event.key === "Enter") && event.repeat) { event.preventDefault(); return; }
     if (event.key === " " || event.key === "Enter") { event.preventDefault(); if (!active) score.show(); keyboard = true; active = true; lockResume(true); }
     else if (active && event.key.startsWith("Arrow")) {
