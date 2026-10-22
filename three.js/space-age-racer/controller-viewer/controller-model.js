@@ -6,7 +6,7 @@ export function createController() {
   const root = new THREE.Group(), shell = new THREE.Group();
   root.add(shell);
   const mats = {};
-  for (const [name, color] of Object.entries({ shell: 0x414d4d, trim: 0x303a3c, metal: 0x8e9797, wood: 0xffffff, endgrain: 0xffffff, rubber: 0x20282a, board: 0x246d78, chip: 0x283239, silver: 0xbac1c2, red: 0xd34d2f, violet: 0x7352a4, wire: 0x547e91, black: 0x364348 })) {
+  for (const [name, color] of Object.entries({ shell: 0x414d4d, trim: 0x303a3c, metal: 0x8e9797, wood: 0xffffff, endgrain: 0xffffff, rubber: 0x20282a, board: 0x246d78, chip: 0x283239, silver: 0xbac1c2, red: 0xd34d2f, violet: 0x7352a4, wire: 0x547e91, black: 0x364348, arrow: 0x597f9d })) {
     mats[name] = new THREE.MeshStandardMaterial({ color, roughness: name === "metal" || name === "silver" ? .4 : .85, metalness: name === "metal" || name === "silver" ? .65 : .05 });
   }
   // Small deterministic grain textures keep the timber matte, with no asset download.
@@ -103,9 +103,9 @@ export function createController() {
       arcPoints.push(new THREE.Vector3(side * -.06, Math.cos(a) * .32, Math.sin(a) * .32));
     }
     const arc = new THREE.CatmullRomCurve3(arcPoints);
-    const arcMesh = add(new THREE.TubeGeometry(arc, 40, .012, 5, false), "silver", [0, 0, 0], arrow);
+    const arcMesh = add(new THREE.TubeGeometry(arc, 40, .012, 5, false), "arrow", [0, 0, 0], arrow);
     arcMesh.castShadow = arcMesh.receiveShadow = false;
-    const tip = add(new THREE.ConeGeometry(.045, .11, 8), "silver", [side * -.06, Math.cos(endAngle) * .32, Math.sin(endAngle) * .32], arrow);
+    const tip = add(new THREE.ConeGeometry(.045, .11, 8), "arrow", [side * -.06, Math.cos(endAngle) * .32, Math.sin(endAngle) * .32], arrow);
     tip.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -Math.sin(endAngle), Math.cos(endAngle)));
     tip.castShadow = tip.receiveShadow = false;
     arrow.visible = false; rotationArrows.push(arrow);
@@ -142,7 +142,7 @@ export function createController() {
   const led = box([.05, .02, .07], "red", [.2, .08, .27], board);
   // The right grip's inner end faces the opposite handle (negative local X).
   const boost = cyl(.115, .065, "red", [-.94, 2.55, 0], levers[1], "boost"); boost.rotation.z = Math.PI / 2;
-  wire([[2.04, .88, .18], [2.04, .93, .5], [2.04, .93, .94], [1.53, .9, .94], [1.08, .65, .94], [.7, .35, .74], [.37, .48, .35]], "black");
+  signalPaths.push(wire([[2.04, .88, .18], [2.04, .93, .5], [2.04, .93, .94], [1.53, .9, .94], [1.08, .65, .94], [.7, .35, .74], [.37, .48, .35]], "black").geometry.parameters.path);
   // Visible fasteners on the top lid.
   for (const x of [-2.83, 2.83]) for (const z of [-.84, .84]) cyl(.045, .015, "metal", [x, .085, z], roof);
   return { root, shell, frontPanel, frontPanelRest, roof, roofRest: roof.position.clone(), picks, levers, sensors, couplings, signalPaths, axleRigs, rotationArrows, boost, board, led, materials: mats };

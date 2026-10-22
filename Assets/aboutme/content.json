@@ -2,6 +2,13 @@
     "en":  {
                "title1":  "Antoine de Seguins",
                "title2":  "Game Designer & QA Analyst",
-               "texte":  ""
+               "tagline":  "",
+               "texte":  "",
+               "photo":  "",
+               "links":  [
+                             { "label": "LinkedIn", "url": "" },
+                             { "label": "Email", "url": "" },
+                             { "label": "Steam", "url": "" }
+                         ]
            }
 }

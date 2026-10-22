@@ -62,6 +62,16 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outlin
 .resume-copy { white-space: nowrap; }
 .resume-copy strong { font-weight: 600; }
 .resume-icon { display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid var(--line); border-radius: 50%; font-size: 14px; letter-spacing: 0; line-height: 1; }
+/* On click the arrow drops out of the circle and falls back in from the top. */
+.resume-icon { overflow: hidden; transition: scale 120ms ease; }
+.resume-arrow { display: block; }
+.resume-link:not([aria-disabled="true"]):active .resume-icon { scale: .9; }
+.resume-link.is-downloading .resume-arrow { animation: resume-arrow-drop 640ms cubic-bezier(.5, 0, .3, 1); }
+@keyframes resume-arrow-drop {
+  45% { translate: 0 20px; }
+  45.1% { translate: 0 -20px; }
+  100% { translate: 0 0; }
+}
 .project-view {
   position: relative;
   left: 50%;
@@ -383,6 +393,7 @@ img.hero-image { object-fit: cover; }
 .controller-viewer, .controller-canvas, .controller-poster { position: absolute; inset: 0; width: 100%; height: 100%; }
 .controller-poster { object-fit: contain; }
 .controller-canvas { display: block; touch-action: none; cursor: grab; opacity: 0; }
+.controller-canvas[data-hover="press"] { cursor: pointer; }
 .controller-canvas.is-grabbed { cursor: grabbing; }
 .controller-ready .controller-canvas { opacity: 1; }
 .controller-ready .controller-poster { visibility: hidden; }
@@ -421,9 +432,6 @@ img.hero-image { object-fit: cover; }
 @media (prefers-reduced-motion: reduce) {
   .controller-hotspot[aria-pressed="true"]::before, .controller-detail-connector.is-revealing path, .controller-detail.is-revealing { animation: none; }
 }
-.controller-frame:fullscreen .controller-detail { width: clamp(175px, 18%, 250px); padding: 20px 22px; }
-.controller-frame:fullscreen .controller-detail h3 { font-size: 18px; }
-.controller-frame:fullscreen .controller-detail p { font-size: 12px; }
 .controller-gesture { position: absolute; left: 18px; bottom: 16px; display: flex; align-items: center; max-width: calc(100% - 90px); min-height: var(--controller-toolbar-height); box-sizing: border-box; padding: 7px 13px; border: 1px solid #ffffff80; border-radius: 10px; background: #ffffffe0; color: #526470; backdrop-filter: blur(16px); }
 .controller-gesture-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .controller-gesture-item + .controller-gesture-item { margin-left: 16px; padding-left: 16px; border-left: 1px solid #52647026; }
@@ -434,14 +442,12 @@ img.hero-image { object-fit: cover; }
 .controller-view-actions { position: absolute; right: 17px; bottom: 16px; display: flex; gap: 9px; }
 .controller-view-actions button { display: grid; place-items: center; width: var(--controller-toolbar-height); height: var(--controller-toolbar-height); box-sizing: border-box; padding: 0; border: 1px solid #ffffff80; border-radius: 10px; background: #ffffffe0; color: #526470; }
 .controller-view-actions button svg { display: block; width: 20px; height: 20px; }
-.controller-frame:fullscreen { width: 100vw; height: 100dvh; aspect-ratio: auto; border-radius: 0; }
 .controller-unavailable .controller-overlay { display: none; }
 .controller-frame .hero-arrow { width: 44px; height: 56px; color: #536873; font-size: 38px; text-shadow: none; }
 .controller-frame :is(.controller-view-label, .controller-detail, .controller-gesture, .controller-view-actions button) { box-sizing: border-box; border: 1px solid #ffffff80; border-radius: 10px; background: #ffffffe0; color: #526470; backdrop-filter: blur(16px); box-shadow: 0 8px 28px #3346520a; }
 .controller-frame .controller-view-label { border-radius: 50%; }
 .controller-frame .controller-view-actions button { transition: background 160ms ease, box-shadow 160ms ease, opacity 160ms ease; }
-.controller-frame .controller-view-actions button:hover { background: #ffffff; box-shadow: 0 4px 16px #33465214; }
-.controller-frame .controller-view-actions button:focus-visible { outline: 2px solid #526470; outline-offset: 3px; }
+.controller-frame .controller-view-actions button:hover { background: #ffffff; box-shadow: 0 4px 16px #33465214; }.controller-frame .controller-view-actions button:focus-visible { outline: 2px solid #526470; outline-offset: 3px; }
 .controller-frame .controller-hotspot:focus-visible { outline: none; }
 .controller-error { position: absolute; bottom: 10px; left: 45px; right: 45px; color: #526267; font-size: 11px; text-align: center; }
 .controller-unavailable .controller-canvas { display: none; }
@@ -501,9 +507,8 @@ img.hero-image { object-fit: cover; }
   scroll-snap-align: start;
 }
 .gallery-thumb img { display: block; width: 100%; height: 100%; object-fit: fill; }
-.gallery-thumb::after { position: absolute; z-index: 1; inset: 0; border: 1px solid color-mix(in srgb, var(--accent) 65%, transparent); border-radius: 3px; content: ""; opacity: 0; pointer-events: none; transition: opacity 80ms ease; }
-.gallery-thumb:hover, .gallery-thumb[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
-.gallery-thumb:hover::after, .gallery-thumb[aria-pressed="true"]::after { opacity: 1; }
+/* The active thumbnail only darkens its hairline outline. */
+.gallery-thumb[aria-pressed="true"] { border-color: rgba(23, 27, 27, .55); }
 .project-copy { position: relative; isolation: isolate; max-width: 520px; padding: 0; }
 .project-copy::before { content: ""; position: absolute; z-index: -1; inset: -48px -36px; background: radial-gradient(ellipse at center, #ffffffc2 0%, #ffffffa3 42%, #ffffff47 65%, #ffffff00 80%); opacity: .7; filter: blur(16px); pointer-events: none; }
 .project-title, .about-title { --title-size: clamp(34px, 4vw, 64px); margin: 0; font-family: "Raleway", sans-serif; font-size: calc(var(--title-size) * .45); font-weight: 700; line-height: 1.02; overflow-wrap: anywhere; }
@@ -543,22 +548,44 @@ img.hero-image { object-fit: cover; }
 .project-layout .project-paragraph > .project-subtitle + .copy-rule { display: none; }
 .project-paragraph > .project-description { width: calc(100% - 17px); margin-top: 6px; margin-left: 17px; text-align: left; }
 .project-copy > .project-meta { margin-top: 14.4px; }
-
-.about-layout { position: relative; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 0; min-height: calc(100dvh - 70px - var(--dock-height) - 54px); padding: 40px 0; }
-.about-photo-placeholder { position: absolute; z-index: -1; top: -12px; bottom: 0; left: -3vw; width: 54%; background: #dedfdf; clip-path: polygon(43% 0, 100% 0, 57% 100%, 0 100%); }
-.about-photo-placeholder::after { position: absolute; inset: 0; background: linear-gradient(115deg, #ffffff20, transparent 60%); content: ""; }
-.about-title { max-width: 540px; }
-.about-copy-wrap { grid-column: 1 / -1; justify-self: center; width: 100%; max-width: 760px; padding: 0 12px; text-align: center; }
-.about-copy-wrap .about-title, .about-copy-wrap .project-description { margin-inline: auto; }
-.about-copy-wrap > .copy-rule { width: 60%; margin: 18px auto 0; }
-.about-copy-wrap .project-description { max-width: 48ch; margin-top: 24px; color: #748396; font-size: clamp(14px, 1.25vw, 20px); font-weight: 500; letter-spacing: .04em; line-height: 1.5; }
-.about-copy-wrap .about-title { max-width: none; color: #07111d; font-size: clamp(30px, 3.5vw, 58px); font-weight: 800; line-height: 1.12; }
-.about-copy-wrap .project-subtitle { margin-top: 10px; color: #748396; font-size: clamp(17px, 1.65vw, 26px); font-weight: 350; letter-spacing: .12em; }
-.about-rule { width: 48px; height: 2px; margin: 30px auto 0; background: #3269aa; }
-.about-discover { display: inline-flex; align-items: center; justify-content: center; gap: 22px; min-height: 46px; margin-top: 32px; padding: 12px 24px; border: 1px solid #171b1b33; border-radius: 5px; background: #fff; color: #171b1b; box-shadow: none; font-size: 13px; font-weight: 500; letter-spacing: .025em; cursor: pointer; transition: background 180ms ease, border-color 180ms ease; }
-.about-discover:hover { background: #f7f8f7; border-color: #171b1b80; }
-.about-discover span { font-size: 20px; font-weight: 400; line-height: 1; transition: transform 180ms ease; }
+/* Same header language as the home page: small-caps context. */
+.project-copy > .project-subtitle { margin-top: 16px; color: #748396; font-size: 12.5px; font-style: normal; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; }
+/* Section markers: flat dots in each project's colour, without the bead shading. */
+.project-layout .project-paragraph > .project-subtitle .section-dot { --dot: #9fb3c6; flex-basis: 7px; width: 7px; height: 7px; border: 0; background: var(--dot); box-shadow: none; }
+.project-layout[data-project-id="source"] .project-paragraph > .project-subtitle .section-dot { --dot: #80b5f0; background: var(--dot); box-shadow: none; }
+.project-layout[data-project-id="aeon"] .project-paragraph > .project-subtitle .section-dot { --dot: #e75835; background: var(--dot); box-shadow: none; }
+.project-layout[data-project-id="impact"] .project-paragraph > .project-subtitle .section-dot { --dot: #f50091; }
+.project-layout[data-project-id="spaceage"] .project-paragraph > .project-subtitle .section-dot { --dot: #6fb0e8; background: var(--dot); box-shadow: none; }
+.project-layout[data-project-id="arup"] .project-paragraph > .project-subtitle .section-dot { --dot: #49a868; }
+/* Tags: flat tinted chips, no outline or shadow; a deeper tint and darker text so they read clearly. */
+.project-copy > .project-meta { gap: 6px; }
+.project-copy > .project-meta span, .is-qa-project .project-copy > .project-meta span { padding: 6px 10px; border: 0; border-radius: 3px; background: #52647024; color: #384852; box-shadow: none; font-size: 10px; font-weight: 500; letter-spacing: .03em; }
+/* Home: a slanted photo panel on the left, identity and pitch on the right. */
+.about-layout { position: relative; display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: center; gap: clamp(32px, 5vw, 96px); min-height: calc(100dvh - 70px - var(--dock-height) - 54px); padding: 40px 0; }
+.about-photo { --slant: -12deg; position: relative; justify-self: stretch; height: clamp(340px, 60vh, 640px); margin: 0; }
+.about-photo-panel { position: absolute; inset: 0 9% 0 13%; overflow: hidden; border-radius: 4px; background: linear-gradient(165deg, #dfe4e7 0%, #c3ccd2 100%); box-shadow: 0 34px 60px -34px #1c232155; transform: skewX(var(--slant)); }
+/* Thin parallel accents echo the slant, offset from the panel like a print registration mark. */
+.about-photo::before, .about-photo::after { position: absolute; width: 0; border-left: 1px solid #3269aa73; content: ""; transform: skewX(var(--slant)); pointer-events: none; }
+.about-photo::before { top: 4%; bottom: 58%; left: 5%; }
+.about-photo::after { top: 52%; bottom: 6%; right: 3%; }
+.about-photo-image { position: absolute; inset: 0 -22%; display: block; width: 144%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.04); transform: skewX(calc(var(--slant) * -1)); transition: filter 700ms ease; }
+.about-photo:hover .about-photo-image { filter: grayscale(.15); }
+.about-copy-wrap { justify-self: start; width: 100%; max-width: 560px; padding: 0; text-align: left; }
+.about-copy-wrap .about-title { max-width: none; color: #07111d; font-size: clamp(34px, 4vw, 66px); font-weight: 800; line-height: 1.04; letter-spacing: -.02em; }
+.about-roles { margin: 16px 0 0; color: #748396; font-size: clamp(11px, .85vw, 14px); font-weight: 600; letter-spacing: .24em; text-transform: uppercase; }
+.about-rule { width: 48px; height: 2px; margin: 28px 0 0; background: #3269aa; }
+.about-tagline { max-width: 30ch; margin: 28px 0 0; color: #1f2a33; font-size: clamp(17px, 1.45vw, 25px); font-weight: 500; line-height: 1.4; letter-spacing: -.01em; }
+.about-bio { max-width: 52ch; margin: 14px 0 0; color: var(--body-copy); font-size: 13.5px; line-height: 1.8; }
+.about-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 30px; margin-top: 34px; }
+.about-discover { display: inline-flex; align-items: center; gap: 14px; min-height: 46px; padding: 12px 26px; border: 0; border-radius: 999px; background: #3269aa; color: #fff; box-shadow: 0 14px 26px -14px #3269aacc; font-size: 13px; font-weight: 500; letter-spacing: .03em; cursor: pointer; transition: background 180ms ease, box-shadow 180ms ease; }
+.about-discover:hover { background: #285a94; box-shadow: 0 16px 30px -14px #3269aae6; }
+.about-discover span { font-size: 18px; line-height: 1; transition: transform 180ms ease; }
 .about-discover:hover span { transform: translateX(4px); }
+.about-contacts { display: flex; gap: 22px; }
+.about-contacts > * { color: var(--ink); font-size: 11px; letter-spacing: .16em; text-decoration: none; text-transform: uppercase; }
+.about-contacts a { border-bottom: 1px solid transparent; transition: color 160ms ease, border-color 160ms ease; }
+.about-contacts a:hover { color: var(--accent); border-color: currentColor; }
+.about-contacts .is-pending { opacity: .4; cursor: default; }
 
 .project-dock { position: fixed; z-index: 5; right: 0; bottom: 0; left: 0; min-height: var(--dock-height); padding: 19px 4.5vw max(7px, env(safe-area-inset-bottom)); background: transparent; overflow: hidden; isolation: isolate; }
 .dock-inner { position: relative; display: flex; align-items: center; gap: 15px; width: min(1540px, 100%); min-height: calc(var(--dock-height) - 26px); margin: 0 auto; padding-top: 6px; }
@@ -703,10 +730,9 @@ img.hero-image { object-fit: cover; }
 
 @media (max-width: 900px) {
   .about-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; min-height: auto; padding: 24px 0 38px; }
-  .about-photo-placeholder { position: relative; z-index: 0; top: auto; bottom: auto; left: auto; width: min(420px, 85%); height: clamp(180px, 32vw, 280px); margin-inline: auto; clip-path: polygon(22% 0, 100% 0, 78% 100%, 0 100%); }
-  .about-copy-wrap { grid-column: 1; max-width: 640px; }
+  .about-photo { justify-self: center; width: min(460px, 100%); height: clamp(220px, 56vw, 360px); }
+  .about-copy-wrap { max-width: 640px; }
   .about-copy-wrap .about-title { font-size: clamp(30px, 6vw, 46px); }
-  .about-copy-wrap .project-description { white-space: normal; }
-  .about-rule { margin-top: 24px; }
-  .about-discover { margin-top: 26px; }
+  .about-rule, .about-tagline { margin-top: 22px; }
+  .about-actions { margin-top: 26px; }
 }

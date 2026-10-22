@@ -1,8 +1,9 @@
 import * as THREE from "../../vendor/three.module.js";
-import { createController } from "./controller-model.js?v=12";
+import { createController } from "./controller-model.js?v=14";
 import { createControllerStudio } from "./controller-studio.js";
 import { createControllerSignal } from "./controller-signal.js";
-import { attachControllerAnnotations } from "./controller-annotations.js?v=19";
+import { createControllerDemo } from "./controller-demo.js?v=2";
+import { attachControllerAnnotations } from "./controller-annotations.js?v=20";
 
 export async function enableController(frame) {
   if (!frame.isConnected || frame.closest(".page-outgoing, .page-drag-preview")) return;
@@ -69,7 +70,7 @@ export async function enableController(frame) {
     arduino: highlightGroup([model.board]),
     potentiometers: highlightGroup([model.sensors[0], model.couplings[0]]),
     potentiometerRight: highlightGroup([model.sensors[1], model.couplings[1]]),
-    cover: { materials: coverMaterials, value: 0 },
+    cover: { materials: [coverMaterial], value: 0 },
   };
   const target = new THREE.Vector3(0, 1.45, 0);
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
@@ -80,17 +81,21 @@ export async function enableController(frame) {
   let hoveredPart = null, selectedPart = null;
   let disposed = false, visible = true, raf = null, previousTime = null;
   const signal = createControllerSignal(model);
+  const demo = createControllerDemo();
   const angles = [0, 0], desired = [0, 0];
   const annotations = attachControllerAnnotations(frame, model, camera, {
     toggleOpen: () => setOpen(!opened),
     highlight: id => { hoveredPart = id; wake(); },
     select: part => {
+      demo.select(part);
       if (part === "sensors" || part === "sensorsRight") signal.play(part === "sensors" ? 0 : 1);
+      else if (part === "boost" && opened && removal > .85) signal.play(2);
       else signal.stop();
       selectedPart = { lever0: "left", lever1: "right", boost: "boost", sensors: "potentiometers", sensorsRight: "potentiometerRight", arduino: "arduino" }[part] || null;
       selectPart(part);
     },
     reset: () => {
+      demo.cancel();
       if (drag) release({ pointerId: drag.id }, true);
       azimuth = -.5; elevation = .25; distance = 11.2;
       setLever(0, 0); setLever(1, 0); boost(false); setOpen(false); selectPart("levers");
@@ -126,6 +131,8 @@ export async function enableController(frame) {
     previousTime = time;
     const factor = reduced.matches ? 1 : 1 - Math.exp(-dt * 9);
     const hoverTarget = hoveredPart === "body" ? (opened && removal > .85 ? "arduino" : "cover") : hoveredPart;
+    const demonstration = demo.update(dt, reduced.matches);
+    if (selectedPart === "boost" && opened && removal > .85 && !signal.active && !reduced.matches) signal.play(2);
     const arrivalFlash = signal.update(dt, opened && removal > .85, reduced.matches);
     let highlightMoving = false;
     for (const [id, group] of Object.entries(highlights)) {
@@ -139,6 +146,8 @@ export async function enableController(frame) {
         group.value * .48 + (id === "arduino" ? arrivalFlash * .08 : 0),
       );
     }
+    model.led.material.emissive.r += demonstration.led + arrivalFlash * .6;
+    model.led.material.emissive.g += demonstration.led * .3 + arrivalFlash * .2;
     model.frontPanel.position.copy(model.frontPanelRest);
     const destination = opened ? 1 : 0;
     removal = reduced.matches ? destination : THREE.MathUtils.clamp(removal + (opened ? 1 : -1) * dt / .42, 0, 1);
@@ -155,14 +164,15 @@ export async function enableController(frame) {
     }
     for (let i = 0; i < 2; i++) {
       angles[i] += (desired[i] - angles[i]) * factor;
-      model.levers[i].rotation.x = model.axleRigs[i].rotation.x = angles[i];
-      model.rotationArrows[i].rotation.x = angles[i];
+      const angle = THREE.MathUtils.clamp(angles[i], -Math.PI / 6, Math.PI / 6);
+      model.levers[i].rotation.x = model.axleRigs[i].rotation.x = angle;
+      model.rotationArrows[i].rotation.x = angle;
       const moving = Math.abs(desired[i] - angles[i]) > .001;
       model.rotationArrows[i].visible = opened && removal > .85 && moving;
     }
-    model.boost.position.x = boosted ? -.915 : -.94;
+    model.boost.position.x = -.94 + .025 * (boosted ? 1 : demonstration.press);
     draw();
-    if (signal.active || removal !== destination || highlightMoving || angles.some((angle, i) => Math.abs(desired[i] - angle) > .001)) raf = requestAnimationFrame(tick);
+    if (demo.active || signal.active || removal !== destination || highlightMoving || angles.some((angle, i) => Math.abs(desired[i] - angle) > .001)) raf = requestAnimationFrame(tick);
     else previousTime = null;
   }
   function wake() { if (!disposed && visible && !document.hidden && raf === null) { previousTime = null; raf = requestAnimationFrame(tick); } }
@@ -194,6 +204,8 @@ export async function enableController(frame) {
     event.preventDefault(); event.stopPropagation(); canvas.focus({ preventScroll: true });
     const part = ray(event)?.object.userData.part;
     const index = part === "lever0" ? 0 : part === "lever1" ? 1 : null;
+    if (index !== null) angles[index] = desired[index] = model.levers[index].rotation.x;
+    if (index !== null || part === "boost") demo.cancel();
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, part, index, startAngle: index !== null ? THREE.MathUtils.radToDeg(desired[index]) : 0, moved: false };
     canvas.setPointerCapture(event.pointerId); canvas.classList.add("is-grabbed");
     if (part === "boost") { selectPart("boost"); boost(true); }
@@ -206,6 +218,19 @@ export async function enableController(frame) {
     else if (drag.part !== "boost") { azimuth -= dx * .008; elevation = THREE.MathUtils.clamp(elevation + dy * .007, -.12, 1.1); wake(); }
     drag.x = event.clientX; drag.y = event.clientY;
   }, events);
+  // Hovering a part that can be handled lights it; clickable parts also get a pointer cursor.
+  const handles = { lever0: ["left", ""], lever1: ["right", ""], boost: ["boost", "press"], cover: ["cover", "press"], arduino: ["arduino", "press"] };
+  function hoverCanvas(part) {
+    const [id, kind] = handles[part] ?? [null, ""];
+    canvas.dataset.hover = kind;
+    if (id === hoveredPart) return;
+    hoveredPart = id; wake();
+  }
+  canvas.addEventListener("pointermove", event => {
+    if (drag || event.pointerType === "touch") return;
+    hoverCanvas(ray(event)?.object.userData.part);
+  }, events);
+  canvas.addEventListener("pointerleave", () => { if (!drag) hoverCanvas(null); }, events);
   canvas.addEventListener("pointerup", e => release(e), events);
   canvas.addEventListener("pointercancel", e => release(e, true), events);
   canvas.addEventListener("lostpointercapture", e => release(e, true), events);

@@ -64,6 +64,15 @@ const orderedProjects = [
 const projectView = document.querySelector("#project-view");
 const projectRail = document.querySelector("#project-rail");
 const aboutLink = document.querySelector("#about-link");
+const resumeLink = document.querySelector(".resume-link");
+resumeLink.addEventListener("click", () => {
+  if (resumeLink.getAttribute("aria-disabled") === "true") return;
+  // Restart the drop even when clicked again mid-animation.
+  resumeLink.classList.remove("is-downloading");
+  void resumeLink.offsetWidth;
+  resumeLink.classList.add("is-downloading");
+});
+resumeLink.addEventListener("animationend", () => resumeLink.classList.remove("is-downloading"));
 document.querySelector(".project-dock").addEventListener("contextmenu", (event) => {
   if (event.target instanceof Element && event.target.closest(".project-link img, svg.dock-logo, .about-preview")) {
     event.preventDefault();
@@ -124,10 +133,7 @@ function renderHeroMarkup(project, imageIndex) {
             <span class="controller-gesture-item"><svg viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="24" rx="7"/><path d="M5 11h14M12 2v9M12 5v3"/></svg><span><strong>Drag</strong><span>to rotate</span></span></span>
             <span class="controller-gesture-item"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="m10 10 3 15 3-6 6-3-12-6Z M10 2v3M2 10h3M4 4l2 2M16 4l-2 2M4 16l2-2"/></svg><span><strong>Click a point</strong><span>to explore</span></span></span>
           </div>
-          <div class="controller-view-actions">
-            <button type="button" data-viewer-action="reset" aria-label="Reset controller view" title="Reset view"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 8a6 6 0 1 1 .5 5M4 3v5h5"/></svg></button>
-            <button type="button" data-viewer-action="fullscreen" aria-label="View controller in fullscreen" title="Fullscreen"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 7V3h4m6 0h4v4m0 6v4h-4m-6 0H3v-4"/></svg></button>
-          </div>
+          <div class="controller-view-actions">            <button type="button" data-viewer-action="reset" aria-label="Reset controller view" title="Reset view"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 8a6 6 0 1 1 .5 5M4 3v5h5"/></svg></button>          </div>
         </div>
         <p class="controller-error" hidden>The 3D viewer is not available in this browser.</p>
       </div>
@@ -643,7 +649,8 @@ function enableHeroAutoplay(frame) {
       interactionPaused = true;
       clearTimer();
     };
-    for (const type of ["pointerdown", "click", "wheel", "keydown"]) {
+    // Hovering the viewer already counts as interest, so the slideshow stops before any click.
+    for (const type of ["pointerover", "pointerdown", "click", "wheel", "keydown"]) {
       frame.addEventListener(type, pauseForInteraction, { capture: true, passive: true });
     }
   }
@@ -760,7 +767,7 @@ function enableHeroDrag(frame) {
     track.append(frame.querySelector(".controller-viewer"));
     let disposed = false;
     frame.addEventListener("hero-dispose", () => { disposed = true; }, { once: true });
-    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=40", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=56", document.baseURI).href)
       .then(module => { if (!disposed && frame.isConnected) return module.enableController(frame); })
       .catch(error => {
         if (!disposed) { frame.querySelector(".controller-error").hidden = false; frame.classList.add("controller-unavailable"); }
@@ -1034,10 +1041,25 @@ function projectPageMarkup(project, imageIndex) {
 function aboutPageMarkup() {
   return `
     <div class="about-layout">
+      <figure class="about-photo">
+        <span class="about-photo-panel">
+          ${aboutMedia.photo
+            ? `<img class="about-photo-image" src="${escapeText(aboutMedia.photo)}" alt="${escapeText(aboutMedia.title1)}" />`
+            : `<span class="about-photo-image is-placeholder" aria-hidden="true"></span>`}
+        </span>
+      </figure>
       <div class="about-copy-wrap project-copy">
         <h1 class="about-title">${escapeText(aboutMedia.title1)}</h1>
-        ${aboutMedia.title2 ? `<p class="project-subtitle">${escapeText(aboutMedia.title2)}</p>` : ""}
-        ${aboutMedia.texte ? `<p class="project-description">${escapeText(aboutMedia.texte)}</p>` : ""}
+        ${aboutMedia.title2 ? `<p class="about-roles">${escapeText(aboutMedia.title2)}</p>` : ""}
+        <div class="about-rule" aria-hidden="true"></div>
+        ${aboutMedia.tagline ? `<p class="about-tagline">${escapeText(aboutMedia.tagline)}</p>` : ""}
+        ${aboutMedia.texte ? `<p class="about-bio">${escapeText(aboutMedia.texte)}</p>` : ""}
+        <div class="about-actions">
+          <button class="about-discover" type="button">Discover my work <span aria-hidden="true">→</span></button>
+          ${(aboutMedia.links || []).length ? `<nav class="about-contacts" aria-label="Contact">${aboutMedia.links.map((link) => link.url
+            ? `<a href="${escapeText(link.url)}" target="_blank" rel="noopener">${escapeText(link.label)}</a>`
+            : `<span class="is-pending" title="Link to add">${escapeText(link.label)}</span>`).join("")}</nav>` : ""}
+        </div>
       </div>
     </div>
   `;

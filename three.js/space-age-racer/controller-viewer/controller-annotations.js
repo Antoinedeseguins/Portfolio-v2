@@ -29,12 +29,6 @@ export function attachControllerAnnotations(frame, model, camera, actions, event
     }
   }
   frame.querySelector('[data-viewer-action="reset"]').addEventListener("click", () => { select(null); actions.reset(); }, events);
-  const fullscreen = frame.querySelector('[data-viewer-action="fullscreen"]');
-  if (!frame.requestFullscreen) fullscreen.hidden = true;
-  fullscreen.addEventListener("click", () => {
-    const operation = document.fullscreenElement === frame ? document.exitFullscreen() : frame.requestFullscreen();
-    operation.catch(error => console.warn("Fullscreen unavailable", error));
-  }, events);
   for (const [id, point] of Object.entries(points)) {
     point.addEventListener("pointerenter", event => { if (event.pointerType !== "touch") actions.highlight(id); }, events);
     point.addEventListener("pointerleave", () => actions.highlight(null), events);
