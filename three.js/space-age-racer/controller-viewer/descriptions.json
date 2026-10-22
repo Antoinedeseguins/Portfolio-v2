@@ -1,0 +1,30 @@
+{
+  "overview": {
+    "title": "The custom controller",
+    "description": "A custom built controller for Space Age Racer."
+  },
+  "left": {
+    "title": "Left lever",
+    "description": "Controls the left engine independently. Move both levers together to accelerate, or offset them to steer the pod racer."
+  },
+  "right": {
+    "title": "Right lever",
+    "description": "Controls the right engine independently. Steering comes from the difference in power between the two engines, just like a pod racer."
+  },
+  "boost": {
+    "title": "Boost button",
+    "description": "Built into the right grip, this button activates the in-game boost without taking your hand off the controls."
+  },
+  "arduino": {
+    "title": "Arduino Uno",
+    "description": "The link between the controller and the game. It reads the lever positions and boost button, then sends those inputs to the game."
+  },
+  "potentiometers": {
+    "title": "Left potentiometer",
+    "description": "Converts the left lever's rotation into an electrical signal. The Arduino uses this reading to set the left engine's power."
+  },
+  "potentiometerRight": {
+    "title": "Right potentiometer",
+    "description": "Converts the right lever's rotation into an electrical signal. The Arduino uses this reading to set the right engine's power."
+  }
+}

@@ -1,36 +1,33 @@
-import * as THREE from "../vendor/three.module.js";
+import * as THREE from "../../vendor/three.module.js";
 
-export function attachControllerAnnotations(frame, model, camera, actions, events) {
+export function attachControllerAnnotations(frame, model, camera, actions, events, descriptions) {
   const viewer = frame.querySelector(".controller-viewer");
-  const openButton = frame.querySelector('[data-viewer-action="open"]');
   const panel = frame.querySelector(".controller-detail");
   const connector = frame.querySelector(".controller-detail-connector");
   const points = Object.fromEntries([...frame.querySelectorAll("[data-hotspot]")].map(button => [button.dataset.hotspot, button]));
-  const copy = {
-    left: ["Left lever", "The lever angle sets the left engine’s power. The difference in angle between the two levers steers the pod racer."],
-    right: ["Right lever", "The lever angle sets the right engine’s power. The difference in angle between the two levers steers the pod racer."],
-    boost: ["Boost button", "Pressing the button sends a signal to the Arduino, which triggers the pod racer’s boost in the game."],
-    arduino: ["Arduino Uno", "The Arduino reads the physical controls and passes their inputs to the game."],
-    potentiometers: ["Left potentiometer", "Tilting the left handle rotates this potentiometer’s shaft. The Arduino reads its angle to determine the left engine’s power."],
-    potentiometerRight: ["Right potentiometer", "Tilting the right handle rotates this potentiometer’s shaft. The Arduino reads its angle to determine the right engine’s power."],
-  };
   let active = null, lastOpened = null;
   function renderDetail() {
-    if (!active) return;
-    const [title, text] = copy[active === "body" ? "arduino" : active];
+    const { title, description } = descriptions[active === "body" ? "arduino" : active || "overview"];
+    panel.hidden = false;
     panel.querySelector("h3").textContent = title;
-    panel.querySelector(".controller-detail-copy p").textContent = text;
+    panel.querySelector(".controller-detail-copy p").textContent = description;
   }
   function select(id) {
     if (id === active) return;
     active = id;
-    panel.hidden = !id;
     for (const [key, button] of Object.entries(points)) button.setAttribute("aria-pressed", String(key === id));
     if (id) actions.select(id === "left" ? "lever0" : id === "right" ? "lever1" : id === "boost" ? "boost" : id === "potentiometers" ? "sensors" : id === "potentiometerRight" ? "sensorsRight" : lastOpened ? "arduino" : "levers");
     else actions.select("levers");
     renderDetail();
+    panel.classList.remove("is-revealing");
+    connector.classList.remove("is-revealing");
+    if (id) {
+      // Restart the reveal when switching directly between component points.
+      void panel.offsetWidth;
+      panel.classList.add("is-revealing");
+      connector.classList.add("is-revealing");
+    }
   }
-  openButton.addEventListener("click", actions.toggleOpen, events);
   frame.querySelector('[data-viewer-action="reset"]').addEventListener("click", () => { select(null); actions.reset(); }, events);
   const fullscreen = frame.querySelector('[data-viewer-action="fullscreen"]');
   if (!frame.requestFullscreen) fullscreen.hidden = true;
@@ -44,24 +41,22 @@ export function attachControllerAnnotations(frame, model, camera, actions, event
     point.addEventListener("focus", () => actions.highlight(id), events);
     point.addEventListener("blur", () => actions.highlight(null), events);
     point.addEventListener("click", () => {
-      if (id === "body" && !lastOpened) { select(null); actions.toggleOpen(); }
+      if (id === "body" && !lastOpened) actions.toggleOpen();
       else select(id);
     }, events);
   }
+  renderDetail();
   return {
     update(opened) {
       if (opened !== lastOpened) {
         lastOpened = opened;
         viewer.dataset.coverOpen = String(opened);
-        openButton.setAttribute("aria-pressed", String(opened));
-        openButton.firstChild.textContent = "Replace cover ";
         points.body.setAttribute("aria-label", opened ? "About the Arduino Uno" : "Remove front cover");
         if (!opened && ["potentiometers", "potentiometerRight", "body"].includes(active)) {
-          active = null; panel.hidden = true;
+          active = null;
           actions.select("levers");
           points.potentiometers.setAttribute("aria-pressed", "false"); points.potentiometerRight.setAttribute("aria-pressed", "false"); points.body.setAttribute("aria-pressed", "false");
         }
-        openButton.hidden = !opened;
         renderDetail();
       }
       const rect = viewer.getBoundingClientRect();
@@ -82,13 +77,15 @@ export function attachControllerAnnotations(frame, model, camera, actions, event
       connector.style.display = selectedPoint && !selectedPoint.hidden ? "" : "none";
       if (selectedPoint && !selectedPoint.hidden) {
         const x = parseFloat(selectedPoint.style.left), y = parseFloat(selectedPoint.style.top);
-        const box = panel.getBoundingClientRect();
-        const left = box.left - rect.left, right = box.right - rect.left;
-        const top = box.top - rect.top, bottom = box.bottom - rect.top;
+        // Use the final layout position, independent of the reveal's translation.
+        const left = panel.offsetLeft, right = left + panel.offsetWidth;
+        const top = panel.offsetTop, bottom = top + panel.offsetHeight;
         const edgeX = x < left ? left : x > right ? right : THREE.MathUtils.clamp(x, left + 12, right - 12);
         const edgeY = x < left || x > right ? THREE.MathUtils.clamp(y, top + 20, bottom - 20) : y > bottom ? bottom : top;
         const bendX = edgeX + (x < edgeX ? -12 : 12);
-        connector.querySelector("path").setAttribute("d", `M${x.toFixed(1)} ${y.toFixed(1)} L${bendX.toFixed(1)} ${edgeY.toFixed(1)} L${edgeX.toFixed(1)} ${edgeY.toFixed(1)}`);
+        const path = connector.querySelector("path");
+        path.setAttribute("pathLength", "1");
+        path.setAttribute("d", `M${x.toFixed(1)} ${y.toFixed(1)} L${bendX.toFixed(1)} ${edgeY.toFixed(1)} L${edgeX.toFixed(1)} ${edgeY.toFixed(1)}`);
       }
     },
   };

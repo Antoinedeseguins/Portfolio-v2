@@ -15,7 +15,7 @@ const projects = [
   { id: "spaceage", folder: "spaceageracer/img", video: "Assets/spaceageracer/spaceage.mp4", images: ["spaceage1.webp", "spaceage2.webp", "spaceage3.webp", "spaceage4.webp", "spaceage5.webp", "spaceage6.webp", "spaceage7.webp", "spaceage8.webp", "spaceage9.webp"] },
   { id: "vahana", folder: "vahana/img", images: ["vahana1.webp", "vahana2.webp", "vahana3.webp"] },
 ];
-const primaryProjectOrder = ["spaceage", "aeon", "age", "necromunda", "impact", "vahana", "proteo", "source", "arup"];
+const primaryProjectOrder = ["spaceage", "aeon", "age", "necromunda", "impact", "source", "proteo", "vahana", "arup"];
 const transparentDockLogos = {
   spaceage: "Assets/spaceageracer/spaceage-logo.png?v=20261014-2",
   aeon: "Assets/aeonmustdie/aeon-logo.png",
@@ -96,7 +96,7 @@ function adjacentMediaIndex(project, currentIndex, direction) {
 }
 
 function mediaPreview(project, index) {
-  if (index === -2 && project.id === "spaceage") return "Assets/spaceageracer/controller/1.png";
+  if (index === -2 && project.id === "spaceage") return "Assets/spaceageracer/img/viewer-poster.png";
   return index === -1 ? videoPoster(project) : imagePath(project, project.images[index]);
 }
 
@@ -104,10 +104,10 @@ function renderHeroMarkup(project, imageIndex) {
   if (project.id === "spaceage" && imageIndex === -2) return `
     <div class="hero-frame controller-frame">
       <div class="controller-viewer">
-        <img class="controller-poster" src="Assets/spaceageracer/controller/1.png" alt="Space Age Racer dual-lever controller" />
+        <img class="controller-poster" src="Assets/spaceageracer/img/viewer-poster.png" alt="Space Age Racer dual-lever controller" />
         <canvas class="controller-canvas" tabindex="0" aria-label="3D controller: drag to rotate, arrow keys to orbit, plus and minus to zoom"></canvas>
         <div class="controller-overlay">
-          <span class="controller-view-label" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9M8 5.3l8 4.5"/></svg></span>
+          <span class="controller-view-label" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9" /></svg></span>
           <svg class="controller-detail-connector" aria-hidden="true" style="display:none"><path/></svg>
           <div class="controller-hotspots" role="group" aria-label="Explore controller components">
             <button class="controller-hotspot" type="button" data-hotspot="left" aria-label="About the left lever" aria-pressed="false" aria-controls="controller-detail" hidden></button>
@@ -120,9 +120,11 @@ function renderHeroMarkup(project, imageIndex) {
           <aside class="controller-detail" id="controller-detail" aria-label="Selected component" hidden>
             <div class="controller-detail-copy" aria-live="polite" aria-atomic="true"><h3></h3><p></p></div>
           </aside>
-          <span class="controller-gesture" aria-hidden="true">Drag to rotate <i>·</i> Click a point to explore</span>
+          <div class="controller-gesture" aria-hidden="true">
+            <span class="controller-gesture-item"><svg viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="24" rx="7"/><path d="M5 11h14M12 2v9M12 5v3"/></svg><span><strong>Drag</strong><span>to rotate</span></span></span>
+            <span class="controller-gesture-item"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="m10 10 3 15 3-6 6-3-12-6Z M10 2v3M2 10h3M4 4l2 2M16 4l-2 2M4 16l2-2"/></svg><span><strong>Click a point</strong><span>to explore</span></span></span>
+          </div>
           <div class="controller-view-actions">
-            <button class="controller-replace" type="button" data-viewer-action="open" aria-pressed="false" hidden>Replace cover <span aria-hidden="true">↗</span></button>
             <button type="button" data-viewer-action="reset" aria-label="Reset controller view" title="Reset view"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 8a6 6 0 1 1 .5 5M4 3v5h5"/></svg></button>
             <button type="button" data-viewer-action="fullscreen" aria-label="View controller in fullscreen" title="Fullscreen"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 7V3h4m6 0h4v4m0 6v4h-4m-6 0H3v-4"/></svg></button>
           </div>
@@ -474,8 +476,8 @@ function renderDockImage(project) {
 
 function renderProjectRail() {
   projectRail.style.setProperty("--visible-project-count", Math.min(9, orderedProjects.length));
-  projectRail.innerHTML = orderedProjects.map((project, index) => `
-    <button class="project-link" type="button" style="--loop-spacing-offset: ${index * 30 / orderedProjects.length}px" data-project="${project.id}" aria-label="Ouvrir ${project.title}" aria-current="${project.id === activeProjectId ? "page" : "false"}">
+  projectRail.innerHTML = orderedProjects.map((project) => `
+    <button class="project-link" type="button" data-project="${project.id}" aria-label="Ouvrir ${project.title}" aria-current="${project.id === activeProjectId ? "page" : "false"}">
       ${renderDockImage(project)}
     </button>
   `).join("");
@@ -605,13 +607,14 @@ function enableHeroAutoplay(frame) {
   const video = frame.querySelector("video");
   let timer = null;
   let disposed = false;
+  let interactionPaused = false;
   const clearTimer = () => {
     window.clearTimeout(timer);
     timer = null;
   };
   const advance = () => {
     clearTimer();
-    if (disposed || !frame.isConnected || document.hidden || !project.images.length) return;
+    if (disposed || interactionPaused || !frame.isConnected || document.hidden || !project.images.length) return;
     if (video && !video.ended && !video.error) return;
     if (mediaDragActive || pageDrag || projectView.querySelector(".page-outgoing")) {
       timer = window.setTimeout(advance, 250);
@@ -625,7 +628,7 @@ function enableHeroAutoplay(frame) {
   };
   const schedule = () => {
     clearTimer();
-    if (disposed || document.hidden) return;
+    if (disposed || interactionPaused || document.hidden) return;
     if (video) {
       if (video.ended) advance();
     } else if (project.images.length > 1) {
@@ -633,6 +636,17 @@ function enableHeroAutoplay(frame) {
     }
   };
   video?.addEventListener("ended", advance);
+
+  if (frame.classList.contains("controller-frame")) {
+    const pauseForInteraction = (event) => {
+      if (!event.target.closest(".controller-viewer") || frame.classList.contains("is-settling")) return;
+      interactionPaused = true;
+      clearTimer();
+    };
+    for (const type of ["pointerdown", "click", "wheel", "keydown"]) {
+      frame.addEventListener(type, pauseForInteraction, { capture: true, passive: true });
+    }
+  }
 
   document.addEventListener("visibilitychange", schedule);
   frame.addEventListener("pointerdown", clearTimer);
@@ -738,23 +752,22 @@ function enableToy(frame) {
 }
 
 function enableHeroDrag(frame) {
-  if (frame.classList.contains("controller-frame")) {
+  const isController = frame.classList.contains("controller-frame");
+  if (isController) {
+    const track = document.createElement("div");
+    track.className = "hero-track";
+    frame.querySelector(".controller-viewer").before(track);
+    track.append(frame.querySelector(".controller-viewer"));
     let disposed = false;
     frame.addEventListener("hero-dispose", () => { disposed = true; }, { once: true });
-    frame.addEventListener("hero-navigate", event => {
-      if (disposed || projectView.querySelector(".page-outgoing")) return;
-      const project = projects.find(item => item.id === activeProjectId);
-      if (project) selectMediaImage(project, event.detail.imageIndex ?? adjacentMediaIndex(project, -2, event.detail.direction));
-    });
-    import(new URL("three.js/space-age-racer/controller-viewer.js?v=40", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=40", document.baseURI).href)
       .then(module => { if (!disposed && frame.isConnected) return module.enableController(frame); })
       .catch(error => {
         if (!disposed) { frame.querySelector(".controller-error").hidden = false; frame.classList.add("controller-unavailable"); }
         console.error("Controller 3D could not be loaded", error);
       });
-    return;
   }
-  const image = frame.querySelector(".hero-image");
+  const image = frame.querySelector(isController ? ".controller-canvas" : ".hero-image");
   const track = frame.querySelector(".hero-track");
   if (image.tagName === "VIDEO") {
     const supportsHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
@@ -824,6 +837,7 @@ function enableHeroDrag(frame) {
     return preview;
   });
   frame.addEventListener("pointerdown", (event) => {
+    if (isController) return;
     if (event.pointerType !== "mouse" || event.button !== 0 || event.target.closest("button")) return;
     if (image.tagName === "VIDEO" && event.clientY > frame.getBoundingClientRect().bottom - 48) return;
     if (settling || projectView.querySelector(".page-outgoing")) return;
@@ -949,7 +963,7 @@ function renderMediaMarkup(project, imageIndex) {
         <button class="gallery-arrow" type="button" data-gallery-direction="-1" aria-label="Images précédentes" title="Images précédentes"><span aria-hidden="true">‹</span></button>
         <div class="gallery" aria-label="Images de ${project.title}" tabindex="0">
           ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Afficher la vidéo de ${project.title}" aria-pressed="${imageIndex === -1}"><img src="${imagePath(project, project.images[0])}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
-          ${project.id === "spaceage" ? `<button class="gallery-thumb controller-thumb" type="button" data-image="-2" aria-label="Explore the controller in 3D" aria-pressed="${imageIndex === -2}"><img src="Assets/spaceageracer/controller/1.png" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
+          ${project.id === "spaceage" ? `<button class="gallery-thumb controller-thumb" type="button" data-image="-2" aria-label="Explore the controller in 3D" aria-pressed="${imageIndex === -2}"><img src="Assets/spaceageracer/img/spaceage-minia3d.png" alt="" /><span class="controller-thumb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9" /></svg></span></button>` : ""}
           ${project.images.map((image, index) => project.video && index === 0 ? "" : `
             <button class="gallery-thumb" type="button" data-image="${index}" aria-label="Afficher l’image ${index + 1} de ${project.title}" aria-pressed="${index === imageIndex}">
               <img src="${imagePath(project, image)}" alt="" loading="${index < 5 ? "eager" : "lazy"}" />
@@ -1060,7 +1074,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
   if (racerPlay && supportsMiniGames())
-    import(new URL("three.js/space-age-racer/space-racer.js?v=71", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/mini-game/space-racer.js?v=71", document.baseURI).href)
       .then(module => { if (racerPlay.isConnected && !racerPlay.closest(".page-outgoing")) module.enableRacer(racerPlay); })
       .catch(error => console.error("Racer interaction could not be loaded", error));
   const necroPlay = projectView.querySelector(".necro-play");

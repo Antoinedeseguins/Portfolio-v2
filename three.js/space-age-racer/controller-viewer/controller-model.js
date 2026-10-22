@@ -1,4 +1,4 @@
-import * as THREE from "../vendor/three.module.js";
+import * as THREE from "../../vendor/three.module.js";
 
 // Proportions reconstructed from controller/1.webp and the four prototype photos.
 // Interior is an explanatory model, not a dimensionally exact CAD reconstruction.
@@ -86,12 +86,29 @@ export function createController() {
     box([.6, .13, 2.17], "shell", [side * 2.73, 0, 0], roof, "structure");
     for (const z of [-.88, .88]) box([.63, .13, .4], "shell", [side * 2.02, 0, z], roof, "structure");
   }
-  const levers = [], sensors = [], couplings = [], leverWires = [];
+  const levers = [], sensors = [], couplings = [], leverWires = [], signalPaths = [], axleRigs = [], rotationArrows = [];
   for (const [index, side] of [-1, 1].entries()) {
     const x = side * 2.04;
     box([1.4, .44, 1.55], "wood", [x, .44, 0], root, "structure");
     for (const z of [-.66, .66]) box([1.5, .18, .15], "endgrain", [x, .74, z], root, "structure");
-    const axle = cyl(.067, 1.85, "silver", [x, .72, 0], root, "sensors"); axle.rotation.z = Math.PI / 2;
+    const axleRig = new THREE.Group(); axleRig.position.set(x, .72, 0); root.add(axleRig); axleRigs.push(axleRig);
+    const axle = cyl(.067, 1.85, "silver", [0, 0, 0], axleRig, "sensors"); axle.rotation.z = Math.PI / 2;
+    box([.45, .012, .022], "black", [side * -.68, .067, 0], axleRig);
+    box([.012, .1, .022], "black", [side * -.93, 0, 0], axleRig);
+    const arrow = new THREE.Group(); arrow.position.set(side * 1.06, .72, 0); root.add(arrow);
+    const arcPoints = [];
+    const endAngle = Math.PI * .65;
+    for (let i = 0; i <= 40; i++) {
+      const a = -Math.PI * .8 + (endAngle + Math.PI * .8) * i / 40;
+      arcPoints.push(new THREE.Vector3(side * -.06, Math.cos(a) * .32, Math.sin(a) * .32));
+    }
+    const arc = new THREE.CatmullRomCurve3(arcPoints);
+    const arcMesh = add(new THREE.TubeGeometry(arc, 40, .012, 5, false), "silver", [0, 0, 0], arrow);
+    arcMesh.castShadow = arcMesh.receiveShadow = false;
+    const tip = add(new THREE.ConeGeometry(.045, .11, 8), "silver", [side * -.06, Math.cos(endAngle) * .32, Math.sin(endAngle) * .32], arrow);
+    tip.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -Math.sin(endAngle), Math.cos(endAngle)));
+    tip.castShadow = tip.receiveShadow = false;
+    arrow.visible = false; rotationArrows.push(arrow);
     const bearing = rounded(.46, .37, .4, .04, "trim", [x, .74, 0], root, "sensors");
     for (const z of [-.3, .3]) cyl(.046, .035, "silver", [x, .68, z], root);
     const sensor = cyl(.17, .17, "metal", [side * 2.84, .72, 0], root, "sensors"); sensor.rotation.z = Math.PI / 2;
@@ -108,7 +125,7 @@ export function createController() {
     levers.push(pivot);
     // Route around the front/back of the wooden supports, then into the centre.
     wire([[side * 2.84, .78, -.1], [side * 2.85, .76, -.5], [side * 2.84, .55, -.94], [side * 2.45, .34, -.94], [side * 1.65, .29, -.94], [side * 1.08, .29, -.94], [side * .68, .32, -.73], [side * .37, .48, -.25]], "wire");
-    wire([[side * 2.84, .73, .1], [side * 2.85, .71, .5], [side * 2.84, .52, .94], [side * 2.45, .31, .94], [side * 1.65, .28, .94], [side * 1.08, .28, .94], [side * .65, .32, .68], [side * .37, .48, .3]], "violet");
+    signalPaths.push(wire([[side * 2.84, .73, .1], [side * 2.85, .71, .5], [side * 2.84, .52, .94], [side * 2.45, .31, .94], [side * 1.65, .28, .94], [side * 1.08, .28, .94], [side * .65, .32, .68], [side * .37, .48, .3]], "red").geometry.parameters.path);
     leverWires.push(bearing, braceMesh);
   }
   // Uno-like board: visible layout follows the central board in the photos.
@@ -128,5 +145,5 @@ export function createController() {
   wire([[2.04, .88, .18], [2.04, .93, .5], [2.04, .93, .94], [1.53, .9, .94], [1.08, .65, .94], [.7, .35, .74], [.37, .48, .35]], "black");
   // Visible fasteners on the top lid.
   for (const x of [-2.83, 2.83]) for (const z of [-.84, .84]) cyl(.045, .015, "metal", [x, .085, z], roof);
-  return { root, shell, frontPanel, frontPanelRest, picks, levers, sensors, couplings, boost, board, led, materials: mats };
+  return { root, shell, frontPanel, frontPanelRest, roof, roofRest: roof.position.clone(), picks, levers, sensors, couplings, signalPaths, axleRigs, rotationArrows, boost, board, led, materials: mats };
 }

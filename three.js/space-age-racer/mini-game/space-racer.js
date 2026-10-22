@@ -1,7 +1,7 @@
 import { createPodracerModel } from "./podracer-model.js?v=9";
 import { createRace, stepRace } from "./space-racer-game.js?v=23";
-import { createGameScore } from "../game-score.js";
-import { createResumeLock } from "../game-resume-lock.js";
+import { createGameScore } from "../../game-score.js";
+import { createResumeLock } from "../../game-resume-lock.js";
 import { drawDesertTrack, drawDesertObstacle } from "./desert-environment.js?v=14";
 
 export function stepRacer(state, dt, steering, accelerating) {

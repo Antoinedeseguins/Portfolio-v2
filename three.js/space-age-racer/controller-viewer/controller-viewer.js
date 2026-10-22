@@ -1,9 +1,19 @@
-import * as THREE from "../vendor/three.module.js";
+import * as THREE from "../../vendor/three.module.js";
 import { createController } from "./controller-model.js?v=12";
 import { createControllerStudio } from "./controller-studio.js";
+import { createControllerSignal } from "./controller-signal.js";
 import { attachControllerAnnotations } from "./controller-annotations.js?v=19";
 
-export function enableController(frame) {
+export async function enableController(frame) {
+  if (!frame.isConnected || frame.closest(".page-outgoing, .page-drag-preview")) return;
+  const response = await fetch(new URL("./descriptions.json", import.meta.url), { cache: "no-cache" });
+  if (!response.ok) throw new Error(`Controller descriptions: HTTP ${response.status}`);
+  const descriptions = await response.json();
+  for (const key of ["overview", "left", "right", "boost", "arduino", "potentiometers", "potentiometerRight"]) {
+    if (typeof descriptions[key]?.title !== "string" || typeof descriptions[key]?.description !== "string") {
+      throw new Error(`Invalid controller description: ${key}`);
+    }
+  }
   if (!frame.isConnected || frame.closest(".page-outgoing, .page-drag-preview")) return;
   const canvas = frame.querySelector("canvas"), viewer = frame.querySelector(".controller-viewer");
   const abort = new AbortController(), events = { signal: abort.signal };
@@ -18,15 +28,26 @@ export function enableController(frame) {
   renderer.setClearColor(0x000000, 0);
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8d989e, 2.8));
-  const key = new THREE.DirectionalLight(0xfff4e4, 3.5); key.position.set(-5.5, 6, 4); scene.add(key);
+  const key = new THREE.DirectionalLight(0xfff4e4, 3.5); key.position.set(-7, 8, 7); scene.add(key);
   const fill = new THREE.DirectionalLight(0xd3e6f2, 1.7); fill.position.set(5, 3, -4); scene.add(fill);
   const camera = new THREE.PerspectiveCamera(34, 16 / 9, .1, 80);
   const model = createController(); scene.add(model.root);
   const studio = createControllerStudio(scene, renderer, key);
-  // Only the access cover is removed; the surrounding shell stays assembled.
+  // The front and top covers withdraw together to expose the mechanism.
   const coverMaterial = model.frontPanel.material.clone();
   coverMaterial.transparent = true;
   model.frontPanel.material = coverMaterial;
+  const roofMaterials = new Map();
+  model.roof.traverse(object => {
+    if (!object.isMesh) return;
+    if (!roofMaterials.has(object.material)) {
+      const material = object.material.clone();
+      material.transparent = true;
+      roofMaterials.set(object.material, material);
+    }
+    object.material = roofMaterials.get(object.material);
+  });
+  const coverMaterials = [coverMaterial, ...roofMaterials.values()];
   // Each hover target owns its materials, so lighting one part never lights another.
   const hoverMaterials = [];
   function highlightGroup(objects, exclude = null) {
@@ -48,7 +69,7 @@ export function enableController(frame) {
     arduino: highlightGroup([model.board]),
     potentiometers: highlightGroup([model.sensors[0], model.couplings[0]]),
     potentiometerRight: highlightGroup([model.sensors[1], model.couplings[1]]),
-    cover: { materials: [coverMaterial], value: 0 },
+    cover: { materials: coverMaterials, value: 0 },
   };
   const target = new THREE.Vector3(0, 1.45, 0);
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
@@ -58,11 +79,14 @@ export function enableController(frame) {
   let opened = false, removal = 0, boosted = false, drag = null;
   let hoveredPart = null, selectedPart = null;
   let disposed = false, visible = true, raf = null, previousTime = null;
+  const signal = createControllerSignal(model);
   const angles = [0, 0], desired = [0, 0];
   const annotations = attachControllerAnnotations(frame, model, camera, {
     toggleOpen: () => setOpen(!opened),
     highlight: id => { hoveredPart = id; wake(); },
     select: part => {
+      if (part === "sensors" || part === "sensorsRight") signal.play(part === "sensors" ? 0 : 1);
+      else signal.stop();
       selectedPart = { lever0: "left", lever1: "right", boost: "boost", sensors: "potentiometers", sensorsRight: "potentiometerRight", arduino: "arduino" }[part] || null;
       selectPart(part);
     },
@@ -71,7 +95,7 @@ export function enableController(frame) {
       azimuth = -.5; elevation = .25; distance = 11.2;
       setLever(0, 0); setLever(1, 0); boost(false); setOpen(false); selectPart("levers");
     },
-  }, events);
+  }, events, descriptions);
   function updateCamera() {
     const radius = distance * distanceScale;
     camera.position.set(target.x + radius * Math.sin(azimuth) * Math.cos(elevation), target.y + radius * Math.sin(elevation), target.z + radius * Math.cos(azimuth) * Math.cos(elevation));
@@ -79,8 +103,10 @@ export function enableController(frame) {
   }
   function setOpen(value) {
     opened = value;
+    if (!value) signal.stop();
     if (!value && ["arduino", "potentiometers", "potentiometerRight"].includes(selectedPart)) selectedPart = null;
     model.frontPanel.visible = true;
+    model.roof.visible = true;
     wake();
   }
   function selectPart(part) {
@@ -100,6 +126,7 @@ export function enableController(frame) {
     previousTime = time;
     const factor = reduced.matches ? 1 : 1 - Math.exp(-dt * 9);
     const hoverTarget = hoveredPart === "body" ? (opened && removal > .85 ? "arduino" : "cover") : hoveredPart;
+    const arrivalFlash = signal.update(dt, opened && removal > .85, reduced.matches);
     let highlightMoving = false;
     for (const [id, group] of Object.entries(highlights)) {
       const destination = hoverTarget === id || selectedPart === id ? 1 : 0;
@@ -107,9 +134,9 @@ export function enableController(frame) {
       if (Math.abs(group.value - destination) < .001) group.value = destination;
       else highlightMoving = true;
       for (const material of group.materials) material.emissive.setRGB(
-        group.value * .025 + (id === "boost" && boosted ? .23 : 0),
-        group.value * .24 + (id === "boost" && boosted ? .04 : 0),
-        group.value * .48,
+        group.value * .025 + (id === "boost" && boosted ? .23 : 0) + (id === "arduino" ? arrivalFlash * .35 : 0),
+        group.value * .24 + (id === "boost" && boosted ? .04 : 0) + (id === "arduino" ? arrivalFlash * .2 : 0),
+        group.value * .48 + (id === "arduino" ? arrivalFlash * .08 : 0),
       );
     }
     model.frontPanel.position.copy(model.frontPanelRest);
@@ -119,12 +146,23 @@ export function enableController(frame) {
     model.frontPanel.position.z += eased * .55;
     model.frontPanel.position.y += eased * .06;
     model.frontPanel.visible = removal < 1;
-    coverMaterial.opacity = 1 - eased;
-    coverMaterial.depthWrite = removal === 0;
-    for (let i = 0; i < 2; i++) { angles[i] += (desired[i] - angles[i]) * factor; model.levers[i].rotation.x = angles[i]; }
+    model.roof.position.copy(model.roofRest);
+    model.roof.position.y += eased * .65;
+    model.roof.visible = removal < 1;
+    for (const material of coverMaterials) {
+      material.opacity = 1 - eased;
+      material.depthWrite = removal === 0;
+    }
+    for (let i = 0; i < 2; i++) {
+      angles[i] += (desired[i] - angles[i]) * factor;
+      model.levers[i].rotation.x = model.axleRigs[i].rotation.x = angles[i];
+      model.rotationArrows[i].rotation.x = angles[i];
+      const moving = Math.abs(desired[i] - angles[i]) > .001;
+      model.rotationArrows[i].visible = opened && removal > .85 && moving;
+    }
     model.boost.position.x = boosted ? -.915 : -.94;
     draw();
-    if (removal !== destination || highlightMoving || angles.some((angle, i) => Math.abs(desired[i] - angle) > .001)) raf = requestAnimationFrame(tick);
+    if (signal.active || removal !== destination || highlightMoving || angles.some((angle, i) => Math.abs(desired[i] - angle) > .001)) raf = requestAnimationFrame(tick);
     else previousTime = null;
   }
   function wake() { if (!disposed && visible && !document.hidden && raf === null) { previousTime = null; raf = requestAnimationFrame(tick); } }
@@ -214,7 +252,8 @@ export function enableController(frame) {
     scene.traverse(object => { if (object.geometry) geometries.add(object.geometry); });
     geometries.forEach(g => g.dispose()); Object.values(model.materials).forEach(m => { m.map?.dispose(); m.dispose(); });
     studio.dispose();
-    hoverMaterials.forEach(material => material.dispose()); coverMaterial.dispose(); renderer.dispose();
+    signal.dispose();
+    hoverMaterials.forEach(material => material.dispose()); coverMaterials.forEach(material => material.dispose()); renderer.dispose();
   }, { once: true });
   resize(); frame.classList.add("controller-ready"); wake();
 }
