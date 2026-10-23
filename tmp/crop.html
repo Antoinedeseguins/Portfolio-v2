@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8" />
+<!-- Temporary: shows an enlarged crop of tmp/shot.png. Delete when done. -->
+<style>body { margin: 0; background: #fff; } canvas { display: block; image-rendering: pixelated; }</style>
+<canvas></canvas>
+<script>
+const p = new URLSearchParams(location.search), [x, y, w, h] = p.get("r").split(",").map(Number), z = Number(p.get("z") || 4);
+const image = new Image();
+image.onload = () => {
+  const canvas = document.querySelector("canvas");
+  canvas.width = w * z; canvas.height = h * z;
+  const c = canvas.getContext("2d"); c.imageSmoothingEnabled = false;
+  c.drawImage(image, x, y, w, h, 0, 0, w * z, h * z);
+};
+image.src = `/tmp/${p.get("f") || "shot.png"}?t=${Date.now()}`;
+</script>

@@ -1,0 +1,32 @@
+<!doctype html>
+<meta charset="utf-8" />
+<!-- Temporary: loads the Impact page and simulates a held spray on its first tag. Delete when done. -->
+<style>body { margin: 0; } iframe { width: 1600px; height: 900px; border: 0; display: block; } #s { position: fixed; top: 0; left: 0; z-index: 9; background: #ff0; font: 14px monospace; }</style>
+<div id="s">waiting</div>
+<iframe src="/index.html#impact"></iframe>
+<script>
+const status = text => { document.querySelector("#s").textContent = text; };
+const frame = document.querySelector("iframe");
+const params = new URLSearchParams(location.search);
+const poll = setInterval(() => {
+  const doc = frame.contentDocument, win = frame.contentWindow;
+  const layout = doc?.querySelector(".project-layout");
+  const canvas = doc?.querySelector(".voxel-tags-canvas");
+  const tag = doc?.querySelector(".project-meta > span");
+  status(`layout=${!!layout} canvas=${!!canvas} tag=${!!tag}`);
+  if (!canvas || !tag) return;
+  clearInterval(poll);
+  setTimeout(() => {
+    layout.setPointerCapture = () => {}; layout.hasPointerCapture = () => false;
+    const r = tag.getBoundingClientRect();
+    const fire = (type, x, y) => tag.dispatchEvent(new win.PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, isPrimary: true, button: 0, pointerType: "mouse", clientX: x, clientY: y }));
+    fire("pointerdown", r.left + r.width * .3, r.top + r.height / 2);
+    let t = 0;
+    const id = setInterval(() => {
+      t += 1; fire("pointermove", r.left + r.width * (.25 + .5 * Math.abs(Math.sin(t / 8))), r.top + r.height / 2);
+      status(`sprayed t=${t} tagVisibility=${tag.style.visibility || "default"}`);
+
+    }, 30);
+  }, Number(params.get("wait") || 400));
+}, 100);
+</script>

@@ -6,7 +6,7 @@ export function createController() {
   const root = new THREE.Group(), shell = new THREE.Group();
   root.add(shell);
   const mats = {};
-  for (const [name, color] of Object.entries({ shell: 0x414d4d, trim: 0x303a3c, metal: 0x8e9797, wood: 0xffffff, endgrain: 0xffffff, rubber: 0x20282a, board: 0x246d78, chip: 0x283239, silver: 0xbac1c2, red: 0xd34d2f, violet: 0x7352a4, wire: 0x547e91, black: 0x364348, arrow: 0x597f9d })) {
+  for (const [name, color] of Object.entries({ shell: 0x414d4d, trim: 0x303a3c, metal: 0x8e9797, wood: 0xffffff, endgrain: 0xffffff, rubber: 0x20282a, board: 0x246d78, chip: 0x283239, silver: 0xbac1c2, red: 0xd34d2f, violet: 0x7352a4, wire: 0x547e91, black: 0x364348, arrow: 0x3d8de0 })) {
     mats[name] = new THREE.MeshStandardMaterial({ color, roughness: name === "metal" || name === "silver" ? .4 : .85, metalness: name === "metal" || name === "silver" ? .65 : .05 });
   }
   // Small deterministic grain textures keep the timber matte, with no asset download.
@@ -95,19 +95,27 @@ export function createController() {
     const axle = cyl(.067, 1.85, "silver", [0, 0, 0], axleRig, "sensors"); axle.rotation.z = Math.PI / 2;
     box([.45, .012, .022], "black", [side * -.68, .067, 0], axleRig);
     box([.012, .1, .022], "black", [side * -.93, 0, 0], axleRig);
+    // Rotation gauge: two arcs grow from the top of the axle, forwards or backwards with the lever.
+    // The viewer reveals them with a draw range and moves the tip to the end of the visible arc.
     const arrow = new THREE.Group(); arrow.position.set(side * 1.06, .72, 0); root.add(arrow);
-    const arcPoints = [];
-    const endAngle = Math.PI * .65;
-    for (let i = 0; i <= 40; i++) {
-      const a = -Math.PI * .8 + (endAngle + Math.PI * .8) * i / 40;
-      arcPoints.push(new THREE.Vector3(side * -.06, Math.cos(a) * .32, Math.sin(a) * .32));
-    }
-    const arc = new THREE.CatmullRomCurve3(arcPoints);
-    const arcMesh = add(new THREE.TubeGeometry(arc, 40, .012, 5, false), "arrow", [0, 0, 0], arrow);
-    arcMesh.castShadow = arcMesh.receiveShadow = false;
-    const tip = add(new THREE.ConeGeometry(.045, .11, 8), "arrow", [side * -.06, Math.cos(endAngle) * .32, Math.sin(endAngle) * .32], arrow);
-    tip.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -Math.sin(endAngle), Math.cos(endAngle)));
-    tip.castShadow = tip.receiveShadow = false;
+    const gauge = { radius: .38, sweep: Math.PI * .75, segments: 48, radial: 6, offset: side * -.06 };
+    const gaugeMaterial = mats.arrow.clone();
+    gaugeMaterial.transparent = true;
+    gaugeMaterial.emissive.set(0x3d8de0).multiplyScalar(.35);
+    mats[`gauge${index}`] = gaugeMaterial;
+    const arcs = [1, -1].map(direction => {
+      const points = [];
+      for (let i = 0; i <= gauge.segments; i++) {
+        const a = direction * gauge.sweep * i / gauge.segments;
+        points.push(new THREE.Vector3(gauge.offset, Math.cos(a) * gauge.radius, Math.sin(a) * gauge.radius));
+      }
+      const mesh = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), gauge.segments, .02, gauge.radial, false), gaugeMaterial);
+      arrow.add(mesh);
+      return mesh;
+    });
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(.056, .14, 12), gaugeMaterial);
+    arrow.add(tip);
+    Object.assign(arrow.userData, { gauge, arcs, tip, material: gaugeMaterial });
     arrow.visible = false; rotationArrows.push(arrow);
     const bearing = rounded(.46, .37, .4, .04, "trim", [x, .74, 0], root, "sensors");
     for (const z of [-.3, .3]) cyl(.046, .035, "silver", [x, .68, z], root);

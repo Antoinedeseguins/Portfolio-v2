@@ -1,9 +1,10 @@
 import * as THREE from "../../vendor/three.module.js";
-import { createController } from "./controller-model.js?v=14";
+import { createController } from "./controller-model.js?v=15";
 import { createControllerStudio } from "./controller-studio.js";
 import { createControllerSignal } from "./controller-signal.js";
 import { createControllerDemo } from "./controller-demo.js?v=2";
-import { attachControllerAnnotations } from "./controller-annotations.js?v=20";
+import { createBoostBurst } from "./controller-boost.js?v=2";
+import { attachControllerAnnotations } from "./controller-annotations.js?v=22";
 
 export async function enableController(frame) {
   if (!frame.isConnected || frame.closest(".page-outgoing, .page-drag-preview")) return;
@@ -82,6 +83,7 @@ export async function enableController(frame) {
   let disposed = false, visible = true, raf = null, previousTime = null;
   const signal = createControllerSignal(model);
   const demo = createControllerDemo();
+  const burst = createBoostBurst(scene, model);
   const angles = [0, 0], desired = [0, 0];
   const annotations = attachControllerAnnotations(frame, model, camera, {
     toggleOpen: () => setOpen(!opened),
@@ -93,6 +95,10 @@ export async function enableController(frame) {
       else signal.stop();
       selectedPart = { lever0: "left", lever1: "right", boost: "boost", sensors: "potentiometers", sensorsRight: "potentiometerRight", arduino: "arduino" }[part] || null;
       selectPart(part);
+    },
+    pressBoost: value => {
+      if (value) demo.cancel();
+      boost(value);
     },
     reset: () => {
       demo.cancel();
@@ -120,8 +126,31 @@ export async function enableController(frame) {
     wake();
   }
   function boost(value) {
+    // A fresh press kicks the controller; holding the button does not repeat it.
+    if (value && !boosted && !reduced.matches) burst.trigger();
     boosted = value;
     wake();
+  }
+  // Rotation gauge: the arc fills with the lever's angle, on the side it leans towards, and its tip
+  // points the way the lever is turning. It pops in slightly larger and fades with the lever's rest.
+  const gaugeHold = [0, 0], gaugeFade = [0, 0], gaugeTurn = [1, 1];
+  const tipAxis = new THREE.Vector3(0, 1, 0), tipDirection = new THREE.Vector3();
+  function updateGauge(arrow, angle, turn, fade) {
+    const { gauge, arcs, tip, material } = arrow.userData;
+    arrow.visible = fade > 0;
+    if (!arrow.visible) return;
+    material.opacity = fade;
+    arrow.scale.setScalar(.85 + .15 * (1 - (1 - fade) ** 3) + .06 * Math.sin(Math.PI * fade));
+    const reach = Math.min(1, Math.abs(angle) / (Math.PI / 6));
+    const side = angle < 0 ? 1 : 0;
+    arcs.forEach((arc, index) => {
+      arc.visible = index === side;
+      arc.geometry.setDrawRange(0, Math.round(reach * gauge.segments) * gauge.radial * 6);
+    });
+    const end = (angle < 0 ? -1 : 1) * reach * gauge.sweep;
+    tip.position.set(gauge.offset, Math.cos(end) * gauge.radius, Math.sin(end) * gauge.radius);
+    tipDirection.set(0, -Math.sin(end), Math.cos(end)).multiplyScalar(turn);
+    tip.quaternion.setFromUnitVectors(tipAxis, tipDirection);
   }
   function draw() { updateCamera(); studio.update(camera); renderer.render(scene, camera); annotations.update(opened && removal > .85); }
   function tick(time) {
@@ -132,6 +161,7 @@ export async function enableController(frame) {
     const factor = reduced.matches ? 1 : 1 - Math.exp(-dt * 9);
     const hoverTarget = hoveredPart === "body" ? (opened && removal > .85 ? "arduino" : "cover") : hoveredPart;
     const demonstration = demo.update(dt, reduced.matches);
+    const bursting = burst.update(dt);
     if (selectedPart === "boost" && opened && removal > .85 && !signal.active && !reduced.matches) signal.play(2);
     const arrivalFlash = signal.update(dt, opened && removal > .85, reduced.matches);
     let highlightMoving = false;
@@ -162,17 +192,24 @@ export async function enableController(frame) {
       material.opacity = 1 - eased;
       material.depthWrite = removal === 0;
     }
+    let gaugeMoving = false;
     for (let i = 0; i < 2; i++) {
+      const previous = angles[i];
       angles[i] += (desired[i] - angles[i]) * factor;
       const angle = THREE.MathUtils.clamp(angles[i], -Math.PI / 6, Math.PI / 6);
       model.levers[i].rotation.x = model.axleRigs[i].rotation.x = angle;
-      model.rotationArrows[i].rotation.x = angle;
       const moving = Math.abs(desired[i] - angles[i]) > .001;
-      model.rotationArrows[i].visible = opened && removal > .85 && moving;
+      if (moving) gaugeTurn[i] = Math.sign(angles[i] - previous) || gaugeTurn[i];
+      // The gauge lingers briefly after the lever stops, then fades out.
+      gaugeHold[i] = moving ? .6 : Math.max(0, gaugeHold[i] - dt);
+      const shown = opened && removal > .85 && gaugeHold[i] > 0;
+      gaugeFade[i] = reduced.matches ? (shown ? 1 : 0) : THREE.MathUtils.clamp(gaugeFade[i] + (shown ? 1 : -1) * dt / .18, 0, 1);
+      if (gaugeFade[i] > 0 && gaugeFade[i] < 1 || gaugeHold[i] > 0) gaugeMoving = true;
+      updateGauge(model.rotationArrows[i], angle, gaugeTurn[i], gaugeFade[i]);
     }
     model.boost.position.x = -.94 + .025 * (boosted ? 1 : demonstration.press);
     draw();
-    if (demo.active || signal.active || removal !== destination || highlightMoving || angles.some((angle, i) => Math.abs(desired[i] - angle) > .001)) raf = requestAnimationFrame(tick);
+    if (bursting || gaugeMoving || demo.active || signal.active || removal !== destination || highlightMoving || angles.some((angle, i) => Math.abs(desired[i] - angle) > .001)) raf = requestAnimationFrame(tick);
     else previousTime = null;
   }
   function wake() { if (!disposed && visible && !document.hidden && raf === null) { previousTime = null; raf = requestAnimationFrame(tick); } }
@@ -278,6 +315,7 @@ export async function enableController(frame) {
     geometries.forEach(g => g.dispose()); Object.values(model.materials).forEach(m => { m.map?.dispose(); m.dispose(); });
     studio.dispose();
     signal.dispose();
+    burst.dispose();
     hoverMaterials.forEach(material => material.dispose()); coverMaterials.forEach(material => material.dispose()); renderer.dispose();
   }, { once: true });
   resize(); frame.classList.add("controller-ready"); wake();

@@ -89,6 +89,14 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     instances.instanceMatrix.needsUpdate = true;
   };
   updateInstances();
+  // At rest the crisp HTML label shows instead of the voxels, whose one-pixel cubes stair-step
+  // the letter edges; the voxels take over as soon as the title is hit and hand back once settled.
+  const showVoxels = (shown) => {
+    if (!instances || !label || instances.visible === shown) return;
+    instances.visible = shown;
+    label.style.visibility = shown ? "hidden" : "visible";
+  };
+  showVoxels(false);
   const raycaster = new THREE.Raycaster();
   const sprayRay = new THREE.Ray();
   const inverseGroup = new THREE.Matrix4();
@@ -155,6 +163,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     // Fade the assembled cube's outline as its pieces separate.
     const separation = Math.max(...bodies.map((body) => body.position.distanceTo(body.home)));
     edgeMaterial.opacity = 0.55 * Math.max(0, 1 - separation / 0.35);
+    showVoxels(spraying || separation > 0.004);
     updateInstances();
     renderer.render(scene, camera);
   };

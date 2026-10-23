@@ -11,6 +11,7 @@ export function attachControllerAnnotations(frame, model, camera, actions, event
     panel.hidden = false;
     panel.querySelector("h3").textContent = title;
     panel.querySelector(".controller-detail-copy p").textContent = description;
+    panel.querySelector(".controller-detail-copy").dataset.label = active ? "Component" : "Overview";
   }
   function select(id) {
     if (id === active) return;
@@ -39,6 +40,11 @@ export function attachControllerAnnotations(frame, model, camera, actions, event
       else select(id);
     }, events);
   }
+  // The boost point sits on the button itself, so pressing it presses the button too.
+  points.boost.addEventListener("pointerdown", event => { if (event.button === 0) actions.pressBoost(true); }, events);
+  for (const type of ["pointerup", "pointerleave", "pointercancel"]) points.boost.addEventListener(type, () => actions.pressBoost(false), events);
+  points.boost.addEventListener("keydown", event => { if (event.key === " " || event.key === "Enter") actions.pressBoost(true); }, events);
+  points.boost.addEventListener("keyup", () => actions.pressBoost(false), events);
   renderDetail();
   return {
     update(opened) {

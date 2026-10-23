@@ -10,7 +10,7 @@ const projects = [
   { id: "arup", folder: "arup/img", video: "Assets/arup/ARUP.mp4", videoPoster: "arup1-back.webp", images: ["arup1.webp", "arup2.webp", "arup3.webp", "arup4.webp", "arup5.webp"] },
   { id: "impact", folder: "impact/img", video: "Assets/impact/impact.mp4", images: ["impact1.webp", "impact2.webp", "impact3.webp", "impact4.webp", "impact5.webp", "impact6.webp", "impact7.webp", "impact8.webp", "impact9.webp", "impact10.webp", "impact11.webp", "impact12.webp", "impact13.webp"] },
   { id: "necromunda", folder: "necromunda/img", video: "Assets/necromunda/necro.mp4", images: ["necro1.webp", "necro2.webp", "necro3.webp", "necro4.webp", "necro5.webp", "necro6.webp", "necro7.webp", "necro8.webp", "necro9.webp", "necro10.webp", "necro11.webp", "necro12.webp", "necro13.webp", "necro14.webp", "necro15.webp", "necro16.webp", "necro17.webp", "necro18.webp", "necro19.webp", "necro20.webp", "necro21.webp", "necro22.webp", "necro23.webp", "necro24.webp", "necro25.webp", "necro26.webp"] },
-  { id: "proteo", folder: "proteo/img", images: ["proteo1.webp", "proteo2.webp", "proteo3.webp", "proteo4.webp", "proteo5.webp", "proteo6.webp", "proteo7.webp", "proteo8.webp", "proteo9.webp", "proteo10.webp", "proteo11.webp"] },
+  { id: "proteo", folder: "proteo/img", images: ["proteo1.webp", "proteo2.webp", "proteo3.webp", "proteo4.webp", "proteo5.webp", "proteo6.webp", "proteo7.webp", "proteo8.webp", "proteo9.webp"] },
   { id: "source", folder: "source/img", video: "Assets/source/source.mp4", images: ["source1.webp", "source2.webp", "source3.webp", "source4.webp", "source5.webp", "source6.webp", "source7.webp", "source8.webp", "source9.webp"] },
   { id: "spaceage", folder: "spaceageracer/img", video: "Assets/spaceageracer/spaceage.mp4", images: ["spaceage1.webp", "spaceage2.webp", "spaceage3.webp", "spaceage4.webp", "spaceage5.webp", "spaceage6.webp", "spaceage7.webp", "spaceage8.webp", "spaceage9.webp"] },
   { id: "vahana", folder: "vahana/img", images: ["vahana1.webp", "vahana2.webp", "vahana3.webp"] },
@@ -92,6 +92,25 @@ function imagePath(project, imageName) {
   return `Assets/${project.folder}/${imageName}`;
 }
 
+// Gallery thumbnails use 480px copies from each img/thumbs folder instead of the full images.
+function thumbPath(project, imageName) {
+  return `Assets/${project.folder}/thumbs/${imageName.replace(/\.[^.]+$/, "")}.webp`;
+}
+
+// Thumbnails fade in once fully loaded rather than painting in piece by piece;
+// a missing thumbnail falls back to its full-size image.
+document.addEventListener("load", (event) => {
+  if (event.target instanceof HTMLImageElement && event.target.closest(".gallery-thumb")) event.target.classList.add("is-loaded");
+}, true);
+document.addEventListener("error", (event) => {
+  const image = event.target;
+  if (!(image instanceof HTMLImageElement) || !image.closest(".gallery-thumb")) return;
+  if (image.dataset.full) {
+    image.src = image.dataset.full;
+    delete image.dataset.full;
+  } else image.classList.add("is-loaded");
+}, true);
+
 function videoPoster(project) {
   return imagePath(project, project.videoPoster || project.images[0]);
 }
@@ -105,7 +124,7 @@ function adjacentMediaIndex(project, currentIndex, direction) {
 }
 
 function mediaPreview(project, index) {
-  if (index === -2 && project.id === "spaceage") return "Assets/spaceageracer/img/viewer-poster.png";
+  if (index === -2 && project.id === "spaceage") return "Assets/spaceageracer/img/viewer-poster.webp";
   return index === -1 ? videoPoster(project) : imagePath(project, project.images[index]);
 }
 
@@ -113,7 +132,7 @@ function renderHeroMarkup(project, imageIndex) {
   if (project.id === "spaceage" && imageIndex === -2) return `
     <div class="hero-frame controller-frame">
       <div class="controller-viewer">
-        <img class="controller-poster" src="Assets/spaceageracer/img/viewer-poster.png" alt="Space Age Racer dual-lever controller" />
+        <img class="controller-poster" src="Assets/spaceageracer/img/viewer-poster.webp" alt="Space Age Racer dual-lever controller" />
         <canvas class="controller-canvas" tabindex="0" aria-label="3D controller: drag to rotate, arrow keys to orbit, plus and minus to zoom"></canvas>
         <div class="controller-overlay">
           <span class="controller-view-label" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9" /></svg></span>
@@ -137,8 +156,8 @@ function renderHeroMarkup(project, imageIndex) {
         </div>
         <p class="controller-error" hidden>The 3D viewer is not available in this browser.</p>
       </div>
-      <button class="hero-arrow" type="button" data-media-direction="-1" aria-label="Previous media">‹</button>
-      <button class="hero-arrow" type="button" data-media-direction="1" aria-label="Next media">›</button>
+      <button class="hero-arrow" type="button" data-media-direction="-1" aria-label="Média précédent"><span aria-hidden="true">‹</span></button>
+      <button class="hero-arrow" type="button" data-media-direction="1" aria-label="Média suivant"><span aria-hidden="true">›</span></button>
     </div>`;
   const media = imageIndex === -1 && project.video
     ? `<video class="hero-image" src="${project.video}" poster="${videoPoster(project)}" muted playsinline controlslist="nodownload" preload="metadata" aria-label="Vidéo de ${project.title}"></video><img class="hero-video-fallback" hidden src="${videoPoster(project)}" alt="" aria-hidden="true" fetchpriority="high" />`
@@ -671,8 +690,8 @@ function enableHeroAutoplay(frame) {
 
 const toyModules = {
   "source-light": () => import(new URL("three.js/source/source-light.js?v=64", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=50", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=50", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=51", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=51", document.baseURI).href),
 };
 const supportsMiniGames = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
@@ -718,9 +737,8 @@ function enableToy(frame) {
         surface,
       });
       canvas.dataset.ready = "true";
+      // The voxel title shows its crisp label itself while at rest (see magnetic-cube.js).
       frame.closest(".voxel-title")?.classList.add("is-ready");
-      const label = frame.closest(".voxel-title")?.querySelector(".voxel-title-label");
-      if (label) label.style.visibility = "hidden";
     } catch (error) {
       if (disposed || frozen) return;
 
@@ -730,7 +748,7 @@ function enableToy(frame) {
   frame.addEventListener("hero-dispose", (event) => {
     frozen = true;
     if (event.detail?.preserveVisual) {
-      instance?.pause();
+      instance?.pause?.();
       const title = frame.closest(".voxel-title");
       if (title) {
         title.classList.remove("is-ready");
@@ -767,7 +785,7 @@ function enableHeroDrag(frame) {
     track.append(frame.querySelector(".controller-viewer"));
     let disposed = false;
     frame.addEventListener("hero-dispose", () => { disposed = true; }, { once: true });
-    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=56", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=60", document.baseURI).href)
       .then(module => { if (!disposed && frame.isConnected) return module.enableController(frame); })
       .catch(error => {
         if (!disposed) { frame.querySelector(".controller-error").hidden = false; frame.classList.add("controller-unavailable"); }
@@ -787,6 +805,8 @@ function enableHeroDrag(frame) {
     image.addEventListener("blur", updateVideoControls);
     image.tabIndex = 0;
     updateVideoControls();
+    // The still poster stays over the video until its first frame is actually on screen. Both are
+    // drawn by the same CSS box, so the hand-over cannot shift the picture (the video element's own
     const fallback = frame.querySelector(".hero-video-fallback");
     image.addEventListener("error", () => { fallback.hidden = false; });
     image.addEventListener("playing", () => { fallback.hidden = true; });
@@ -969,11 +989,11 @@ function renderMediaMarkup(project, imageIndex) {
       <div class="gallery-shell">
         <button class="gallery-arrow" type="button" data-gallery-direction="-1" aria-label="Images précédentes" title="Images précédentes"><span aria-hidden="true">‹</span></button>
         <div class="gallery" aria-label="Images de ${project.title}" tabindex="0">
-          ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Afficher la vidéo de ${project.title}" aria-pressed="${imageIndex === -1}"><img src="${imagePath(project, project.images[0])}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
-          ${project.id === "spaceage" ? `<button class="gallery-thumb controller-thumb" type="button" data-image="-2" aria-label="Explore the controller in 3D" aria-pressed="${imageIndex === -2}"><img src="Assets/spaceageracer/img/spaceage-minia3d.png" alt="" /><span class="controller-thumb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9" /></svg></span></button>` : ""}
+          ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Afficher la vidéo de ${project.title}" aria-pressed="${imageIndex === -1}"><img src="${thumbPath(project, project.images[0])}" data-full="${imagePath(project, project.images[0])}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
+          ${project.id === "spaceage" ? `<button class="gallery-thumb controller-thumb" type="button" data-image="-2" aria-label="Explore the controller in 3D" aria-pressed="${imageIndex === -2}"><img src="Assets/spaceageracer/img/thumbs/spaceage-minia3d.webp" data-full="Assets/spaceageracer/img/spaceage-minia3d.webp" alt="" /><span class="controller-thumb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9" /></svg></span></button>` : ""}
           ${project.images.map((image, index) => project.video && index === 0 ? "" : `
             <button class="gallery-thumb" type="button" data-image="${index}" aria-label="Afficher l’image ${index + 1} de ${project.title}" aria-pressed="${index === imageIndex}">
-              <img src="${imagePath(project, image)}" alt="" loading="${index < 5 ? "eager" : "lazy"}" />
+              <img src="${thumbPath(project, image)}" data-full="${imagePath(project, image)}" alt="" loading="${index < 5 ? "eager" : "lazy"}" />
             </button>
           `).join("")}
         </div>
@@ -1086,6 +1106,14 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   enableGalleryDrag(gallery, galleryScrollLeft);
   enableHeroDrag(projectView.querySelector(".hero-frame"));
   projectView.querySelectorAll(".toy-widget").forEach(enableToy);
+  // Impact's tags shatter into cubes like its title.
+  const impactPage = project.id === "impact" ? projectView.firstElementChild : null;
+  if (impactPage && supportsMiniGames()) import(new URL("three.js/impact/voxel-tags.js?v=5", document.baseURI).href)
+    .then(module => {
+      if (!impactPage.isConnected || impactPage.classList.contains("page-outgoing")) return;
+      impactPage.addEventListener("page-dispose", module.enableVoxelTags(impactPage), { once: true });
+    })
+    .catch(error => console.error("Impact tags could not be loaded", error));
   const arupTitle = projectView.querySelector(".arup-title-toggle");
   const proteoPlay = projectView.querySelector(".proteo-play");
   if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=32", document.baseURI).href)

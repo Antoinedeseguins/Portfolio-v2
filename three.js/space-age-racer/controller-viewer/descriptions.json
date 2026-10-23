@@ -1,7 +1,7 @@
 {
   "overview": {
     "title": "The custom controller",
-    "description": "A custom built controller for Space Age Racer."
+    "description": "A custom controller built for Space Age Racer. Pull a lever, hit the boost, or open the case to see how it works."
   },
   "left": {
     "title": "Left lever",
@@ -13,7 +13,7 @@
   },
   "boost": {
     "title": "Boost button",
-    "description": "Built into the right grip, this button activates the in-game boost without taking your hand off the controls."
+    "description": "A push button in the right grip. The Arduino reads each press and how long it is held to drive the in-game boost."
   },
   "arduino": {
     "title": "Arduino Uno",
@@ -21,10 +21,10 @@
   },
   "potentiometers": {
     "title": "Left potentiometer",
-    "description": "Converts the left lever's rotation into an electrical signal. The Arduino uses this reading to set the left engine's power."
+    "description": "Converts the left lever's rotation into a value the Arduino reads to set the left engine's power."
   },
   "potentiometerRight": {
     "title": "Right potentiometer",
-    "description": "Converts the right lever's rotation into an electrical signal. The Arduino uses this reading to set the right engine's power."
+    "description": "Converts the right lever's rotation into a value the Arduino reads to set the right engine's power."
   }
 }
