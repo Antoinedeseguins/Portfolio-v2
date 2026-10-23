@@ -1,4 +1,4 @@
-const siteBaseUrl = new URL(".", document.baseURI);
+﻿const siteBaseUrl = new URL(".", document.baseURI);
 const useHashNavigation = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
   || window.location.port !== "";
 const siteBaseElement = document.querySelector("base") || document.head.appendChild(document.createElement("base"));
@@ -1059,6 +1059,7 @@ function projectPageMarkup(project, imageIndex) {
 }
 
 function aboutPageMarkup() {
+  const tagline = escapeText(aboutMedia.tagline || "").replace(/new ideas/i, '<span class="about-tagline-accent">$&</span>');
   return `
     <div class="about-layout">
       <figure class="about-photo">
@@ -1072,18 +1073,20 @@ function aboutPageMarkup() {
         <h1 class="about-title">${escapeText(aboutMedia.title1)}</h1>
         ${aboutMedia.title2 ? `<p class="about-roles">${escapeText(aboutMedia.title2)}</p>` : ""}
         <div class="about-rule" aria-hidden="true"></div>
-        ${aboutMedia.tagline ? `<p class="about-tagline">${escapeText(aboutMedia.tagline)}</p>` : ""}
+        ${aboutMedia.tagline ? `<p class="about-tagline">${tagline}</p>` : ""}
         ${aboutMedia.texte ? `<p class="about-bio">${escapeText(aboutMedia.texte)}</p>` : ""}
         <div class="about-actions">
-          <button class="about-discover" type="button">Discover my work <span aria-hidden="true">→</span></button>
+          <button class="about-discover" type="button">Discover my work</button>
           ${(aboutMedia.links || []).length ? `<nav class="about-contacts" aria-label="Contact">${aboutMedia.links.map((link) => link.url
             ? `<a href="${escapeText(link.url)}" target="_blank" rel="noopener">${escapeText(link.label)}</a>`
             : `<span class="is-pending" title="Link to add">${escapeText(link.label)}</span>`).join("")}</nav>` : ""}
         </div>
       </div>
+      <div class="about-room" aria-hidden="true"></div>
     </div>
   `;
 }
+
 
 projectView.addEventListener("click", (event) => {
   if (!event.target.closest(".about-discover") || finishActivePageTransition) return;
@@ -1160,6 +1163,20 @@ function renderAbout(navigationDirection = -1) {
   projectView.setAttribute("aria-busy", "true");
   const aboutMarkup = aboutPageMarkup();
   replaceProjectView(aboutMarkup, navigationDirection, true);
+  // A small desk diorama sits right of the pitch; it stays drawn while the page slides out.
+  const aboutPage = projectView.firstElementChild;
+  const aboutRoom = aboutPage?.querySelector(".about-room");
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=47", document.baseURI).href)
+    .then(module => {
+      if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;
+      const dispose = module.enableDeskRoom(aboutRoom);
+      aboutPage.addEventListener("page-dispose", function onDispose(event) {
+        if (event.detail?.preserveVisual) return;
+        aboutPage.removeEventListener("page-dispose", onDispose);
+        dispose();
+      });
+    })
+    .catch(error => console.error("About room could not be loaded", error));
   projectView.setAttribute("aria-busy", "false");
   updatePageUrl(aboutMedia);
 }
@@ -1301,7 +1318,7 @@ function updatePageDragPreview(drag) {
 }
 
 document.addEventListener("pointerdown", (event) => {
-  if (event.pointerType !== "mouse" || event.button !== 0 || event.target.closest("button, a, .gallery-shell, .hero-frame, .toy-widget")) return;
+  if (event.pointerType !== "mouse" || event.button !== 0 || event.target.closest("button, a, .gallery-shell, .hero-frame, .toy-widget, .about-room")) return;
   const bounds = projectView.getBoundingClientRect();
   if (event.clientY < bounds.top || event.clientY > bounds.bottom || event.target.closest(".topline, .project-dock")) return;
   if (projectView.querySelector(".page-outgoing")) return;
@@ -1312,6 +1329,7 @@ document.addEventListener("pointerdown", (event) => {
   pageDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, deltaX: 0, moved: false, page };
   projectView.setPointerCapture(event.pointerId);
 });
+
 
 projectView.addEventListener("pointermove", (event) => {
   if (!pageDrag || event.pointerId !== pageDrag.pointerId) return;
@@ -1362,6 +1380,7 @@ function finishPageDrag(event, cancelled = false) {
     drag.page.style.removeProperty("--drag-offset");
   }, 220);
 }
+
 
 projectView.addEventListener("pointerup", (event) => finishPageDrag(event));
 projectView.addEventListener("pointercancel", (event) => finishPageDrag(event, true));
