@@ -22,6 +22,8 @@ const SCREEN = {
 };
 // The coffee mug on the desk: white, in the site's light grey, full of coffee.
 const MUG = { mug: 0xeef1f3, coffee: 0x4a2e22 };
+// Classic cube colours, matched to the scene's existing reds, yellows and blues; the core shows between the cubies.
+const RUBIK = { white: 0xeef1f3, yellow: 0xf3d34a, red: 0xc8453b, orange: 0xe8833a, blue: 0x4a86c8, green: 0x49a868, core: 0x2b333b };
 const NOTE = { paper: 0xf4f5f2, tape: 0x9cbbe0 };
 // Camera angles: front right, slightly above.
 const VIEW_ELEVATION = THREE.MathUtils.degToRad(24);
@@ -409,6 +411,25 @@ function buildMug() {
   return mug;
 }
 
+// A solved Rubik's cube standing on y = 0, .042 across: 27 cubies coloured on their outer faces, all layers aligned.
+// White up, green front, red right.
+function buildRubiksCube() {
+  const cube = new THREE.Group();
+  const size = .042, step = size / 3, gap = .0007;
+  // Face order is BoxGeometry's: +x, -x, +y, -y, +z, -z.
+  const normals = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  const colours = ["red", "orange", "white", "yellow", "green", "blue"];
+  const geometry = new THREE.BoxGeometry(step - gap, step - gap, step - gap);
+  for (const x of [-1, 0, 1]) for (const y of [-1, 0, 1]) for (const z of [-1, 0, 1]) {
+    const position = [x, y, z];
+    const faces = normals.map((normal, face) => normal.some((n, axis) => n && n === position[axis]) ? colours[face] : "core");
+    const cubie = new THREE.Mesh(geometry, faces.map((name) => new THREE.MeshStandardMaterial({ name })));
+    cubie.position.set(x * step, y * step + size / 2, z * step);
+    cube.add(cubie);
+  }
+  return cube;
+}
+
 // A spilled coffee puddle: a flat blob with a wobbly outline, lying on y = 0, about .08 across.
 function buildPuddle() {
   const points = [];
@@ -458,6 +479,8 @@ function buildDesk() {
     part(drawer, trayWidth, .006, trayDepth, "inside", 0, floor, -trayDepth / 2);
     for (const side of [-1, 1]) part(drawer, .006, trayHeight, trayDepth, "inside", side * trayWidth / 2, floor + trayHeight / 2, -trayDepth / 2);
     part(drawer, trayWidth, trayHeight, .006, "inside", 0, floor + trayHeight / 2, -trayDepth);
+    // Height of the tray's floor surface, for things put in the drawer.
+    drawer.userData.floor = floor + .003;
     desk.add(drawer);
     return drawer;
   });
@@ -590,6 +613,13 @@ export function enableDeskRoom(host) {
   recolour(computer, RETRO_PC);
   computer.position.set(.34, .384, -.25);
   room.add(computer);
+  // A Rubik's cube lying in the top drawer, set back from the front but still in the part that slides out (.16).
+  const rubiksCube = buildRubiksCube();
+  recolour(rubiksCube, RUBIK);
+  const topDrawer = drawers[drawers.length - 1];
+  rubiksCube.position.set(.025, topDrawer.userData.floor, -.11);
+  rubiksCube.rotation.y = -.45;
+  topDrawer.add(rubiksCube);
   // The mug sits in a "tipper" group whose origin is the mug's bottom centre: the tipper turns to face the way the mug
   // falls and pitches over the bottom edge on that side, while the mug inside keeps its handle where it was.
   const mug = buildMug();
@@ -729,8 +759,7 @@ export function enableDeskRoom(host) {
 
   for (const drawer of drawers) {
     const rest = drawer.position.z;
-    addPart(drawer, (t) => { drawer.position.z = rest + t * .16; });
-  }
+    addPart(drawer, (t) => { drawer.position.z = rest + t * .16; });  }
   addNote(doorLeft);
   addPart(cabinet, (t) => { doorLeft.rotation.y = -t * 1.9; doorRight.rotation.y = t * 1.9; });
 

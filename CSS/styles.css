@@ -23,13 +23,13 @@
 @property --fit { syntax: "<length>"; inherits: true; initial-value: 1px; }
 :root { --u: 1px; --vw: 1vw; --vh: 1vh; }
 /* --fit is the window's size against the reference: the smaller of the width and height ratios, as a length.
-   Larger windows follow it fully, so big screens keep the reference proportions. Smaller ones only follow it three
-   quarters of the way, so zooming the browser in still enlarges the page. --u is set in rem so a reader's larger
-   default text size carries through, and it stays between 0.8 and 4 reference pixels. */
+   --u only follows it three quarters of the way, so browser zoom, in and out, still changes the size of things
+   (CSS can't tell a zoomed-out window from a bigger screen, so very large screens get a slightly smaller block). It is
+   set in rem so a reader's larger default text size carries through, and it stays between 0.8 and 4 reference pixels. */
 @media (min-width: 1181px) {
   :root {
     --fit: min(100vw / 1920, 100vh / 927);
-    --u: clamp(.05rem, max(var(--fit), .015625rem + .75 * var(--fit)), .25rem);
+    --u: clamp(.05rem, calc(.015625rem + .75 * var(--fit)), .25rem);
     --vw: calc(19.2 * var(--u));
     --vh: calc(9.27 * var(--u));
   }

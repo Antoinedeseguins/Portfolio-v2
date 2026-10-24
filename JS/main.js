@@ -1208,7 +1208,7 @@ function renderAbout(navigationDirection = -1) {
   // A small desk diorama sits right of the pitch; it stays drawn while the page slides out.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=48", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=54", document.baseURI).href)
     .then(module => {
       if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;
       const dispose = module.enableDeskRoom(aboutRoom);
