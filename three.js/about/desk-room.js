@@ -12,7 +12,7 @@ const SPILL = [];
 // The desk built below: same anthracite as before, light pulls, darker drawer insides.
 const DESK = { body: 0x3a4148, pull: 0xc9d0d6, inside: 0x2b3238 };
 // The 90s computer built below: beige-era shapes in the site's light greys, dark screen and power LED that light up.
-const RETRO_PC = { case: 0xd3d9de, caseShade: 0xb3bcc4, slot: 0x2b333b, screen: 0x1d2227, led: 0x2b333b };
+const RETRO_PC = { case: 0xd3d9de, caseShade: 0xb3bcc4, slot: 0x2b333b, screen: 0x1d2227, led: 0x2b333b, postIt: 0xf3d34a };
 const LED_ON = 0xe0392f;
 // The boot sequence and desktop on the CRT.
 const SCREEN = {
@@ -77,6 +77,11 @@ function buildRetroComputer() {
   ]) mesh.userData.monitor = true;
   const screen = part(new THREE.BoxGeometry(.27, .21, .004), "screen", 0, .24, .041);
   screen.name = "screen";
+  // A yellow sticky note on the right of the monitor frame, overhanging its edge a little. It stands just clear of
+  // the frame and the glass so neither shows through it.
+  const postIt = part(new THREE.BoxGeometry(.06, .06, .002), "postIt", .158, .31, .0445);
+  postIt.rotation.z = THREE.MathUtils.degToRad(-7);
+  postIt.userData.monitor = true;
 
   return pc;
 }
@@ -858,6 +863,10 @@ export function enableDeskRoom(host) {
     if (onScreen) display.point(hit.uv.x, 1 - hit.uv.y);
     else display.point(event.clientX / window.innerWidth, event.clientY / window.innerHeight);
     wake();
+  }, options);
+  // Rapid clicks on the room would otherwise count as double and triple clicks and select nearby text (the page arrows).
+  document.addEventListener("mousedown", (event) => {
+    if (!onControl(event) && pickHit(event)) event.preventDefault();
   }, options);
   document.addEventListener("click", (event) => {
     if (onControl(event)) return;

@@ -50,18 +50,18 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outlin
   inherits: true;
   initial-value: 0%;
 }
-.wordmark { --wordmark-hover: 0%; color: color-mix(in srgb, var(--ink), var(--accent) var(--wordmark-hover)); font-size: clamp(10px, .65vw, 13px); font-weight: 600; letter-spacing: .14em; text-decoration: none; text-transform: uppercase; transition: --wordmark-hover 160ms ease; }
+.wordmark { --wordmark-hover: 0%; color: color-mix(in srgb, var(--ink), var(--accent) var(--wordmark-hover)); font-size: clamp(10px, .65vw, 18px); font-weight: 600; letter-spacing: .14em; text-decoration: none; text-transform: uppercase; transition: --wordmark-hover 160ms ease; }
 .wordmark:hover { --wordmark-hover: 100%; }
 .wordmark span { color: color-mix(in srgb, var(--muted), var(--accent) var(--wordmark-hover)); font-weight: 400; }
 .topline-actions { display: flex; align-items: center; gap: 12px; }
-.resume-link { --wordmark-hover: 0%; display: inline-flex; align-items: center; gap: 8px; color: color-mix(in srgb, var(--ink), var(--accent) var(--wordmark-hover)); font-size: clamp(9px, .55vw, 11px); font-weight: 400; letter-spacing: .14em; text-decoration: none; text-transform: uppercase; transition: --wordmark-hover 160ms ease; }
+.resume-link { --wordmark-hover: 0%; display: inline-flex; align-items: center; gap: 8px; color: color-mix(in srgb, var(--ink), var(--accent) var(--wordmark-hover)); font-size: clamp(9px, .55vw, 15px); font-weight: 400; letter-spacing: .14em; text-decoration: none; text-transform: uppercase; transition: --wordmark-hover 160ms ease; }
 .resume-link:hover { --wordmark-hover: 100%; }
 .resume-link[aria-disabled="true"], .resume-link[aria-disabled="true"]:hover { --wordmark-hover: 0%; transition: none; }
 .resume-link[aria-disabled="true"], .resume-link[aria-disabled="true"] * { -webkit-user-select: none; user-select: none; }
 .resume-prefix { color: color-mix(in srgb, var(--muted), var(--accent) var(--wordmark-hover)); }
 .resume-copy { white-space: nowrap; }
 .resume-copy strong { font-weight: 600; }
-.resume-icon { display: grid; width: 22px; height: 22px; place-items: center; border: 1px solid var(--line); border-radius: 50%; font-size: 14px; letter-spacing: 0; line-height: 1; }
+.resume-icon { display: grid; width: max(22px, 1.146vw); height: max(22px, 1.146vw); place-items: center; border: 1px solid var(--line); border-radius: 50%; font-size: max(14px, .729vw); letter-spacing: 0; line-height: 1; }
 /* On click the arrow drops out of the circle and falls back in from the top. */
 .resume-icon { overflow: hidden; transition: scale 120ms ease; }
 .resume-arrow { display: block; }
@@ -89,7 +89,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outlin
 .project-view > .page-drag-preview { position: absolute; top: 50%; right: 0; left: 0; width: 100%; transform: translateY(-50%); pointer-events: none; }
 .page-arrows { position: fixed; z-index: 4; top: 50%; right: 0; left: 0; display: flex; justify-content: space-between; padding: 0 clamp(12px, 2.2vw, 32px); transform: translateY(-50%); pointer-events: none; }
 .page-arrows[hidden] { display: none; }
-.page-arrow { display: grid; width: 38px; height: 52px; place-items: center; padding: 0; border: 0; border-radius: 2px; color: var(--muted); background: transparent; cursor: pointer; font-family: "Raleway", sans-serif; font-size: 42px; font-weight: 400; line-height: 1; opacity: .72; pointer-events: auto; transition: color 180ms ease, opacity 180ms ease, transform 180ms ease; }
+.page-arrow { user-select: none; display: grid; width: 38px; height: 52px; place-items: center; padding: 0; border: 0; border-radius: 2px; color: var(--muted); background: transparent; cursor: pointer; font-family: "Raleway", sans-serif; font-size: 42px; font-weight: 400; line-height: 1; opacity: .72; pointer-events: auto; transition: color 180ms ease, opacity 180ms ease, transform 180ms ease; }
 .page-arrow-previous:hover:not(:disabled) { transform: translateX(-3px); color: var(--accent); opacity: 1; }
 .page-arrow-next:hover:not(:disabled) { transform: translateX(3px); color: var(--accent); opacity: 1; }
 .page-arrow:disabled { cursor: default; opacity: .22; }
@@ -578,21 +578,24 @@ img.hero-image { object-fit: cover; }
    and a light drop shadow lets the furniture cast a soft shadow on the page behind it, slightly to the right. */
 .about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; opacity: 0; filter: drop-shadow(12px 8px 4px #1c23212e); pointer-events: none; transition: opacity 500ms ease; }
 .about-room.has-room .about-room-canvas { opacity: 1; }
+/* The drop shadow is costly to redraw on a moving canvas, so it is left off while the page slides. */
+:is(.page-entering, .page-outgoing, .page-drag-preview, .page-returning, [style*="translate"]) .about-room-canvas { filter: none; }
 .is-pointing-room, .is-pointing-room * { cursor: pointer; }
 .is-on-room-screen, .is-on-room-screen * { cursor: none; }
 @media (max-width: 1180px) { .about-room { display: none; } }
 /* Wide screens: three equal columns, photo | pitch | room. */
 @media (min-width: 1181px) {
   .about-layout { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .about-layout > .about-photo { grid-column: 1; grid-row: 1; width: min(108%, 540px); height: auto; aspect-ratio: 25 / 24; }
-  .about-layout > .about-copy-wrap { grid-column: 2; grid-row: 1; justify-self: center; max-width: 500px; text-align: center; }
-  .about-layout .about-copy-wrap .about-title { font-size: clamp(30px, 2.95vw, 50px); white-space: nowrap; }
-  .about-layout .about-hello { font-size: clamp(26px, 2vw, 34px); }
-  .about-layout .about-roles { font-size: clamp(14px, 1.04vw, 16.5px); }
-  .about-layout .about-tagline { margin-inline: auto; font-size: clamp(15px, 1.09vw, 17px); }
+  .about-layout > .about-photo { grid-column: 1; grid-row: 1; width: min(108%, max(540px, 28.125vw)); height: auto; aspect-ratio: 25 / 24; }
+  .about-layout > .about-copy-wrap { grid-column: 2; grid-row: 1; justify-self: center; max-width: max(500px, calc(28.125vw - 40px)); text-align: center; }
+  .about-layout .about-copy-wrap .about-title { font-size: clamp(30px, 2.95vw, max(50px, calc(2.8125vw - 4px))); white-space: nowrap; }
+  .about-layout .about-hello { font-size: clamp(26px, 2vw, max(34px, calc(1.9125vw - 2.72px))); }
+  .about-layout .about-roles { font-size: clamp(14px, 1.04vw, max(16.5px, calc(.928vw - 1.32px))); }
+  .about-layout .about-tagline { margin-inline: auto; font-size: clamp(15px, 1.09vw, max(17px, calc(.956vw - 1.36px))); }
   .about-layout .about-rule { margin-inline: auto; }
   .about-layout .about-actions, .about-layout .about-contacts { justify-content: center; }
-  .about-layout > .about-room { grid-column: 3; grid-row: 1; width: 110%; height: clamp(324px, 56vh, 584px); transform: translate(-1%, -6%); }
+  .about-layout :is(.about-discover, .about-contacts a) { min-height: max(35px, 1.823vw); padding: 0 max(18px, .9375vw); font-size: max(10px, .521vw); }
+  .about-layout > .about-room { grid-column: 3; grid-row: 1; width: 110%; height: clamp(324px, 56vh, max(584px, 30.42vw)); transform: translate(-1%, -6%); }
 }
 .about-copy-wrap { justify-self: start; width: 100%; max-width: 500px; padding: 0; text-align: left; }
 .about-copy-wrap .about-title { max-width: none; color: #07111d; font-size: clamp(31px, 3.6vw, 59px); font-weight: 800; line-height: 1.04; letter-spacing: -.02em; }
@@ -680,7 +683,7 @@ img.hero-image { object-fit: cover; }
   .copy-rule { margin-top: 18px; }
 }
 
-@media (min-width: 1601px) and (min-aspect-ratio: 1.78) {
+@media (min-width: 1601px) and (min-aspect-ratio: 16/10) {
   :root {
     /* Match the dock's intrinsic height as its thumbnails grow with the layout. */
     --dock-height: clamp(112px, calc(4.0625vw + 11.25px), 136.25px);
