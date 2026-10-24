@@ -574,12 +574,9 @@ img.hero-image { object-fit: cover; }
 .about-photo:hover .about-photo-image { filter: grayscale(.15); }
 /* A desk diorama fills the free space right of the pitch, sharing the copy's grid cell. */
 .about-room { position: relative; justify-self: end; width: calc(100% - 420px); height: clamp(300px, calc(52vh / var(--z, 1)), 540px); }
-/* The canvas overflows the frame by a quarter on every side, so things can spill past it (the layout only sees the frame),
-   and a light drop shadow lets the furniture cast a soft shadow on the page behind it, slightly to the right. */
-.about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; opacity: 0; filter: drop-shadow(12px 8px 4px #1c23212e); pointer-events: none; transition: opacity 500ms ease; }
+/* The canvas overflows the frame by a quarter on every side, so things can spill past it (the layout only sees the frame). */
+.about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; opacity: 0; pointer-events: none; transition: opacity 500ms ease; }
 .about-room.has-room .about-room-canvas { opacity: 1; }
-/* The drop shadow is costly to redraw on a moving canvas, so it is left off while the page slides. */
-:is(.page-entering, .page-outgoing, .page-drag-preview, .page-returning, [style*="translate"]) .about-room-canvas { filter: none; }
 .is-pointing-room, .is-pointing-room * { cursor: pointer; }
 .is-on-room-screen, .is-on-room-screen * { cursor: none; }
 @media (max-width: 1180px) { .about-room { display: none; } }

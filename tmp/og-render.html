@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+html, body { margin: 0; overflow: hidden; } iframe { display: block; width: 1920px; height: 927px; border: 0; }
+/* The desk is drawn over the photo frame's place, outside the iframe, with the room canvas's own overflow rules. */
+.og-desk { position: absolute; }
+.og-desk .about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; pointer-events: none; }
+</style></head>
+<body><iframe src="../index.html" onload="
+  const doc = this.contentDocument;
+  doc.head.insertAdjacentHTML('beforeend', '<style>.about-room, .about-photo, .project-dock, .topline, .page-arrows { visibility: hidden !important; } .about-hello, .about-tagline, .about-bio, .about-actions { display: none !important; } .about-layout > .about-copy-wrap { max-width: 700px !important; translate: -25px 0; } .about-layout .about-copy-wrap .about-title { font-size: 82px !important; line-height: 1 !important; white-space: nowrap !important; } .og-line { display: block; width: max-content; margin: 0 auto; } .about-layout .about-roles { width: max-content; margin: 34px auto 0 !important; white-space: nowrap !important; }</style>');
+  const fill = async () => {
+    const title = doc.querySelector('.about-title'), roles = doc.querySelector('.about-roles');
+    if (!title || !roles) return setTimeout(fill, 50);
+    await doc.fonts.ready;
+    title.innerHTML = '<span class=og-line>Antoine</span><span class=og-line>de Seguins</span>';
+    const [first, second] = title.querySelectorAll('.og-line');
+    const target = second.getBoundingClientRect().width;
+    // Every line is scaled to the width of de Seguins, so the three read as one block.
+    first.style.fontSize = 82 * target / first.getBoundingClientRect().width + 'px';
+    // Under the name, a smaller centred Portfolio. Its trailing letter-spacing pads the right edge, so the line is
+    // shifted back to centre.
+    roles.innerHTML = '<span class=og-line>Portfolio</span>';
+    const [line] = roles.querySelectorAll('.og-line');
+    roles.style.fontSize = '38px';
+    line.style.translate = parseFloat(getComputedStyle(line).letterSpacing) / 2 + 'px 0';
+    roles.style.lineHeight = '1.25';
+    // The desk and computer take the photo frame's place, in a box a little wider than the frame since the desk is wide.
+    const photo = doc.querySelector('.about-photo').getBoundingClientRect();
+    const width = photo.width * 1.2, height = photo.height * .86, host = document.createElement('div');
+    host.className = 'og-desk';
+    Object.assign(host.style, { left: photo.left + photo.width / 2 - width / 2 + 20 + 'px', top: photo.top + (photo.height - height) / 2 + 'px', width: width + 'px', height: height + 'px' });
+    document.body.append(host);
+    const { enableDeskRoom } = await import('./og-desk.js');
+    enableDeskRoom(host);
+  };
+  fill();
+"></iframe></body></html>
