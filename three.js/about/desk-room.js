@@ -14,6 +14,7 @@ const CABINET = { wood: 0x7d8894 };
 // The 90s computer built below: beige-era shapes in the site's light greys, dark screen that lights up blue.
 const RETRO_PC = { case: 0xd3d9de, caseShade: 0xb3bcc4, slot: 0x2b333b, screen: 0x1d2227, led: 0x4a86c8 };
 const SCREEN_ON = 0x4a86c8;
+const NOTE = { paper: 0xf4f5f2, tape: 0x9cbbe0 };
 // Camera angles: front right, slightly above.
 const VIEW_ELEVATION = THREE.MathUtils.degToRad(24);
 const VIEW_AZIMUTH = THREE.MathUtils.degToRad(32);
@@ -120,7 +121,7 @@ export function enableDeskRoom(host) {
   const load = (name) => new Promise((resolve, reject) => loader.load(MODELS + name + ".glb", (gltf) => resolve(gltf.scene), undefined, reject));
 
   // Thin dark strokes on the hard edges give an illustrated, technical-drawing look.
-  const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1b2127, transparent: true, opacity: .5 });
+  const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1b2127, transparent: true, opacity: .32 });
 
   function recolour(object, overrides = {}) {
     const meshes = [];
@@ -139,6 +140,28 @@ export function enableDeskRoom(host) {
       edges.raycast = () => {};
       child.add(edges);
     });
+  }
+
+  // A paper note taped near the top of a door's inner face, only seen once the door swings open.
+  function addNote(door) {
+    door.updateWorldMatrix(true, true);
+    const box = new THREE.Box3().setFromObject(door);
+    const min = door.worldToLocal(box.min.clone()), max = door.worldToLocal(box.max.clone());
+    const width = Math.abs(max.x - min.x) * .5;
+    const note = new THREE.Group();
+    const paper = new THREE.Mesh(new THREE.PlaneGeometry(width, width * 1.15), new THREE.MeshStandardMaterial({ color: NOTE.paper, roughness: 1, side: THREE.DoubleSide }));
+    const tape = new THREE.Mesh(new THREE.PlaneGeometry(width * .45, width * .14), new THREE.MeshStandardMaterial({ color: NOTE.tape, roughness: 1, side: THREE.DoubleSide }));
+    tape.position.set(0, width * .575, .001);
+    const outline = new THREE.LineSegments(new THREE.EdgesGeometry(paper.geometry), edgeMaterial);
+    outline.raycast = () => {};
+    paper.add(outline);
+    paper.receiveShadow = tape.receiveShadow = true;
+    note.add(paper, tape);
+    // Inner face is the door's back (-z); the note faces inwards, slightly askew.
+    const inner = Math.min(min.z, max.z) - .002;
+    note.position.set((min.x + max.x) / 2, Math.max(min.y, max.y) - width * .9, inner);
+    note.rotation.set(0, Math.PI, THREE.MathUtils.degToRad(-4));
+    door.add(note);
   }
 
   function addPart(object, apply) {
@@ -179,6 +202,7 @@ export function enableDeskRoom(host) {
       const doorLeft = cabinet.getObjectByName("doorLeft");
       const doorRight = cabinet.getObjectByName("doorRight");
       if (doorLeft && doorRight) {
+        addNote(doorLeft);
         const apply = (t) => { doorLeft.rotation.y = -t * 1.9; doorRight.rotation.y = t * 1.9; };
         addPart(cabinet, apply);
       }

@@ -147,7 +147,7 @@ img.hero-image { object-fit: cover; }
 .toy-widget[data-toy="voxel-title"], .toy-widget[data-toy="voxel-title"] .toy-canvas { cursor: pointer; }
 .toy-widget[data-toy="source-light"], .toy-widget[data-toy="source-light"] .toy-canvas { cursor: pointer; }
 .toy-widget[data-toy="magnetic-cube"] .toy-canvas:not([data-ready="true"]) { background: url("../three.js/impact/cube.svg?v=6") center / contain no-repeat; }
-.toy-widget[data-toy="source-light"] .toy-canvas:not([data-ready="true"]), .page-drag-preview [data-toy="source-light"] .toy-canvas {
+.toy-widget[data-toy="source-light"] .toy-canvas:not([data-ready="true"], [data-placeholder="true"]), .page-drag-preview [data-toy="source-light"] .toy-canvas:not([data-placeholder="true"]) {
   background-image: url("../three.js/source/source-avatar.svg?v=2");
   background-position: center;
   background-size: auto 77.727%;
@@ -166,7 +166,7 @@ img.hero-image { object-fit: cover; }
   opacity: var(--source-light-alpha, 1);
 }
 .toy-widget { cursor: default; touch-action: none; }
-.toy-widget[data-toy="source-light"] .toy-canvas { filter: drop-shadow(0 4px 3px #23303d35); }
+/* No drop shadow: the running toy draws on the page surface without one, and a shadowed placeholder looked bolder while the page slid in. */
 .toy-stage { position: relative; isolation: isolate; }
 .toy-stage > .media-stack, .toy-stage > .project-copy { position: relative; z-index: 1; }
 .toy-stage > .toy-surface-canvas { z-index: 0; max-width: none; pointer-events: none; background: none; touch-action: auto; }
@@ -379,7 +379,7 @@ img.hero-image { object-fit: cover; }
 @media (prefers-reduced-motion: reduce) { .arup-title-text, .arup-title-logos { transition: none; } }
 .beam-title-highlight { position: absolute; inset: 0; font: inherit; line-height: inherit; letter-spacing: inherit; white-space: inherit; pointer-events: none; opacity: 0; }
 .page-drag-preview .voxel-title .toy-widget .toy-canvas { background: none; }
-.page-drag-preview .toy-widget .toy-canvas { background: url("../three.js/impact/cube.svg?v=6") center / contain no-repeat; }
+.page-drag-preview .toy-widget .toy-canvas:not([data-placeholder="true"]) { background: url("../three.js/impact/cube.svg?v=6") center / contain no-repeat; }
 @media (max-width: 600px) { .toy-widget { flex-basis: 112px; width: 112px; height: 94px; } }
 .hero-frame { cursor: grab; user-select: none; }
 .hero-frame.is-dragging, .hero-frame.is-settling { cursor: grabbing; }
@@ -584,19 +584,22 @@ img.hero-image { object-fit: cover; }
 /* Wide screens: three equal columns, photo | pitch | room. */
 @media (min-width: 1181px) {
   .about-layout { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .about-layout > .about-photo { grid-column: 1; grid-row: 1; height: auto; aspect-ratio: 25 / 27; }
-  .about-layout > .about-copy-wrap { grid-column: 2; grid-row: 1; justify-self: center; max-width: 460px; text-align: center; }
-  .about-layout .about-copy-wrap .about-title { font-size: clamp(30px, 2.9vw, 50px); white-space: nowrap; }
-  .about-layout .about-tagline { margin-inline: auto; }
+  .about-layout > .about-photo { grid-column: 1; grid-row: 1; width: min(108%, 540px); height: auto; aspect-ratio: 25 / 24; }
+  .about-layout > .about-copy-wrap { grid-column: 2; grid-row: 1; justify-self: center; max-width: 500px; text-align: center; }
+  .about-layout .about-copy-wrap .about-title { font-size: clamp(30px, 2.95vw, 50px); white-space: nowrap; }
+  .about-layout .about-hello { font-size: clamp(26px, 2vw, 34px); }
+  .about-layout .about-roles { font-size: clamp(14px, 1.04vw, 16.5px); }
+  .about-layout .about-tagline { margin-inline: auto; font-size: clamp(15px, 1.09vw, 17px); }
   .about-layout .about-rule { margin-inline: auto; }
   .about-layout .about-actions, .about-layout .about-contacts { justify-content: center; }
-  .about-layout > .about-room { grid-column: 3; grid-row: 1; width: 100%; transform: translate(-10%, -6%); }
+  .about-layout > .about-room { grid-column: 3; grid-row: 1; width: 110%; height: clamp(324px, 56vh, 584px); transform: translate(-1%, -6%); }
 }
 .about-copy-wrap { justify-self: start; width: 100%; max-width: 500px; padding: 0; text-align: left; }
 .about-copy-wrap .about-title { max-width: none; color: #07111d; font-size: clamp(31px, 3.6vw, 59px); font-weight: 800; line-height: 1.04; letter-spacing: -.02em; }
+.about-hello { display: inline-block; margin: 0 0 4px; color: #07111d; font-family: "Caveat", cursive; font-size: clamp(26px, 2vw, 34px); font-weight: 400; line-height: 1; transform: rotate(-4deg); transform-origin: left bottom; }
 .about-roles { margin: 14px 0 0; color: #748396; font-size: clamp(12px, .9vw, 14.5px); font-weight: 600; letter-spacing: .24em; text-transform: uppercase; }
 .about-rule { width: 48px; height: 2px; margin: 25px 0 0; background: #3269aa; }
-.about-tagline { max-width: 34ch; margin: 22px 0 0; color: #1f2a33; font-size: clamp(15px, 1.08vw, 17px); font-weight: 400; line-height: 1.35; letter-spacing: -.025em; }
+.about-tagline { max-width: 34ch; margin: 24px 0 0; color: #1f2a33; font-size: clamp(15px, 1.08vw, 17px); font-weight: 400; line-height: 1.35; letter-spacing: -.025em; }
 .about-tagline-accent { color: #3269aa; font-weight: 600; }
 .about-bio { max-width: 52ch; margin: 14px 0 0; color: var(--body-copy); font-size: 13.5px; line-height: 1.8; }
 .about-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 20px 10px; margin-top: 25px; }
@@ -745,11 +748,6 @@ img.hero-image { object-fit: cover; }
 .dock-reveal-zone { display: none; }
 @media (hover: hover) and (pointer: fine) {
   .project-dock { opacity: 1; translate: 0 0; visibility: visible; transition: opacity 320ms ease, translate 400ms ease, visibility 0s; }
-  .is-about-page .dock-reveal-zone { display: block; position: fixed; z-index: 4; right: 0; bottom: 0; left: 0; height: calc(var(--dock-height) + 18px); }
-  .is-about-page .project-dock { opacity: 0; translate: 0 16px; visibility: hidden; pointer-events: none; transition: opacity 320ms ease, translate 400ms ease, visibility 0s 400ms; }
-  .is-about-page .dock-reveal-zone:hover ~ .project-dock,
-  .is-about-page .project-dock:hover,
-  .is-about-page .project-dock:has(:focus-visible) { opacity: 1; translate: 0 0; visibility: visible; pointer-events: auto; transition-delay: 0s; }
 }
 
 @media (max-width: 900px) {
@@ -757,6 +755,7 @@ img.hero-image { object-fit: cover; }
   .about-photo { justify-self: center; width: min(460px, 100%); height: clamp(220px, 56vw, 360px); }
   .about-copy-wrap { max-width: 640px; }
   .about-copy-wrap .about-title { font-size: clamp(30px, 6vw, 46px); }
-  .about-rule, .about-tagline { margin-top: 22px; }
+  .about-rule { margin-top: 22px; }
+  .about-tagline { margin-top: 46px; }
   .about-actions { margin-top: 26px; }
 }

@@ -695,6 +695,30 @@ const toyModules = {
 };
 const supportsMiniGames = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
+// Until its toy runs, Source's avatar is painted with the same canvas call as source-light.js:
+// the CSS background renders the SVG visibly bolder, and the swap showed as the page slid in.
+const sourceAvatar = new Image();
+sourceAvatar.src = new URL("three.js/source/source-avatar.svg?v=2", document.baseURI).href;
+function paintSourcePlaceholders(root) {
+  root.querySelectorAll('.toy-widget[data-toy="source-light"] .toy-canvas:not([data-ready="true"])').forEach((canvas) => {
+    const paint = () => {
+      const width = canvas.offsetWidth, height = canvas.offsetHeight;
+      if (canvas.dataset.ready === "true" || !width || !height) return;
+      // Same density as the toy, which draws unscaled at up to 1.5 device pixels per CSS pixel.
+      const ratio = Math.min(window.devicePixelRatio || 1, 1.5) * canvas.getBoundingClientRect().height / height;
+      canvas.width = Math.max(1, Math.round(width * ratio));
+      canvas.height = Math.max(1, Math.round(height * ratio));
+      const context = canvas.getContext("2d");
+      context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
+      const avatarHeight = height * .77727, avatarWidth = avatarHeight * 152 / 114;
+      context.drawImage(sourceAvatar, (width - avatarWidth) / 2, (height - avatarHeight) / 2, avatarWidth, avatarHeight);
+      canvas.dataset.placeholder = "true";
+    };
+    if (sourceAvatar.complete && sourceAvatar.naturalWidth > 0) paint();
+    else sourceAvatar.addEventListener("load", paint, { once: true });
+  });
+}
+
 // Prepare Impact's font and renderer while the visitor browses the portfolio.
 if (supportsMiniGames()) {
   void toyModules["voxel-title"]().catch(() => {});
@@ -1070,9 +1094,9 @@ function aboutPageMarkup() {
         </span>
       </figure>
       <div class="about-copy-wrap project-copy">
+        <p class="about-hello">Hello, I'm</p>
         <h1 class="about-title">${escapeText(aboutMedia.title1)}</h1>
         ${aboutMedia.title2 ? `<p class="about-roles">${escapeText(aboutMedia.title2)}</p>` : ""}
-        <div class="about-rule" aria-hidden="true"></div>
         ${aboutMedia.tagline ? `<p class="about-tagline">${tagline}</p>` : ""}
         ${aboutMedia.texte ? `<p class="about-bio">${escapeText(aboutMedia.texte)}</p>` : ""}
         <div class="about-actions">
@@ -1104,6 +1128,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   projectView.setAttribute("aria-busy", "true");
   const projectMarkup = projectPageMarkup(project, imageIndex);
   replaceProjectView(projectMarkup, navigationDirection, animateTransition);
+  paintSourcePlaceholders(projectView);
   projectView.querySelectorAll(".arup-play, .space-racer-play, .necro-play, .proteo-play, .aeon-strike, .toy-canvas, .toy-widget").forEach(control => { control.tabIndex = -1; });
   const gallery = projectView.querySelector(".gallery");
   enableGalleryDrag(gallery, galleryScrollLeft);
@@ -1312,6 +1337,7 @@ function updatePageDragPreview(drag) {
       video.pause();
     });
     projectView.append(drag.preview);
+    paintSourcePlaceholders(drag.preview);
     drag.previewDirection = direction;
   }
   drag.preview.style.translate = `${direction * window.innerWidth + drag.deltaX}px 0`;
