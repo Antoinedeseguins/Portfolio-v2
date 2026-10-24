@@ -33,7 +33,7 @@ export function enableShapes(button) {
   const events = new AbortController(), options = { signal: events.signal };
   const stage = document.createElement("button");
   stage.type = "button"; stage.className = "proteo-shape-stage";
-  stage.setAttribute("aria-label", "Déplacer la boule Proteo");
+  stage.setAttribute("aria-label", "Move the Proteo ball");
   const avatar = button.querySelector("img").cloneNode();
   stage.append(avatar);
   const ball = { x: 0, y: 0, vx: 0, vy: 0, angle: 0 };

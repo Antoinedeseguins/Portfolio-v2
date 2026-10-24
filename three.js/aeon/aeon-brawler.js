@@ -564,7 +564,7 @@ export function enableBrawler(title) {
     hand.y = event.clientY;
   };
   logo.tabIndex = -1; logo.removeAttribute("aria-hidden");
-  logo.setAttribute("role", "button"); logo.setAttribute("aria-label", "Jouer au mini beat 'em all"); logo.setAttribute("aria-pressed", "false");
+  logo.setAttribute("role", "button"); logo.setAttribute("aria-label", "Play the mini beat 'em up"); logo.setAttribute("aria-pressed", "false");
   logo.addEventListener("pointerdown", event => event.stopPropagation(), options);
   logo.addEventListener("click", event => { event.stopPropagation(); start(); }, options);
   window.addEventListener("pointermove", move, options);

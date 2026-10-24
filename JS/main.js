@@ -40,6 +40,24 @@ function updatePageUrl(page) {
     else url.pathname = new URL(projectSlug(page.title), siteBaseUrl).pathname;
   }
   history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  updatePageMeta(page);
+}
+
+// Each project gets its own title, description and canonical address, so search engines index it as a page of its own
+// rather than as a copy of the home page. The home page keeps the ones written in index.html.
+const pageDescription = document.querySelector('meta[name="description"]');
+const pageCanonical = document.querySelector('link[rel="canonical"]');
+const homeMeta = { title: document.title, description: pageDescription.content, canonical: pageCanonical.href };
+function updatePageMeta(page) {
+  if (page === aboutMedia) {
+    document.title = homeMeta.title;
+    pageDescription.content = homeMeta.description;
+    pageCanonical.href = homeMeta.canonical;
+    return;
+  }
+  document.title = `${page.title} | Antoine de Seguins`;
+  pageDescription.content = `${page.title}, ${page.context}. Work by Antoine de Seguins, Game Designer & QA Analyst: ${page.tags.join(", ")}.`;
+  pageCanonical.href = new URL(projectSlug(page.title), homeMeta.canonical).href;
 }
 
 function projectFromUrl() {
@@ -155,16 +173,16 @@ function renderHeroMarkup(project, imageIndex) {
         </div>
         <p class="controller-error" hidden>The 3D viewer is not available in this browser.</p>
       </div>
-      <button class="hero-arrow" type="button" data-media-direction="-1" aria-label="Média précédent"><span aria-hidden="true">‹</span></button>
-      <button class="hero-arrow" type="button" data-media-direction="1" aria-label="Média suivant"><span aria-hidden="true">›</span></button>
+      <button class="hero-arrow" type="button" data-media-direction="-1" aria-label="Previous media"><span aria-hidden="true">‹</span></button>
+      <button class="hero-arrow" type="button" data-media-direction="1" aria-label="Next media"><span aria-hidden="true">›</span></button>
     </div>`;
   const media = imageIndex === -1 && project.video
-    ? `<video class="hero-image" src="${project.video}" poster="${videoPoster(project)}" muted playsinline controlslist="nodownload" preload="metadata" aria-label="Vidéo de ${project.title}"></video><img class="hero-video-fallback" hidden src="${videoPoster(project)}" alt="" aria-hidden="true" fetchpriority="high" />`
-    : `<img class="hero-image" src="${imagePath(project, project.images[imageIndex])}" alt="${project.title} — visuel ${imageIndex + 1}" fetchpriority="high" />`;
+    ? `<video class="hero-image" src="${project.video}" poster="${videoPoster(project)}" muted playsinline controlslist="nodownload" preload="metadata" aria-label="${project.title} video"></video><img class="hero-video-fallback" hidden src="${videoPoster(project)}" alt="" aria-hidden="true" fetchpriority="high" />`
+    : `<img class="hero-image" src="${imagePath(project, project.images[imageIndex])}" alt="${project.title}, image ${imageIndex + 1}" fetchpriority="high" />`;
   return `<div class="hero-frame">
     <div class="hero-track">${media}</div>
-    <button class="hero-arrow" type="button" data-media-direction="-1" aria-label="Média précédent"><span aria-hidden="true">‹</span></button>
-    <button class="hero-arrow" type="button" data-media-direction="1" aria-label="Média suivant"><span aria-hidden="true">›</span></button>
+    <button class="hero-arrow" type="button" data-media-direction="-1" aria-label="Previous media"><span aria-hidden="true">‹</span></button>
+    <button class="hero-arrow" type="button" data-media-direction="1" aria-label="Next media"><span aria-hidden="true">›</span></button>
   </div>`;
 }
 
@@ -501,7 +519,7 @@ function renderDockImage(project) {
 function renderProjectRail() {
   projectRail.style.setProperty("--visible-project-count", Math.min(9, orderedProjects.length));
   projectRail.innerHTML = orderedProjects.map((project) => `
-    <button class="project-link" type="button" data-project="${project.id}" aria-label="Ouvrir ${project.title}" aria-current="${project.id === activeProjectId ? "page" : "false"}">
+    <button class="project-link" type="button" data-project="${project.id}" aria-label="Open ${project.title}" aria-current="${project.id === activeProjectId ? "page" : "false"}">
       ${renderDockImage(project)}
     </button>
   `).join("");
@@ -1010,17 +1028,17 @@ function renderMediaMarkup(project, imageIndex) {
     <div class="media-stack">
       ${renderHeroMarkup(project, imageIndex)}
       <div class="gallery-shell">
-        <button class="gallery-arrow" type="button" data-gallery-direction="-1" aria-label="Images précédentes" title="Images précédentes"><span aria-hidden="true">‹</span></button>
-        <div class="gallery" aria-label="Images de ${project.title}" tabindex="0">
-          ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Afficher la vidéo de ${project.title}" aria-pressed="${imageIndex === -1}"><img src="${thumbPath(project, project.images[0])}" data-full="${imagePath(project, project.images[0])}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
+        <button class="gallery-arrow" type="button" data-gallery-direction="-1" aria-label="Previous images" title="Previous images"><span aria-hidden="true">‹</span></button>
+        <div class="gallery" aria-label="${project.title} images" tabindex="0">
+          ${project.video ? `<button class="gallery-thumb video-thumb" type="button" data-image="-1" aria-label="Show the ${project.title} video" aria-pressed="${imageIndex === -1}"><img src="${thumbPath(project, project.images[0])}" data-full="${imagePath(project, project.images[0])}" alt="" /><span class="video-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m9 5 11 7-11 7Z" /></svg></span></button>` : ""}
           ${project.id === "spaceage" ? `<button class="gallery-thumb controller-thumb" type="button" data-image="-2" aria-label="Explore the controller in 3D" aria-pressed="${imageIndex === -2}"><img src="Assets/spaceageracer/img/thumbs/spaceage-minia3d.webp" data-full="Assets/spaceageracer/img/spaceage-minia3d.webp" alt="" /><span class="controller-thumb-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9" /></svg></span></button>` : ""}
           ${project.images.map((image, index) => project.video && index === 0 ? "" : `
-            <button class="gallery-thumb" type="button" data-image="${index}" aria-label="Afficher l’image ${index + 1} de ${project.title}" aria-pressed="${index === imageIndex}">
+            <button class="gallery-thumb" type="button" data-image="${index}" aria-label="Show ${project.title} image ${index + 1}" aria-pressed="${index === imageIndex}">
               <img src="${thumbPath(project, image)}" data-full="${imagePath(project, image)}" alt="" loading="${index < 5 ? "eager" : "lazy"}" />
             </button>
           `).join("")}
         </div>
-        <button class="gallery-arrow" type="button" data-gallery-direction="1" aria-label="Images suivantes" title="Images suivantes"><span aria-hidden="true">›</span></button>
+        <button class="gallery-arrow" type="button" data-gallery-direction="1" aria-label="Next images" title="Next images"><span aria-hidden="true">›</span></button>
       </div>
     </div>
   `;
@@ -1046,7 +1064,7 @@ function projectPageMarkup(project, imageIndex) {
     <div class="project-layout${tags.includes("Quality Assurance") ? " is-qa-project" : ""}" data-project-id="${escapeText(project.id)}">
       ${renderMediaMarkup(project, imageIndex)}
       <div class="project-copy">
-        ${!supportsMiniGames() ? `<h1 class="project-title">${escapeText(project.title)}</h1>` : project.id === "age" ? `<div class="sigmar-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><span class="sigmar-hammer" aria-hidden="true"><img src="three.js/ageofsigmar/storm-hammer-compact-v2.png?v=1" alt="" draggable="false" decoding="async" /></span></div>` : project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Attraper la boule Proteo" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=7" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
+        ${!supportsMiniGames() ? `<h1 class="project-title">${escapeText(project.title)}</h1>` : project.id === "age" ? `<div class="sigmar-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><span class="sigmar-hammer" aria-hidden="true"><img src="three.js/ageofsigmar/storm-hammer-compact-v2.png?v=1" alt="" draggable="false" decoding="async" /></span></div>` : project.id === "spaceage" ? `<div class="space-racer-title-row"><div class="space-racer-heading"><h1 class="project-title">${escapeText(project.title)}</h1><button class="space-racer-play" type="button" aria-label="Play Space Age Racer" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5 19 12 9 19Z" fill="currentColor"/></svg></button></div></div>` : project.id === "proteo" ? `<div class="proteo-title-row"><h1 class="project-title">${escapeText(project.title)}</h1><button class="proteo-play" type="button" aria-label="Grab the Proteo ball" aria-pressed="false"><img src="three.js/proteo/proteo-ball-red.svg?v=7" alt="" draggable="false" /></button></div>` : project.id === "aeon" ? `<div class="aeon-title-row"><h1 class="project-title"><button class="aeon-strike" type="button" aria-label="${escapeText(project.title)}">${escapeText(project.title)}</button></h1><span class="aeon-fist-halo" aria-hidden="true"></span><img class="aeon-title-logo" src="three.js/aeon/fist-aeon.png" alt="" aria-hidden="true" draggable="false" /></div>` : project.id === "arup" ? `<div class="arup-title-row"><h1 class="project-title arup-title">
           <span class="arup-title-toggle" aria-pressed="false">
             <span class="arup-title-text">${[...project.title].map(letter => `<span>${escapeText(letter)}</span>`).join("")}</span>
             <span class="arup-title-logos" aria-hidden="true">${["A", "R", "U", "P"].map(letter => `<img src="three.js/ARUP/${letter}-logo.png" alt="" draggable="false" decoding="async" />`).join("")}</span>
@@ -1060,7 +1078,7 @@ function projectPageMarkup(project, imageIndex) {
         ${project.titleCube ? `<div class="toy-widget" data-toy="${escapeText(project.titleCube.id)}" data-toy-color="#ed5aaa">
           <canvas class="hero-image toy-canvas" tabindex="0" role="button" aria-label="Interactive cube"></canvas>
         </div>` : ""}
-        </div>` : project.id === "necromunda" ? `<div class="necro-title-row"><h1 class="project-title necro-title">${escapeText(project.title)}</h1><button class="necro-play" type="button" aria-label="Jouer au stand de tir" aria-pressed="false"><img src="three.js/necromunda/rifle.svg?v=2" alt="" draggable="false" /><img class="necro-rifle-bolt" src="three.js/necromunda/rifle-bolt.svg" alt="" draggable="false" /></button></div>` : project.titleToy ? `<div class="project-title-row">
+        </div>` : project.id === "necromunda" ? `<div class="necro-title-row"><h1 class="project-title necro-title">${escapeText(project.title)}</h1><button class="necro-play" type="button" aria-label="Play the shooting gallery" aria-pressed="false"><img src="three.js/necromunda/rifle.svg?v=2" alt="" draggable="false" /><img class="necro-rifle-bolt" src="three.js/necromunda/rifle-bolt.svg" alt="" draggable="false" /></button></div>` : project.titleToy ? `<div class="project-title-row">
           <h1 class="project-title">${escapeText(project.title)}</h1>
           <div class="toy-widget" data-toy="${escapeText(project.titleToy.id)}" data-toy-color="#ed5aaa">
             <canvas class="hero-image toy-canvas" tabindex="0" role="button" aria-label="${escapeText(project.title)}"></canvas>
@@ -1068,7 +1086,7 @@ function projectPageMarkup(project, imageIndex) {
         </div>` : `<h1 class="project-title">${escapeText(project.title)}</h1>`}
         <div class="copy-rule" aria-hidden="true"></div>
         ${project.context ? `<p class="project-subtitle">${escapeText(project.context)}</p>` : ""}
-        ${tags.length ? `<div class="project-meta" aria-label="Domaines du projet">${tags.map(renderProjectTag).join("")}</div>` : ""}
+        ${tags.length ? `<div class="project-meta" aria-label="Project skills">${tags.map(renderProjectTag).join("")}</div>` : ""}
         ${(project.sections || []).filter((section) => section.title || section.content).map((section) => `
           <section class="project-paragraph">
             ${section.title ? `<h2 class="project-subtitle"><span class="section-dot" aria-hidden="true"></span>${escapeText(section.title)}</h2>` : ""}
@@ -1143,7 +1161,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
     .catch(error => console.error("Impact tags could not be loaded", error));
   const arupTitle = projectView.querySelector(".arup-title-toggle");
   const proteoPlay = projectView.querySelector(".proteo-play");
-  if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=32", document.baseURI).href)
+  if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=33", document.baseURI).href)
     .then(module => { if (proteoPlay.isConnected && !proteoPlay.closest(".page-outgoing")) module.enableShapes(proteoPlay); })
     .catch(error => console.error("Proteo interaction could not be loaded", error));
   if (arupTitle && supportsMiniGames()) import(new URL("three.js/ARUP/arup-runner.js?v=65", document.baseURI).href)
@@ -1163,7 +1181,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
       }).catch(error => console.error("Necromunda interaction could not be loaded", error));
   const aeonTitle = projectView.querySelector(".aeon-strike");
   if (aeonTitle && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/aeon/aeon-brawler.js?v=57", document.baseURI).href)
+    import(new URL("three.js/aeon/aeon-brawler.js?v=58", document.baseURI).href)
       .then(async module => {
         const logo = aeonTitle.closest(".aeon-title-row")?.querySelector(".aeon-title-logo");
         await Promise.all([document.fonts.ready, logo?.decode().catch(() => {})]);
@@ -1190,7 +1208,7 @@ function renderAbout(navigationDirection = -1) {
   // A small desk diorama sits right of the pitch; it stays drawn while the page slides out.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=47", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=48", document.baseURI).href)
     .then(module => {
       if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;
       const dispose = module.enableDeskRoom(aboutRoom);

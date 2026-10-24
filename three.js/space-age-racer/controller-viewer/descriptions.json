@@ -5,11 +5,11 @@
   },
   "left": {
     "title": "Left lever",
-    "description": "Controls the left engine independently. Move both levers together to accelerate, or offset them to steer the pod racer."
+    "description": "Controls the left engine independently. Move both levers together to accelerate, or offset them to steer the podracer."
   },
   "right": {
     "title": "Right lever",
-    "description": "Controls the right engine independently. Steering comes from the difference in power between the two engines, just like a pod racer."
+    "description": "Controls the right engine independently. Steering comes from the difference in power between the two engines, just like a podracer."
   },
   "boost": {
     "title": "Boost button",
