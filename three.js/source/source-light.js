@@ -1,7 +1,8 @@
 import { createGame, resetGame, stepGame, defeatVisual, cloudShadow } from "./source-game.js?v=15";
 import { createGameScore } from "../game-score.js";
 import { createResumeLock } from "../game-resume-lock.js";
-import { createSymbolField } from "./source-symbols.js?v=3";
+import { designPixel } from "../design-pixel.js";
+import { createSymbolField } from "./source-symbols.js?v=4";
 
 const smokeColors = {
   normal: { core: "82,77,102", soft: "111,105,129", edge: "130,123,148" },
@@ -20,6 +21,8 @@ export function beamSettings(distance, scale = 1) {
   };
 }
 
+// The light, beam and smoke are drawn in design pixels (see ../design-pixel.js): the canvas is scaled by the page's
+// design pixel and positions read from the page are converted on the way in, so the beam keeps its reach on any screen.
 export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas 2D unavailable");
@@ -47,10 +50,11 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   let target = { x: 0, y: 0 };
   let angle = 0, distance = 180, opacity = 0, titleOpacity = 0, phase = 0;
   let origin = { x: 0, y: 0, radius: 22 };
+  let unit = 1;
 
   const updateTarget = (event) => {
     const rect = canvas.getBoundingClientRect();
-    target = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    target = { x: (event.clientX - rect.left) / unit, y: (event.clientY - rect.top) / unit };
   };
   const stop = (reset = true) => {
     lockResume(false);
@@ -90,7 +94,8 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
       const spread = Math.tan(beam.angle) * length;
       const localX = x - titleBounds.x, localY = y - titleBounds.y;
       const cosine = Math.cos(angle), sine = Math.sin(angle);
-      const point = (forward, side) => `${localX + forward * cosine - side * sine}px ${localY + forward * sine + side * cosine}px`;
+      // The title is clipped in its own screen pixels.
+      const point = (forward, side) => `${(localX + forward * cosine - side * sine) * unit}px ${(localY + forward * sine + side * cosine) * unit}px`;
       highlight.style.clipPath = `polygon(${point(radius * 0.3, -2)},${point(length, -spread)},${point(length, spread)},${point(radius * 0.3, 2)})`;
       highlight.style.color = `rgb(${beam.color.r},${beam.color.g},${beam.color.b})`;
       highlight.style.opacity = game.status === "defeated" ? "0" : String(titleOpacity * hitLight);
@@ -232,19 +237,20 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
       const rect = surface.getBoundingClientRect();
       Object.assign(canvas.style, { left: `${-rect.left}px`, top: `${-rect.top}px`, width: `${document.documentElement.clientWidth}px`, height: `${Math.max(window.innerHeight, rect.bottom)}px` });
     }
+    unit = designPixel();
     const rect = canvas.getBoundingClientRect(), bounds = anchor.getBoundingClientRect();
     const hero = anchor.closest(".project-layout")?.querySelector(".hero-frame")?.getBoundingClientRect();
     if (title) {
       const titleRect = title.getBoundingClientRect();
-      titleBounds = { x: titleRect.left - rect.left, y: titleRect.top - rect.top, width: titleRect.width, height: titleRect.height };
+      titleBounds = { x: (titleRect.left - rect.left) / unit, y: (titleRect.top - rect.top) / unit, width: titleRect.width / unit, height: titleRect.height / unit };
     }
-    width = rect.width; height = rect.height;
+    width = rect.width / unit; height = rect.height / unit;
     const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
-    canvas.width = Math.max(1, Math.round(width * ratio));
-    canvas.height = Math.max(1, Math.round(height * ratio));
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    symbols.resize(rect, ratio, hero);
-    origin = { x: bounds.left - rect.left + bounds.width / 2, y: bounds.top - rect.top + bounds.height / 2, radius: Math.min(bounds.width, bounds.height) * 0.15 };
+    canvas.width = Math.max(1, Math.round(rect.width * ratio));
+    canvas.height = Math.max(1, Math.round(rect.height * ratio));
+    context.setTransform(ratio * unit, 0, 0, ratio * unit, 0, 0);
+    symbols.resize(rect, ratio, hero, unit);
+    origin = { x: (bounds.left - rect.left + bounds.width / 2) / unit, y: (bounds.top - rect.top + bounds.height / 2) / unit, radius: Math.min(bounds.width, bounds.height) / unit * 0.15 };
     draw();
   };
   const tick = (time) => {
@@ -285,7 +291,7 @@ export function createToy(canvas, { anchor = canvas, surface = null } = {}) {
   anchor.addEventListener("pointermove", (event) => {
     if (event.pointerId === pointerId) updateTarget(event);
     const bounds = canvas.getBoundingClientRect();
-    hovered = event.pointerType === "mouse" && Math.hypot(event.clientX - bounds.left - origin.x, event.clientY - bounds.top - origin.y) <= origin.radius * 1.65;
+    hovered = event.pointerType === "mouse" && Math.hypot((event.clientX - bounds.left) / unit - origin.x, (event.clientY - bounds.top) / unit - origin.y) <= origin.radius * 1.65;
   }, { signal: events.signal });
   anchor.addEventListener("pointerleave", () => { hovered = false; }, { signal: events.signal });
   anchor.addEventListener("focus", () => { focused = anchor.matches(":focus-visible"); }, { signal: events.signal });

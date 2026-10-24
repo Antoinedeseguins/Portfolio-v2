@@ -706,7 +706,7 @@ function enableHeroAutoplay(frame) {
 }
 
 const toyModules = {
-  "source-light": () => import(new URL("three.js/source/source-light.js?v=64", document.baseURI).href),
+  "source-light": () => import(new URL("three.js/source/source-light.js?v=65", document.baseURI).href),
   "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=51", document.baseURI).href),
   "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=51", document.baseURI).href),
 };
@@ -826,7 +826,7 @@ function enableHeroDrag(frame) {
     track.append(frame.querySelector(".controller-viewer"));
     let disposed = false;
     frame.addEventListener("hero-dispose", () => { disposed = true; }, { once: true });
-    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=60", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=61", document.baseURI).href)
       .then(module => { if (!disposed && frame.isConnected) return module.enableController(frame); })
       .catch(error => {
         if (!disposed) { frame.querySelector(".controller-error").hidden = false; frame.classList.add("controller-unavailable"); }
@@ -1161,7 +1161,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
     .catch(error => console.error("Impact tags could not be loaded", error));
   const arupTitle = projectView.querySelector(".arup-title-toggle");
   const proteoPlay = projectView.querySelector(".proteo-play");
-  if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=33", document.baseURI).href)
+  if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=34", document.baseURI).href)
     .then(module => { if (proteoPlay.isConnected && !proteoPlay.closest(".page-outgoing")) module.enableShapes(proteoPlay); })
     .catch(error => console.error("Proteo interaction could not be loaded", error));
   if (arupTitle && supportsMiniGames()) import(new URL("three.js/ARUP/arup-runner.js?v=65", document.baseURI).href)
@@ -1169,19 +1169,19 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
   if (racerPlay && supportsMiniGames())
-    import(new URL("three.js/space-age-racer/mini-game/space-racer.js?v=71", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/mini-game/space-racer.js?v=72", document.baseURI).href)
       .then(module => { if (racerPlay.isConnected && !racerPlay.closest(".page-outgoing")) module.enableRacer(racerPlay); })
       .catch(error => console.error("Racer interaction could not be loaded", error));
   const necroPlay = projectView.querySelector(".necro-play");
   if (necroPlay && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/necromunda/shooting-gallery.js?v=13", document.baseURI).href)
+    import(new URL("three.js/necromunda/shooting-gallery.js?v=14", document.baseURI).href)
       .then(async module => {
         await document.fonts.ready;
         if (necroPlay.isConnected && !necroPlay.closest(".page-outgoing")) module.enableGallery(necroPlay);
       }).catch(error => console.error("Necromunda interaction could not be loaded", error));
   const aeonTitle = projectView.querySelector(".aeon-strike");
   if (aeonTitle && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/aeon/aeon-brawler.js?v=58", document.baseURI).href)
+    import(new URL("three.js/aeon/aeon-brawler.js?v=59", document.baseURI).href)
       .then(async module => {
         const logo = aeonTitle.closest(".aeon-title-row")?.querySelector(".aeon-title-logo");
         await Promise.all([document.fonts.ready, logo?.decode().catch(() => {})]);

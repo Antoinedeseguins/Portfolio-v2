@@ -9,14 +9,15 @@ export function createSymbolField() {
   let excluded = null;
   const clear = () => context.clearRect(0, 0, width, height);
   return {
-    resize(rect, ratio, hero = null) {
-      width = rect.width; height = rect.height;
-      excluded = hero ? { left: hero.left - rect.left, right: hero.right - rect.left,
-        top: hero.top - rect.top, bottom: hero.bottom - rect.top } : null;
-      Object.assign(canvas.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${width}px`, height: `${height}px` });
-      canvas.width = Math.max(1, Math.round(width * ratio));
-      canvas.height = Math.max(1, Math.round(height * ratio));
-      context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    // rect and hero are screen boxes; the field is drawn in design pixels, `unit` screen pixels each.
+    resize(rect, ratio, hero = null, unit = 1) {
+      width = rect.width / unit; height = rect.height / unit;
+      excluded = hero ? { left: (hero.left - rect.left) / unit, right: (hero.right - rect.left) / unit,
+        top: (hero.top - rect.top) / unit, bottom: (hero.bottom - rect.top) / unit } : null;
+      Object.assign(canvas.style, { left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+      canvas.width = Math.max(1, Math.round(rect.width * ratio));
+      canvas.height = Math.max(1, Math.round(rect.height * ratio));
+      context.setTransform(ratio * unit, 0, 0, ratio * unit, 0, 0);
     },
     draw({ active, kills, origin, angle, beam, alpha }) {
       clear();

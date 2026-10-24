@@ -4,7 +4,7 @@ import { createControllerStudio } from "./controller-studio.js";
 import { createControllerSignal } from "./controller-signal.js";
 import { createControllerDemo } from "./controller-demo.js?v=2";
 import { createBoostBurst } from "./controller-boost.js?v=2";
-import { attachControllerAnnotations } from "./controller-annotations.js?v=22";
+import { attachControllerAnnotations } from "./controller-annotations.js?v=23";
 
 export async function enableController(frame) {
   if (!frame.isConnected || frame.closest(".page-outgoing, .page-drag-preview")) return;

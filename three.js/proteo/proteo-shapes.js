@@ -1,7 +1,9 @@
 import { createResumeLock } from "../game-resume-lock.js";
+import { designPixel } from "../design-pixel.js";
 
-// Pixel coordinates; bounds describe the allowed centre of the ball.
-export function stepBall(ball, dt, bounds, target = null) {
+// Pixel coordinates; bounds describe the allowed centre of the ball. Speeds and gravity are in design pixels, scaled
+// by `unit` so the ball moves the same relative to the page on any screen.
+export function stepBall(ball, dt, bounds, target = null, unit = 1, radius = 18) {
   const steps = Math.max(1, Math.ceil(dt * 120));
   const step = dt / steps;
   for (let i = 0; i < steps; i++) {
@@ -11,19 +13,20 @@ export function stepBall(ball, dt, bounds, target = null) {
     } else {
       ball.vx *= Math.exp(-step * .35);
     }
-    ball.vy += 1000 * step;
-    const speed = Math.hypot(ball.vx, ball.vy);
-    if (speed > 1800) { ball.vx *= 1800 / speed; ball.vy *= 1800 / speed; }
+    ball.vy += 1000 * unit * step;
+    const speed = Math.hypot(ball.vx, ball.vy), maxSpeed = 1800 * unit;
+    if (speed > maxSpeed) { ball.vx *= maxSpeed / speed; ball.vy *= maxSpeed / speed; }
     ball.x += ball.vx * step; ball.y += ball.vy * step;
     if (ball.x < bounds.left) { ball.x = bounds.left; ball.vx = Math.abs(ball.vx) * .65; }
     if (ball.x > bounds.right) { ball.x = bounds.right; ball.vx = -Math.abs(ball.vx) * .65; }
     if (ball.y < bounds.top) { ball.y = bounds.top; ball.vy = Math.abs(ball.vy) * .65; }
     if (ball.y >= bounds.bottom) {
       ball.y = bounds.bottom;
-      ball.vy = Math.abs(ball.vy) < 45 ? 0 : -Math.abs(ball.vy) * .6;
+      ball.vy = Math.abs(ball.vy) < 45 * unit ? 0 : -Math.abs(ball.vy) * .6;
       if (!target) ball.vx *= Math.exp(-step * 5);
     }
-    ball.angle += ball.vx * step / 18;
+    // Rolls without slipping: the distance travelled over the radius.
+    ball.angle += ball.vx * step / radius;
   }
 }
 
@@ -37,7 +40,9 @@ export function enableShapes(button) {
   const avatar = button.querySelector("img").cloneNode();
   stage.append(avatar);
   const ball = { x: 0, y: 0, vx: 0, vy: 0, angle: 0 };
-  const radius = 52 * 25 / 72;
+  // The stage is 52 design pixels wide (.proteo-shape-stage) and the ball's circle fills 25 of its SVG's 72 units.
+  let unit = 1, radius = 52 * 25 / 72;
+  const measure = () => { unit = designPixel(); radius = 52 * unit * 25 / 72; };
   let active = false, drag = null, frame = null, previousTime = null;
   let activeBounds = null;
   let origin = { x: 0, y: 0 };
@@ -51,7 +56,7 @@ export function enableShapes(button) {
   };
   const clamp = (point, bounds) => ({ x: Math.max(bounds.left, Math.min(bounds.right, point.x)), y: Math.max(bounds.top, Math.min(bounds.bottom, point.y)) });
   const paint = () => {
-    stage.style.translate = `${ball.x - origin.x - 26}px ${ball.y - origin.y - 26}px`;
+    stage.style.translate = `${ball.x - origin.x - 26 * unit}px ${ball.y - origin.y - 26 * unit}px`;
     avatar.style.rotate = `${ball.angle}rad`;
   };
   const tick = time => {
@@ -65,7 +70,7 @@ export function enableShapes(button) {
     const dt = previousTime === null ? 0 : Math.min(.04, (time - previousTime) / 1000);
     previousTime = time;
     const bounds = activeBounds;
-    stepBall(ball, dt, bounds, drag ? clamp(drag.target, bounds) : null);
+    stepBall(ball, dt, bounds, drag ? clamp(drag.target, bounds) : null, unit, radius);
 
     paint();
     if (drag || Math.abs(ball.vx) > .5 || Math.abs(ball.vy) > .5 || ball.y < bounds.bottom - .1) frame = requestAnimationFrame(tick);
@@ -91,6 +96,7 @@ export function enableShapes(button) {
     if (!active) {
       const rect = button.getBoundingClientRect();
       // Simulate in the initial coordinate space; the page carries the stage.
+      measure();
       activeBounds = playBounds();
       const pageRect = page.getBoundingClientRect();
       origin = { x: pageRect.left, y: pageRect.top };
@@ -143,6 +149,7 @@ export function enableShapes(button) {
       ball.x += rect.left - origin.x;
       ball.y += rect.top - origin.y;
       origin = { x: rect.left, y: rect.top };
+      measure();
       activeBounds = playBounds();
     }
     wake();

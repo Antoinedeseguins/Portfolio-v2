@@ -1,6 +1,9 @@
 import { createGameScore } from "../game-score.js";
 import { createResumeLock } from "../game-resume-lock.js";
+import { designPixel } from "../design-pixel.js";
 
+// The gallery runs in design pixels (see ../design-pixel.js): the canvas is scaled by the page's design pixel and the
+// positions read from the page are converted on the way in, so targets and aim keep their size next to the title.
 export function enableGallery(button) {
   const page = button.closest(".project-layout"), title = page.querySelector(".necro-title");
   const rifleImage = button.querySelector("img");
@@ -21,10 +24,15 @@ export function enableGallery(button) {
   let letters = [], enemies = [], shots = [], animations = [];
   let defeatFragments = [];
   let hitAnimation = null;
-  let elapsed = 0, spawn = 0, cooldown = 0, held = false, width = 0, height = 0;
+  let elapsed = 0, spawn = 0, cooldown = 0, held = false, width = 0, height = 0, unit = 1;
   let escaped = 0, recoil = 0;
   let gunKick = 0;
   const mouse = { x: 0, y: 0, inside: false };
+  // An element's box in design pixels.
+  const box = element => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left / unit, right: rect.right / unit, top: rect.top / unit, bottom: rect.bottom / unit, width: rect.width / unit, height: rect.height / unit };
+  };
   const aimPoint = () => {
     const shake = reduced ? 0 : Math.min(1, recoil / .35) * 7;
     const a = area();
@@ -32,26 +40,31 @@ export function enableGallery(button) {
       y: Math.max(a.top + 14, Math.min(a.bottom - 14, mouse.y + Math.cos(elapsed * 53) * shake)) };
   };
   const area = () => {
-    const copy = title.closest(".project-copy").getBoundingClientRect();
-    const bottom = page.querySelector(".project-copy > .copy-rule")?.getBoundingClientRect().top ?? title.getBoundingClientRect().bottom + 20;
-    return { left: Math.max(0, copy.left - 16), right: Math.min(innerWidth, copy.right + 16), top: Math.max(0, title.getBoundingClientRect().top - 130), bottom };
+    const copy = box(title.closest(".project-copy"));
+    const rule = page.querySelector(".project-copy > .copy-rule");
+    const bottom = rule ? box(rule).top : box(title).bottom + 20;
+    return { left: Math.max(0, copy.left - 16), right: Math.min(innerWidth / unit, copy.right + 16), top: Math.max(0, box(title).top - 130), bottom };
   };
-  const updateMouse = event => {
-    mouse.x = event.clientX; mouse.y = event.clientY;
+  // Aims at a point in design pixels.
+  const aimAt = (x, y) => {
+    mouse.x = x; mouse.y = y;
     const a = area();
     mouse.inside = active && mouse.x >= a.left && mouse.x <= a.right && mouse.y >= a.top && mouse.y < a.bottom;
     document.documentElement.classList.toggle("necro-aiming", mouse.inside);
     if (!mouse.inside) resetRifle();
     if (!mouse.inside) held = false;
   };
-  const measure = () => letters.forEach(letter => { letter.rect = letter.element.getBoundingClientRect(); });
+  const updateMouse = event => aimAt(event.clientX / unit, event.clientY / unit);
+  const measure = () => letters.forEach(letter => { letter.rect = box(letter.element); });
   const resize = () => {
     if (!active) return;
-    width = document.documentElement.clientWidth; height = innerHeight;
+    unit = designPixel();
+    const screenWidth = document.documentElement.clientWidth, screenHeight = innerHeight;
+    width = screenWidth / unit; height = screenHeight / unit;
     const ratio = Math.min(devicePixelRatio || 1, 1.5);
-    canvas.width = Math.round(width * ratio); canvas.height = Math.round(height * ratio);
-    canvas.style.width = `${width}px`; canvas.style.height = `${height}px`;
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0); measure();
+    canvas.width = Math.round(screenWidth * ratio); canvas.height = Math.round(screenHeight * ratio);
+    canvas.style.width = `${screenWidth}px`; canvas.style.height = `${screenHeight}px`;
+    ctx.setTransform(ratio * unit, 0, 0, ratio * unit, 0, 0); measure();
   };
   const stop = () => {
     resetRifle();
@@ -91,11 +104,11 @@ export function enableGallery(button) {
         clipPath: `inset(${row * 50}% ${(2 - column) * 100 / 3}% ${(1 - row) * 50}% ${column * 100 / 3}%)`,
       });
       document.body.append(fragment); defeatFragments.push(fragment);
-      const x = (column - 1) * 35, y = row ? 28 : -25;
+      const x = (column - 1) * 35 * unit, y = (row ? 28 : -25) * unit;
       return fragment.animate([
         { opacity: 1, transform: "translate(0, 0) rotate(-12deg)" },
         { opacity: 1, transform: `translate(${x}px, ${y}px) rotate(${(column - 1) * 20 - 12}deg)`, offset: .4 },
-        { opacity: 0, transform: `translate(${x * 1.5}px, ${y + 65}px) rotate(${(column - 1) * 45 - 12}deg)` },
+        { opacity: 0, transform: `translate(${x * 1.5}px, ${y + 65 * unit}px) rotate(${(column - 1) * 45 - 12}deg)` },
       ], { duration: 700, easing: "ease-out", fill: "forwards" });
     });
     await Promise.allSettled(animations.map(animation => animation.finished));
@@ -133,7 +146,7 @@ export function enableGallery(button) {
     elapsed += dt; cooldown = Math.max(0, cooldown - dt); recoil = Math.max(0, recoil - dt); spawn -= dt;
     gunKick = Math.max(0, gunKick - dt);
     measure();
-    updateMouse({ clientX: mouse.x, clientY: mouse.y });
+    aimAt(mouse.x, mouse.y);
     const a = area(), pressure = Math.floor(elapsed / 6);
     if (spawn <= 0 && enemies.length < Math.min(7, 3 + pressure)) { addEnemy(); spawn = Math.max(.25, .85 - pressure * .09); }
     if (held && mouse.inside && cooldown <= 0) shoot();
@@ -202,7 +215,7 @@ export function enableGallery(button) {
       ctx.stroke();
     }
     ctx.restore();
-    const rifle = button.getBoundingClientRect();
+    const rifle = box(button);
     if (mouse.inside) {
       const aim = aimPoint();
       const dx = aim.x - (rifle.left + rifle.width / 2);
@@ -210,8 +223,8 @@ export function enableGallery(button) {
       const angle = Math.atan2(dy, dx);
       const flip = dx < 0 ? -1 : 1;
       const kick = reduced ? 0 : gunKick / .12;
-      rifleImage.style.transform = `rotate(${angle}rad) scaleY(${flip}) translateX(${-kick * 3}px)`;
-      if (boltImage) boltImage.style.transform = `rotate(${angle}rad) scaleY(${flip}) translateX(${-kick * 6}px)`;
+      rifleImage.style.transform = `rotate(${angle}rad) scaleY(${flip}) translateX(${-kick * 3 * unit}px)`;
+      if (boltImage) boltImage.style.transform = `rotate(${angle}rad) scaleY(${flip}) translateX(${-kick * 6 * unit}px)`;
     }
     const heartsX = Math.min(width - 44, rifle.right + 12), heartsY = rifle.top + rifle.height / 2;
     for (let i = 0; i < 3; i++) {

@@ -2,6 +2,7 @@ import { createPodracerModel } from "./podracer-model.js?v=9";
 import { createRace, stepRace } from "./space-racer-game.js?v=23";
 import { createGameScore } from "../../game-score.js";
 import { createResumeLock } from "../../game-resume-lock.js";
+import { designPixel } from "../../design-pixel.js";
 import { drawDesertTrack, drawDesertObstacle } from "./desert-environment.js?v=14";
 
 export function stepRacer(state, dt, steering, accelerating) {
@@ -25,6 +26,8 @@ export function stepRacer(state, dt, steering, accelerating) {
   state.roll += (lean - state.roll) * (1 - Math.exp(-dt * 7.5));
 }
 
+// The race is drawn in design pixels (see ../../design-pixel.js): sizes read from the page are divided by the page's
+// design pixel, the canvases are scaled by it, and the CSS positions written back are multiplied by it.
 export function enableRacer(play) {
   const page = play.closest(".project-layout"), events = new AbortController();
   const score = createGameScore(page, "space-age-racer");
@@ -62,7 +65,7 @@ export function enableRacer(play) {
   };
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   let running = false, disposed = false, frame = null, last = null, accelerating = false, steering = 0;
-  let canvas = null, context = null, width = 0, height = 0, focused = true, trackBottom = Infinity;
+  let canvas = null, context = null, width = 0, height = 0, focused = true, trackBottom = Infinity, unit = 1;
   let drawingHeadroom = 48, archHeight = 8.4;
   let state = {x:0,vx:0,speed:0,roll:0,time:0,leftThrust:.1,rightThrust:.1}, race = createRace();
   const { vertices, faces } = createPodracerModel();
@@ -202,19 +205,21 @@ export function enableRacer(play) {
   const pause = () => { if(frame!==null)cancelAnimationFrame(frame);frame=null;last=null;accelerating=false;steering=0; };
   const resize = () => {
     if(!running)return;
-    width=zone.clientWidth;height=zone.clientHeight+70;
+    unit = designPixel();
+    width=zone.clientWidth/unit;height=zone.clientHeight/unit+70;
     // Extra canvas space above the track keeps the taller arches in view.
-    drawingHeadroom = Math.max(0, zone.getBoundingClientRect().top - 35 - 12);
+    drawingHeadroom = Math.max(0, zone.getBoundingClientRect().top/unit - 35 - 12);
     // Fit the model once for the entire approach, preserving its proportions in motion.
     const lastDepth = 1.15 ** 2;
     const lastScale = width * .042 * (.12 + lastDepth * .88 / (.82 ** 2));
     archHeight = Math.min(8.4, (height * (.08 + lastDepth * .65) + drawingHeadroom - 4) / Math.max(1.5, lastScale));
-    canvas.style.top = `${-35 - drawingHeadroom}px`;
-    canvas.style.height = `${height + drawingHeadroom}px`;
-    const ratio=Math.min(devicePixelRatio||1,1.5);canvas.width=Math.round(width*ratio);canvas.height=Math.round((height+drawingHeadroom)*ratio);
+    canvas.style.top = `${(-35 - drawingHeadroom) * unit}px`;
+    canvas.style.height = `${(height + drawingHeadroom) * unit}px`;
+    const ratio=Math.min(devicePixelRatio||1,1.5), scale=ratio*unit;
+    canvas.width=Math.round(width*scale);canvas.height=Math.round((height+drawingHeadroom)*scale);
     const rule = page.querySelector(".project-copy > .copy-rule");
-    trackBottom = rule ? rule.getBoundingClientRect().top - canvas.getBoundingClientRect().top - drawingHeadroom - 1 : height * .94;
-    context.setTransform(ratio,0,0,ratio,0,drawingHeadroom*ratio);draw();
+    trackBottom = rule ? (rule.getBoundingClientRect().top - canvas.getBoundingClientRect().top)/unit - drawingHeadroom - 1 : height * .94;
+    context.setTransform(scale,0,0,scale,0,drawingHeadroom*scale);draw();
   };
   const stop = (restoreTitle = false) => {
     score.hide();
@@ -223,12 +228,12 @@ export function enableRacer(play) {
     play.setAttribute("aria-pressed","false");play.setAttribute("aria-label","Play Space Age Racer");notify();
     if (restoreTitle && !disposed && !reduced.matches) {
       const restoration = letters.map((letter, index) => letter.animate([
-        {transform:"translate(-18px, -10px) rotate(-7deg)",opacity:0},
-        {transform:"translate(2px, 1px) rotate(1deg)",opacity:1,offset:.75},
+        {transform:`translate(${-18*unit}px, ${-10*unit}px) rotate(-7deg)`,opacity:0},
+        {transform:`translate(${2*unit}px, ${unit}px) rotate(1deg)`,opacity:1,offset:.75},
         {transform:"translate(0, 0) rotate(0deg)",opacity:1},
       ], {duration:650,delay:index*28,easing:"cubic-bezier(.22, 1, .36, 1)",fill:"both"}));
       restoration.push(preview.animate([
-        {transform:"translate(-14px, 4px) rotate(-10deg) scale(.9)",opacity:0},
+        {transform:`translate(${-14*unit}px, ${4*unit}px) rotate(-10deg) scale(.9)`,opacity:0},
         {transform:"translate(0, 0) rotate(0deg) scale(1)",opacity:1},
       ], {duration:800,delay:180,easing:"cubic-bezier(.22, 1, .36, 1)",fill:"both"}));
       returnAnimations = restoration;
@@ -244,19 +249,21 @@ export function enableRacer(play) {
     if(!context){canvas=null;return;}
     state={x:0,vx:0,speed:0,roll:0,time:0,leftThrust:.1,rightThrust:.1};race=createRace();running=true;focused=true;
     score.show();
-    const podBounds = preview.getBoundingClientRect();
-    const zoneBounds = zone.getBoundingClientRect();
+    unit = designPixel();
+    const box = element => { const rect = element.getBoundingClientRect(); return { left: rect.left/unit, right: rect.right/unit, top: rect.top/unit, width: rect.width/unit, height: rect.height/unit }; };
+    const podBounds = box(preview);
+    const zoneBounds = box(zone);
     zone.append(canvas);play.disabled=true;play.setAttribute("aria-pressed","true");notify();resize();
     if (reduced.matches || !previewContext) { resume(); return; }
     zone.classList.add("is-launching");
     launchPod = document.createElement("canvas");
-    const ratio = Math.min(devicePixelRatio || 1, 1.5);
-    launchPod.width = Math.round(width * ratio); launchPod.height = Math.round(height * ratio);
+    const ratio = Math.min(devicePixelRatio || 1, 1.5), scale = ratio * unit;
+    launchPod.width = Math.round(width * scale); launchPod.height = Math.round(height * scale);
     launchPod.className = "space-racer-launch-pod";
     launchPod.setAttribute("aria-hidden", "true");
-    launchPod.style.cssText = `left:0;top:-35px;width:${width}px;height:${height}px`;
+    launchPod.style.cssText = `left:0;top:${-35*unit}px;width:${width*unit}px;height:${height*unit}px`;
     const launchContext = launchPod.getContext("2d");
-    launchContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+    launchContext.setTransform(scale, 0, 0, scale, 0, 0);
     zone.append(launchPod);
     const distance = Math.max(100, podBounds.left - zoneBounds.left + podBounds.width);
     const startX = podBounds.left - zoneBounds.left + podBounds.width * .5;
@@ -289,21 +296,21 @@ export function enableRacer(play) {
     };
     launchFrame = requestAnimationFrame(animateLaunch);
     for (const [index, letter] of letters.entries()) {
-      const bounds = letter.getBoundingClientRect();
+      const bounds = box(letter);
       const delay = 400 + Math.max(0, Math.min(1, (podBounds.left-bounds.right)/distance)) * 350;
       launchAnimations.push(letter.animate([
         {transform:"translate(0,0) rotate(0deg)",opacity:1},
-        {transform:`translate(-6px,-2px) rotate(-4deg)`,opacity:1,offset:.2},
-        {transform:`translate(${-48-index*1.5}px,${-22-(index%4)*8}px) rotate(${-18-(index%3)*10}deg)`,opacity:0},
+        {transform:`translate(${-6*unit}px,${-2*unit}px) rotate(-4deg)`,opacity:1,offset:.2},
+        {transform:`translate(${(-48-index*1.5)*unit}px,${(-22-(index%4)*8)*unit}px) rotate(${-18-(index%3)*10}deg)`,opacity:0},
       ], {duration:700,delay,easing:"cubic-bezier(.4,0,.2,1)",fill:"forwards"}));
     }
   },{signal:events.signal});
-  window.addEventListener("pointermove", event => { if(running){const bounds=zone.getBoundingClientRect();steering=-Math.max(-1,Math.min(1,(event.clientX-bounds.left-width*.5)/(width*.35)));} },{signal:events.signal});
+  window.addEventListener("pointermove", event => { if(running){const bounds=zone.getBoundingClientRect();steering=-Math.max(-1,Math.min(1,((event.clientX-bounds.left)/unit-width*.5)/(width*.35)));} },{signal:events.signal});
   window.addEventListener("pointerout",event=>{if(event.relatedTarget===null){steering=0;accelerating=false;}},{signal:events.signal});
   window.addEventListener("pointerdown", event => {
     if(!running||event.button!==0||event.target.closest("button,a,input,textarea,select,[contenteditable],.hero-frame,.gallery-shell,.project-dock,.topline"))return;
     const bounds=zone.getBoundingClientRect();
-    if(event.clientX<bounds.left-100||event.clientX>bounds.right+100||event.clientY<bounds.top-110||event.clientY>bounds.bottom+180)return;
+    if(event.clientX<bounds.left-100*unit||event.clientX>bounds.right+100*unit||event.clientY<bounds.top-110*unit||event.clientY>bounds.bottom+180*unit)return;
     accelerating=true;event.preventDefault();event.stopPropagation();
   },{capture:true,signal:events.signal});
   for(const type of ["pointerup","pointercancel"])window.addEventListener(type,()=>{accelerating=false;},{signal:events.signal});

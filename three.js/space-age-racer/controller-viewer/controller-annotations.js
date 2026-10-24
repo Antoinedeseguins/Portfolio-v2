@@ -1,4 +1,5 @@
 import * as THREE from "../../vendor/three.module.js";
+import { designPixel } from "../../design-pixel.js";
 
 export function attachControllerAnnotations(frame, model, camera, actions, events, descriptions) {
   const viewer = frame.querySelector(".controller-viewer");
@@ -59,7 +60,7 @@ export function attachControllerAnnotations(frame, model, camera, actions, event
         }
         renderDetail();
       }
-      const rect = viewer.getBoundingClientRect();
+      const rect = viewer.getBoundingClientRect(), unit = designPixel();
       const anchors = {
         left: model.levers[0].localToWorld(new THREE.Vector3(0, 2.55, .27)),
         right: model.levers[1].localToWorld(new THREE.Vector3(-.18, 2.55, .27)),
@@ -70,7 +71,8 @@ export function attachControllerAnnotations(frame, model, camera, actions, event
       };
       for (const [id, position] of Object.entries(anchors)) {
         const p = position.project(camera), x = (p.x + 1) * rect.width / 2, y = (1 - p.y) * rect.height / 2;
-        points[id].hidden = (["potentiometers", "potentiometerRight"].includes(id) && !opened) || p.z < -1 || p.z > 1 || x < 10 || x > rect.width - 10 || y < 10 || y > rect.height - 10;
+        const edge = 10 * unit;
+        points[id].hidden = (["potentiometers", "potentiometerRight"].includes(id) && !opened) || p.z < -1 || p.z > 1 || x < edge || x > rect.width - edge || y < edge || y > rect.height - edge;
         points[id].style.left = `${x}px`; points[id].style.top = `${y}px`;
       }
       const selectedPoint = points[active];
@@ -80,9 +82,9 @@ export function attachControllerAnnotations(frame, model, camera, actions, event
         // Use the final layout position, independent of the reveal's translation.
         const left = panel.offsetLeft, right = left + panel.offsetWidth;
         const top = panel.offsetTop, bottom = top + panel.offsetHeight;
-        const edgeX = x < left ? left : x > right ? right : THREE.MathUtils.clamp(x, left + 12, right - 12);
-        const edgeY = x < left || x > right ? THREE.MathUtils.clamp(y, top + 20, bottom - 20) : y > bottom ? bottom : top;
-        const bendX = edgeX + (x < edgeX ? -12 : 12);
+        const edgeX = x < left ? left : x > right ? right : THREE.MathUtils.clamp(x, left + 12 * unit, right - 12 * unit);
+        const edgeY = x < left || x > right ? THREE.MathUtils.clamp(y, top + 20 * unit, bottom - 20 * unit) : y > bottom ? bottom : top;
+        const bendX = edgeX + (x < edgeX ? -12 : 12) * unit;
         const path = connector.querySelector("path");
         path.setAttribute("pathLength", "1");
         path.setAttribute("d", `M${x.toFixed(1)} ${y.toFixed(1)} L${bendX.toFixed(1)} ${edgeY.toFixed(1)} L${edgeX.toFixed(1)} ${edgeY.toFixed(1)}`);

@@ -1,6 +1,10 @@
 import { createGameScore } from "../game-score.js";
 import { createResumeLock } from "../game-resume-lock.js";
+import { designPixel } from "../design-pixel.js";
 
+// The game runs in design pixels (see ../design-pixel.js): the canvas is scaled by the page's design pixel and every
+// position read from the page is converted on the way in, so sizes, speeds and reaches keep their proportions to the
+// title on any screen.
 export function enableBrawler(title) {
   const page = title.closest(".project-layout");
   const logo = page?.querySelector(".aeon-title-logo");
@@ -24,7 +28,13 @@ export function enableBrawler(title) {
   });
   let enemyAppearance = 0;
   let canvas, ctx, frame, last, active = false;
-  let width = 0, height = 0, spawn = 0, cooldown = 0, impact = 0;
+  let width = 0, height = 0, spawn = 0, cooldown = 0, impact = 0, unit = 1;
+  // An element's box in design pixels.
+  const box = element => {
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left / unit, right: rect.right / unit, top: rect.top / unit, bottom: rect.bottom / unit, width: rect.width / unit, height: rect.height / unit };
+  };
   let enemies = [], sparks = [];
   const removeDefeatedEnemies = () => {
     const defeated = enemies.filter(enemy => enemy.hp <= 0).length;
@@ -205,7 +215,7 @@ export function enableBrawler(title) {
   };
   const measureLetters = () => {
     for (const letter of letters) {
-      const rect = letter.element.getBoundingClientRect();
+      const rect = box(letter.element);
       letter.x = rect.left + rect.width / 2;
       letter.y = rect.top + rect.height / 2;
     }
@@ -230,12 +240,12 @@ export function enableBrawler(title) {
   };
   const hand = { x: 0, y: 0, inside: true };
   const gameBottom = () => Math.max(0, Math.min(height,
-    page.querySelector(".project-copy > .copy-rule")?.getBoundingClientRect().top
-      ?? title.getBoundingClientRect().bottom + 20));
+    box(page.querySelector(".project-copy > .copy-rule"))?.top
+      ?? box(title).bottom + 20));
   const enemyArena = () => {
-    const bounds = title.getBoundingClientRect();
-    const media = page.querySelector(".media-stack")?.getBoundingClientRect();
-    const copy = title.closest(".project-copy").getBoundingClientRect();
+    const bounds = box(title);
+    const media = box(page.querySelector(".media-stack"));
+    const copy = box(title.closest(".project-copy"));
     const stacked = media && media.right > copy.left + 40 && media.bottom <= bounds.top;
     const right = Math.min(width - 60, Math.max(bounds.right + 80, copy.right - 60));
     const left = Math.min(right, Math.max(60, bounds.left - 80, !stacked && media ? media.right + 60 : 0));
@@ -313,14 +323,17 @@ export function enableBrawler(title) {
     frame = requestAnimationFrame(draw);
   };
   const resize = () => {
-    width = document.documentElement.clientWidth;
-    height = Math.max(1, Math.min(innerHeight, document.querySelector(".project-dock")?.getBoundingClientRect().top ?? innerHeight));
+    unit = designPixel();
+    const screenWidth = document.documentElement.clientWidth;
+    const screenHeight = Math.max(1, Math.min(innerHeight, document.querySelector(".project-dock")?.getBoundingClientRect().top ?? innerHeight));
+    width = screenWidth / unit;
+    height = screenHeight / unit;
     const ratio = Math.min(devicePixelRatio || 1, 2);
-    canvas.width = Math.round(width * ratio);
-    canvas.height = Math.round(height * ratio);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    canvas.width = Math.round(screenWidth * ratio);
+    canvas.height = Math.round(screenHeight * ratio);
+    canvas.style.width = `${screenWidth}px`;
+    canvas.style.height = `${screenHeight}px`;
+    ctx.setTransform(ratio * unit, 0, 0, ratio * unit, 0, 0);
     hand.x = Math.max(25, Math.min(width - 25, hand.x));
     hand.y = Math.max(25, Math.min(height - 25, hand.y));
     enemies.forEach(enemy => {
@@ -515,7 +528,8 @@ export function enableBrawler(title) {
   };
   const start = () => {
     if (active || recovering || events.signal.aborted) return;
-    const bounds = logo.getBoundingClientRect();
+    unit = designPixel();
+    const bounds = box(logo);
     hand.x = bounds.left + bounds.width / 2; hand.y = bounds.top + bounds.height / 2; hand.inside = true;
     canvas = document.createElement("canvas");
     canvas.className = "aeon-brawler-stage"; canvas.setAttribute("aria-hidden", "true");
@@ -548,21 +562,23 @@ export function enableBrawler(title) {
     }
     logo.style.visibility = "hidden";
     logo.setAttribute("aria-pressed", "true");
-    move({ clientX: hand.x, clientY: hand.y });
+    moveTo(hand.x, hand.y);
     frame = requestAnimationFrame(tick);
   };
-  const move = event => {
+  // Moves the fist to a point in design pixels.
+  const moveTo = (x, y) => {
     if (!active) return;
     const bottom = gameBottom();
     const arena = enemyArena();
-    const left = Math.max(0, Math.min(arena.left - 60, page.querySelector(".hero-frame")?.getBoundingClientRect().right ?? 0));
-    const right = Math.min(width, Math.max(arena.right + 60, page.querySelector(".project-copy > .copy-rule")?.getBoundingClientRect().right ?? width));
-    hand.inside = event.clientX >= left && event.clientX < right && event.clientY >= 0 && event.clientY < bottom;
+    const left = Math.max(0, Math.min(arena.left - 60, box(page.querySelector(".hero-frame"))?.right ?? 0));
+    const right = Math.min(width, Math.max(arena.right + 60, box(page.querySelector(".project-copy > .copy-rule"))?.right ?? width));
+    hand.inside = x >= left && x < right && y >= 0 && y < bottom;
     document.documentElement.classList.toggle("aeon-hand-cursor", hand.inside);
     if (!hand.inside) hold = null;
-    hand.x = event.clientX;
-    hand.y = event.clientY;
+    hand.x = x;
+    hand.y = y;
   };
+  const move = event => moveTo(event.clientX / unit, event.clientY / unit);
   logo.tabIndex = -1; logo.removeAttribute("aria-hidden");
   logo.setAttribute("role", "button"); logo.setAttribute("aria-label", "Play the mini beat 'em up"); logo.setAttribute("aria-pressed", "false");
   logo.addEventListener("pointerdown", event => event.stopPropagation(), options);
@@ -681,10 +697,10 @@ export function enableBrawler(title) {
     hand.inside = false; document.documentElement.classList.remove("aeon-hand-cursor");
   }, options);
   window.addEventListener("resize", () => {
-    if (active) { resize(); move({ clientX: hand.x, clientY: hand.y }); }
+    if (active) { resize(); moveTo(hand.x, hand.y); }
   }, options);
   window.addEventListener("scroll", () => {
-    if (active) move({ clientX: hand.x, clientY: hand.y });
+    if (active) moveTo(hand.x, hand.y);
   }, { passive: true, signal: events.signal });
   page.addEventListener("page-dispose", () => {
     returnAnimations.forEach(animation => animation.cancel());
