@@ -135,7 +135,6 @@ function renderHeroMarkup(project, imageIndex) {
         <img class="controller-poster" src="Assets/spaceageracer/img/viewer-poster.webp" alt="Space Age Racer dual-lever controller" />
         <canvas class="controller-canvas" tabindex="0" aria-label="3D controller: drag to rotate, arrow keys to orbit, plus and minus to zoom"></canvas>
         <div class="controller-overlay">
-          <span class="controller-view-label" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9" /></svg></span>
           <svg class="controller-detail-connector" aria-hidden="true" style="display:none"><path/></svg>
           <div class="controller-hotspots" role="group" aria-label="Explore controller components">
             <button class="controller-hotspot" type="button" data-hotspot="left" aria-label="About the left lever" aria-pressed="false" aria-controls="controller-detail" hidden></button>

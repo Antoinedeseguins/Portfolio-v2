@@ -406,8 +406,6 @@ img.hero-image { object-fit: cover; }
 .controller-overlay { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 250ms ease; font-family: "Inter", sans-serif; }
 .controller-ready .controller-overlay { opacity: 1; }
 .controller-overlay button { pointer-events: auto; cursor: pointer; }
-.controller-view-label { position: absolute; top: 16px; left: 16px; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border-radius: 10px; background: #ffffffe0; color: #526470; line-height: 0; }
-.controller-view-label svg { display: block; flex: 0 0 26px; width: 26px; height: 26px; }
 .controller-detail-connector { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .controller-detail-connector path { fill: none; stroke: #ffffffe0; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .controller-view-actions button[hidden] { display: none; }
@@ -440,19 +438,18 @@ img.hero-image { object-fit: cover; }
 @media (prefers-reduced-motion: reduce) {
   .controller-hotspot[aria-pressed="true"]::before, .controller-detail-connector.is-revealing path, .controller-detail.is-revealing { animation: none; }
 }
-.controller-gesture { position: absolute; left: 18px; bottom: 16px; display: flex; align-items: center; max-width: calc(100% - 90px); min-height: var(--controller-toolbar-height); box-sizing: border-box; padding: 7px 13px; border: 1px solid #ffffff80; border-radius: 10px; background: #ffffffe0; color: #526470; backdrop-filter: blur(16px); }
-.controller-gesture-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.controller-gesture-item + .controller-gesture-item { margin-left: 16px; padding-left: 16px; border-left: 1px solid #52647026; }
-.controller-gesture-item > svg { flex: 0 0 20px; width: 20px; height: 25px; }
-.controller-gesture-item > span { display: grid; gap: 2px; font-size: 9px; line-height: 1.35; }
-.controller-gesture-item strong { color: #40535f; font-size: 10px; font-weight: 500; }
+.controller-gesture { position: absolute; left: 18px; top: 16px; display: flex; align-items: center; max-width: calc(100% - 18px - clamp(170px, 24%, 220px) - 30px); min-height: var(--controller-toolbar-height); box-sizing: border-box; padding: 9px 16px; border: 1px solid #ffffff80; border-radius: 10px; background: #ffffffe0; color: #526470; backdrop-filter: blur(16px); }
+.controller-gesture-item { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.controller-gesture-item + .controller-gesture-item { margin-left: 19px; padding-left: 19px; border-left: 1px solid #52647026; }
+.controller-gesture-item > svg { flex: 0 0 24px; width: 24px; height: 30px; }
+.controller-gesture-item > span { display: grid; gap: 2px; font-size: 11px; line-height: 1.35; }
+.controller-gesture-item strong { color: #40535f; font-size: 12px; font-weight: 500; }
 .controller-gesture-item > span > span { color: #7b8b96; }
 .controller-view-actions { position: absolute; right: 17px; bottom: 16px; display: flex; gap: 9px; }
 .controller-view-actions button { display: grid; place-items: center; width: var(--controller-toolbar-height); height: var(--controller-toolbar-height); box-sizing: border-box; padding: 0; border: 1px solid #ffffff80; border-radius: 10px; background: #ffffffe0; color: #526470; }
 .controller-view-actions button svg { display: block; width: 20px; height: 20px; }
 .controller-unavailable .controller-overlay { display: none; }
-.controller-frame :is(.controller-view-label, .controller-detail, .controller-gesture, .controller-view-actions button) { box-sizing: border-box; border: 1px solid #ffffff80; border-radius: 10px; background: #ffffffe0; color: #526470; backdrop-filter: blur(16px); box-shadow: 0 8px 28px #3346520a; }
-.controller-frame .controller-view-label { border-radius: 50%; }
+.controller-frame :is(.controller-detail, .controller-gesture, .controller-view-actions button) { box-sizing: border-box; border: 1px solid #ffffff80; border-radius: 10px; background: #ffffffe0; color: #526470; backdrop-filter: blur(16px); box-shadow: 0 8px 28px #3346520a; }
 .controller-frame .controller-view-actions button { transition: background 160ms ease, box-shadow 160ms ease, opacity 160ms ease; }
 .controller-frame .controller-view-actions button:hover { background: #ffffff; box-shadow: 0 4px 16px #33465214; }.controller-frame .controller-view-actions button:focus-visible { outline: 2px solid #526470; outline-offset: 3px; }
 .controller-frame .controller-hotspot:focus-visible { outline: none; }
@@ -468,7 +465,7 @@ img.hero-image { object-fit: cover; }
   .controller-detail p { font-size: 10px; line-height: 1.5; }
   .controller-hotspot { width: 40px; height: 40px; }
   .controller-view-actions { bottom: 14px; }
-  .controller-gesture { left: 12px; bottom: 14px; padding: 5px 9px; }
+  .controller-gesture { left: 12px; top: 16px; max-width: calc(62% - 27px); padding: 5px 9px; }
   .controller-gesture-item { gap: 6px; }
   .controller-gesture-item + .controller-gesture-item { margin-left: 10px; padding-left: 10px; }
   .controller-gesture-item > svg { flex-basis: 18px; width: 18px; height: 24px; }
@@ -577,9 +574,12 @@ img.hero-image { object-fit: cover; }
 .about-photo:hover .about-photo-image { filter: grayscale(.15); }
 /* A desk diorama fills the free space right of the pitch, sharing the copy's grid cell. */
 .about-room { position: relative; justify-self: end; width: calc(100% - 420px); height: clamp(300px, 52vh, 540px); }
-.about-room-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 500ms ease; }
+/* The canvas overflows the frame by a quarter on every side, so things can spill past it (the layout only sees the frame),
+   and a light drop shadow lets the furniture cast a soft shadow on the page behind it, slightly to the right. */
+.about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; opacity: 0; filter: drop-shadow(12px 8px 4px #1c23212e); pointer-events: none; transition: opacity 500ms ease; }
 .about-room.has-room .about-room-canvas { opacity: 1; }
-.about-room.is-pointing { cursor: pointer; }
+.is-pointing-room, .is-pointing-room * { cursor: pointer; }
+.is-on-room-screen, .is-on-room-screen * { cursor: none; }
 @media (max-width: 1180px) { .about-room { display: none; } }
 /* Wide screens: three equal columns, photo | pitch | room. */
 @media (min-width: 1181px) {
