@@ -683,7 +683,7 @@ img.hero-image { object-fit: cover; }
   .copy-rule { margin-top: 18px; }
 }
 
-@media (min-width: 1601px) and (min-aspect-ratio: 16/10) {
+@media (min-width: 1601px) {
   :root {
     /* Match the dock's intrinsic height as its thumbnails grow with the layout. */
     --dock-height: clamp(112px, calc(4.0625vw + 11.25px), 136.25px);
