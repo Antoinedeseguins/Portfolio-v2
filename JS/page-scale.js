@@ -15,6 +15,9 @@
   function update() {
     const width = realWidth.call(window), height = realHeight.call(window);
     zoom = width < DESKTOP ? 1 : Math.max(MIN_ZOOM, Math.min(width / REFERENCE.width, height / REFERENCE.height));
+    // A fractional zoom puts edges between pixels, which shows as a 1px jump when a sliding page settles; screens close
+    // to the reference are left unzoomed so they render pixel-exact.
+    if (Math.abs(zoom - 1) < .1) zoom = 1;
     root.style.zoom = zoom === 1 ? "" : String(zoom);
     root.style.setProperty("--z", String(zoom));
     root.classList.toggle("is-wide-view", width / zoom >= 1601);
