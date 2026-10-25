@@ -149,8 +149,10 @@ button:focus-visible, a:focus-visible { outline: calc(3 * var(--u)) solid var(--
 }
 .hero-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
 /* The video fills its frame exactly like the stills: a 1px overscan made the picture shift when the
-   poster handed over to the first frame. */
-video.hero-image { object-fit: cover; border: 0; }
+   poster handed over to the first frame. The neutral filter keeps Chrome from handing a playing video
+   to a hardware overlay, which places it a fraction of a pixel away from the normal rendering: the
+   picture moved inside its frame whenever the video started or paused (on every page change). */
+video.hero-image { object-fit: cover; border: 0; filter: brightness(1.001); }
 .hero-track { position: absolute; inset: 0; }
 img.hero-image { object-fit: cover; }
 .hero-video-fallback { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
