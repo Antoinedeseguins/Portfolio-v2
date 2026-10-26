@@ -14,6 +14,8 @@ const DESK = { body: 0x3a4148, pull: 0xc9d0d6, inside: 0x2b3238 };
 // The 90s computer built below: beige-era shapes in the site's light greys, dark screen and power LED that light up.
 const RETRO_PC = { case: 0xd3d9de, caseShade: 0xb3bcc4, slot: 0x2b333b, screen: 0x1d2227, led: 0x2b333b, postIt: 0xf3d34a };
 const LED_ON = 0xe0392f;
+// The computer's power LED once on: a vivid red that glows.
+const PC_LED_ON = { colour: 0xff2414, glow: 1.4 };
 // The boot sequence and desktop on the CRT.
 const SCREEN = {
   black: "#0d1013", flash: "#e8f2ff", boot: "#10161d", bar: "#f2f6fa", barTrack: "#26313c",
@@ -24,7 +26,40 @@ const SCREEN = {
 const MUG = { mug: 0xeef1f3, coffee: 0x4a2e22 };
 // Classic cube colours, matched to the scene's existing reds, yellows and blues; the core shows between the cubies.
 const RUBIK = { white: 0xeef1f3, yellow: 0xf3d34a, red: 0xc8453b, orange: 0xe8833a, blue: 0x4a86c8, green: 0x49a868, core: 0x2b333b };
-const NOTE = { paper: 0xf4f5f2, tape: 0x9cbbe0 };
+// The note on the door: paper, blue tape, and its writing in marker (ink colour, letter size in canvas pixels).
+const NOTE = { paper: 0xf4f5f2, tape: 0x9cbbe0, ink: "#1d2126", letters: 95 };
+// Zelda's row of hearts on the door, in pixel art: dark outline, red fill with a white glint, and the used-up ones
+// left as dark empty containers. Five hearts, a heart and a half of them full at first (counted in half hearts). Once
+// all full, a pale gleam runs along them laps times, flourish seconds each.
+const HEARTS = {
+  outline: "#2a1416", fill: "#e0303a", glint: "#ffffff", empty: "#5a4a4c", gleam: "#ffc2c6",
+  count: 5, startHalves: 3, flourish: .7, laps: 3,
+};
+// Stickers on the wardrobe door, under the note, all painted on canvases: Team Vitality's bee, Counter-Strike's logo
+// and Twitch's (and, set aside for now, Counter-Strike's crosshair in its green on a dark badge). Each has a white
+// die-cut backing with a cut line in the shade the edge strokes give the wardrobe.
+const STICKERS = {
+  crosshair: "#4fcf4f", badge: "#2b333b", gloss: "#56616c",
+  cutBacking: "#f4f5f2", cutLine: "#5e6771",
+};
+// The original Game Boy: warm grey case, dark bezel round a pea-green screen, dark power LED (red once on), black
+// D-pad, magenta A and B, grey Start and Select.
+const GAMEBOY = { case: 0xcdcfc8, bezel: 0x585d6a, screen: 0x9aa84a, led: 0x4a2b2b, dpad: 0x2b333b, button: 0xa3285e, pill: 0x8d939a };
+// Switched on, its screen shows the boot: the Nintendo logo slides down from the top and stops in the middle. In the
+// Game Boy's own four greens, at its 160 × 144 resolution; times in seconds.
+const GAMEBOY_BOOT = { lightest: "#9bbc0f", darkest: "#0f380f", slide: 1.4, end: 1.6 };
+// Game Boy cartridges beside it: Pokémon Red and Blue in their coloured plastic, and a plain grey one. Each has a
+// lighter label and darker grip ridges.
+const CARTRIDGES = {
+  red: { shell: 0xc8453b, label: 0xe57a6f, ridge: 0x8f2f28 },
+  blue: { shell: 0x4a86c8, label: 0x86b0e0, ridge: 0x2f5e93 },
+  grey: { shell: 0xb9bdb6, label: 0xe5e7e2, ridge: 0x8d939a },
+};
+// The Nomai mask from Outer Wilds, in its in-game colours: pale grey face, mid-grey frames, silver arms banded in darker
+// grey with gold edges and dots, and yellow eyes with a dark core; its stand matches the desk.
+const NOMAI = { frame: 0x9ea4ab, face: 0xdde0e3, arm: 0xbcc1c7, band: 0x868c94, gold: 0xc9a64a, eye: 0xe0bf4a, pupil: 0x2b333b, stand: 0x3a4148 };
+// Mario's ? block: golden body, white question mark with a brown drop shadow, brown rivets in the corners.
+const QUESTION_BLOCK = { body: 0xf0ad2e, mark: 0xf7f4ea, shadow: 0x8a5420, rivet: 0x8a5420 };
 // Camera angles: front right, slightly above.
 const VIEW_ELEVATION = THREE.MathUtils.degToRad(24);
 const VIEW_AZIMUTH = THREE.MathUtils.degToRad(32);
@@ -77,7 +112,7 @@ function buildRetroComputer() {
     part(new THREE.BoxGeometry(.34, .29, .04), "case", 0, .235, .02),
     part(taperedBox(.32, .27, .19, .62), "caseShade", 0, .23, -.095),
   ]) mesh.userData.monitor = true;
-  const screen = part(new THREE.BoxGeometry(.27, .21, .004), "screen", 0, .24, .041);
+  const screen = part(new THREE.BoxGeometry(.29, .225, .004), "screen", 0, .24, .041);
   screen.name = "screen";
   // A yellow sticky note on the right of the monitor frame, overhanging its edge a little. It stands just clear of
   // the frame and the glass so neither shows through it.
@@ -430,6 +465,305 @@ function buildRubiksCube() {
   return cube;
 }
 
+// The original Game Boy, lying on its back on y = 0 with the screen end towards -z: .066 wide, .109 long, .018 thick
+// (the Rubik's cube's scale). Drawn in centimetres on its front face, with the big rounded corner bottom right.
+function buildGameBoy() {
+  const front = new THREE.Group();
+  const add = (geometry, material, x, y, z, turn = 0) => {
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ name: material }));
+    mesh.position.set(x, y, z);
+    mesh.rotation.z = turn;
+    front.add(mesh);
+    return mesh;
+  };
+  // A rectangle with rounded corners, the bottom right one possibly rounder, extruded towards +z.
+  const plate = (width, height, depth, radius, bottomRight = radius) => {
+    const shape = new THREE.Shape();
+    shape.moveTo(radius, 0);
+    shape.lineTo(width - bottomRight, 0);
+    shape.absarc(width - bottomRight, bottomRight, bottomRight, -Math.PI / 2, 0, false);
+    shape.lineTo(width, height - radius);
+    shape.absarc(width - radius, height - radius, radius, 0, Math.PI / 2, false);
+    shape.lineTo(radius, height);
+    shape.absarc(radius, height - radius, radius, Math.PI / 2, Math.PI, false);
+    shape.lineTo(0, radius);
+    shape.absarc(radius, radius, radius, Math.PI, Math.PI * 1.5, false);
+    return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 12 }).translate(-width / 2, -height / 2, 0);
+  };
+  const disc = (radius, depth) => new THREE.CylinderGeometry(radius, radius, depth, 20).rotateX(Math.PI / 2).translate(0, 0, depth / 2);
+  const box = (width, height, depth) => new THREE.BoxGeometry(width, height, depth).translate(0, 0, depth / 2);
+
+  const thick = 2.4;
+  add(plate(9, 14.8, thick, .4, 2.2), "case", 4.5, 7.4, 0);
+  add(plate(7.2, 6, .1, .3, 1.2), "bezel", 4.5, 10.6, thick);
+  add(box(4.8, 4.3, .05), "screen", 4.5, 10.55, thick + .1).name = "gameBoyScreen";
+  add(disc(.15, .1), "led", 1.4, 11.2, thick + .1).name = "gameBoyLed";
+  for (const turn of [0, Math.PI / 2]) add(box(2, .65, .3), "dpad", 2.2, 4.9, thick, turn);
+  add(disc(.55, .3), "button", 7.4, 5.6, thick);
+  add(disc(.55, .3), "button", 5.9, 4.9, thick);
+  for (const x of [3.6, 5.1]) add(plate(1, .3, .15, .15), "pill", x, 2.4, thick, .45);
+
+  // Laid on its back: the front faces up and its top end points away, into -z.
+  const gameBoy = new THREE.Group();
+  front.scale.setScalar(.0074);
+  front.rotation.x = -Math.PI / 2;
+  gameBoy.add(front);
+  return gameBoy;
+}
+
+// A Game Boy cartridge lying on its back on y = 0, label up and its grip end towards -z: .042 wide, .048 long, .006
+// thick, at the Game Boy's scale. Drawn in centimetres on its front face.
+function buildCartridge() {
+  const front = new THREE.Group();
+  const add = (width, height, depth, material, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth).translate(0, 0, depth / 2), new THREE.MeshStandardMaterial({ name: material }));
+    mesh.position.set(0, y, z);
+    front.add(mesh);
+    return mesh;
+  };
+  const thick = .8;
+  add(5.7, 6.5, thick, "shell", 0, 0);
+  add(4.4, 3.8, .05, "label", -.5, thick);
+  for (let i = 0; i < 4; i++) add(4.4, .12, .05, "ridge", 2.1 + i * .3, thick).userData.noEdges = true;
+
+  const cartridge = new THREE.Group();
+  front.scale.setScalar(.0074);
+  front.rotation.x = -Math.PI / 2;
+  cartridge.add(front);
+  return cartridge;
+}
+
+// Mario's ? block, standing on y = 0, .12 across: on each side a pixel-art question mark with its drop shadow and a
+// rivet in each corner.
+function buildQuestionBlock() {
+  const block = new THREE.Group();
+  const size = .12;
+  const add = (geometry, material, parent = block) => {
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ name: material }));
+    parent.add(mesh);
+    return mesh;
+  };
+  add(new THREE.BoxGeometry(size, size, size).translate(0, size / 2, 0), "body");
+
+  // The question mark on a grid of 6 × 9 pixels, its hook traced as one outline so no joins draw lines across it.
+  const pixel = .0085;
+  const polygon = (points) => new THREE.Shape(points.map(([x, y]) => new THREE.Vector2((x - 3) * pixel, (y - 4.5) * pixel)));
+  const hook = polygon([
+    [1, 9], [5, 9], [5, 8], [6, 8], [6, 6], [5, 6], [5, 5], [4, 5], [4, 3], [2, 3], [2, 5], [3, 5], [3, 6], [4, 6],
+    [4, 8], [2, 8], [2, 6], [0, 6], [0, 8], [1, 8],
+  ]);
+  const dot = polygon([[2, 0], [4, 0], [4, 2], [2, 2]]);
+  const extrude = (shape, depth) => new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+  const rivet = new THREE.BoxGeometry(.011, .011, .003).translate(0, 0, .0015);
+  for (let i = 0; i < 4; i++) {
+    const face = new THREE.Group();
+    face.rotation.y = i * Math.PI / 2;
+    face.position.y = size / 2;
+    block.add(face);
+    const front = new THREE.Group();
+    front.position.z = size / 2;
+    face.add(front);
+    for (const shape of [hook, dot]) {
+      // The shadow sits one pixel down and right, flatter, so the mark stands in front of it.
+      const shadow = add(extrude(shape, .002), "shadow", front);
+      shadow.position.set(pixel * .8, -pixel * .8, 0);
+      add(extrude(shape, .004), "mark", front);
+    }
+    const inset = size / 2 - .014;
+    for (const [x, y] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) add(rivet, "rivet", front).position.set(x * inset, y * inset, 0);
+  }
+  return block;
+}
+
+// The Nomai mask from Outer Wilds: a diamond face with three diamond eyes and a chin with a nose down it, ringed by
+// hooked arms (two horns, two side brackets, two bottom arms). Built flat in a plane facing +z, about 1 across and
+// centred on the origin, with its back on z = 0.
+function buildNomaiMask() {
+  const mask = new THREE.Group();
+  const slab = (shape, depth, material, z = 0) => {
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 20 });
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ name: material }));
+    mesh.position.z = z;
+    mask.add(mesh);
+    return mesh;
+  };
+  const polygon = (points) => new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
+  const diamond = (x, y, r) => polygon([[x, y + r], [x - r, y], [x, y - r], [x + r, y]]);
+
+  // The two sides of a band of the given width along a polyline, with mitred corners: the one on the left of the
+  // direction of travel first.
+  const bandSides = (points, width) => {
+    const normal = ([ax, ay], [bx, by]) => {
+      const length = Math.hypot(bx - ax, by - ay);
+      return [-(by - ay) / length, (bx - ax) / length];
+    };
+    const left = [], right = [];
+    points.forEach((point, i) => {
+      const before = normal(points[Math.max(0, i - 1)], points[Math.max(1, i)]);
+      const after = normal(points[Math.min(i, points.length - 2)], points[Math.min(i + 1, points.length - 1)]);
+      const mx = before[0] + after[0], my = before[1] + after[1], length = Math.hypot(mx, my);
+      const reach = width / 2 / ((mx * after[0] + my * after[1]) / length);
+      left.push([point[0] + mx / length * reach, point[1] + my / length * reach]);
+      right.push([point[0] - mx / length * reach, point[1] - my / length * reach]);
+    });
+    return [left, right];
+  };
+
+  // A closed outline (counter-clockwise) pushed out by the same distance along every side, with mitred corners.
+  const outset = (points, distance) => points.map((point, i) => {
+    const previous = points[(i + points.length - 1) % points.length], next = points[(i + 1) % points.length];
+    const outward = ([ax, ay], [bx, by]) => {
+      const length = Math.hypot(bx - ax, by - ay);
+      return [(by - ay) / length, -(bx - ax) / length];
+    };
+    const before = outward(previous, point), after = outward(point, next);
+    const mx = before[0] + after[0], my = before[1] + after[1], length = Math.hypot(mx, my);
+    const reach = distance / ((mx * after[0] + my * after[1]) / length);
+    return [point[0] + mx / length * reach, point[1] + my / length * reach];
+  });
+  // The face (drawn after the arms): a raised diamond whose lower half runs on into a chin narrowing downwards, on a
+  // backing of the same outline whose rim shows all round it. Both end on their right corner.
+  const face = [[0, .27], [-.25, .02], [-.11, -.12], [-.07, -.29], [.07, -.29], [.11, -.12], [.25, .02]];
+  const backing = outset(face, .035);
+
+  // The arms, mirrored left and right, sit just behind the face, which covers the ends that reach into it. Their
+  // outer parts, apart from the bottom arms, are sections of one ring, cut apart between the pieces.
+  // Each horn rises from a post beside the top corner, follows the ring down and ends in a hook turned inwards.
+  // Each side bracket is one piece: a short top bar turned in, the ring down the side, and a
+  // diagonal from the face's side corner merging into the ring above the bracket's foot.
+  // Each bottom arm leaves the face's lower edge and bends in to meet its twin under the chin (see below).
+  const ring = { inner: .41, outer: .48 };
+  const degrees = THREE.MathUtils.degToRad;
+  const onRing = (radius, from, to, steps = 8) => Array.from({ length: steps + 1 }, (_, i) => {
+    const angle = degrees(from + (steps ? (to - from) * i / steps : 0));
+    return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+  });
+  for (const side of [1, -1]) {
+    const mirror = (shape) => side > 0 ? shape : polygon(shape.getPoints().map(({ x, y }) => [-x, y]).reverse());
+    const angleAt = (radius, y) => Math.asin(y / radius) * 180 / Math.PI;
+    // The horn ends 30° above the horizontal, cut square across the ring, with the same spur as the bottom arms turned in at
+    // its end, its back sloping into the ring. The end face runs straight on into the spur's front, so their shared
+    // corner is left out (see the bottom arm).
+    const post = { left: .035, right: .105 }, hornEnd = 30, spur = { height: .035, width: .035 };
+    // Pointing in to the centre at the horn's end, and back up along the ring.
+    const inwards = [-Math.cos(degrees(hornEnd)), -Math.sin(degrees(hornEnd))], upRing = [inwards[1], -inwards[0]];
+    const [hornEndInside] = onRing(ring.inner, hornEnd, hornEnd, 0);
+    const hornSpurTop = [hornEndInside[0] + inwards[0] * spur.height, hornEndInside[1] + inwards[1] * spur.height];
+    const hornSpurBack = hornEnd + (spur.width + spur.height) / ring.inner * 180 / Math.PI;
+    slab(mirror(polygon([
+      [post.left, .2], ...onRing(ring.outer, 90 - angleAt(ring.outer, post.left), hornEnd),
+      hornSpurTop, [hornSpurTop[0] + upRing[0] * spur.width, hornSpurTop[1] + upRing[1] * spur.width],
+      ...onRing(ring.inner, hornSpurBack, 90 - angleAt(ring.inner, post.right), 6), [post.right, .2],
+    ])), .035, "arm");
+    // The side bracket's diagonal carries the face's upper edge on past its side corner, at 45°; the bottom arm runs
+    // parallel just below it, past a cut that goes on through the ring. Both leave the face flush with its lower edge.
+    const direction = [Math.SQRT1_2, -Math.SQRT1_2], down = [-Math.SQRT1_2, -Math.SQRT1_2];
+    const corner = backing[backing.length - 1];
+    const below = (distance) => [corner[0] + down[0] * distance, corner[1] + down[1] * distance];
+    // Where the 45° line from a point inside the ring crosses the circle of that radius.
+    const crossing = ([x, y], radius) => {
+      const b = x * direction[0] + y * direction[1], t = -b + Math.sqrt(b * b - (x * x + y * y - radius * radius));
+      return [x + direction[0] * t, y + direction[1] * t];
+    };
+    const angleOf = ([x, y]) => Math.atan2(y, x) * 180 / Math.PI;
+    const cut = .07, diagonal = .06;
+    const bracketLow = below(diagonal);
+    const barTop = .12, barBottom = .075;
+    slab(mirror(polygon([
+      [.34, barBottom],
+      ...onRing(ring.inner, angleAt(ring.inner, barBottom), angleOf(crossing(corner, ring.inner)), 4), corner,
+      bracketLow, ...onRing(ring.outer, angleOf(crossing(bracketLow, ring.outer)), angleAt(ring.outer, barTop)), [.34, barTop],
+    ])), .035, "arm");
+    // The bottom arm runs inside the ring: down the diagonal to a sharp bend, then nearly straight in towards the middle,
+    // meeting its twin under the chin like the bottom of a heart, and ends in a short spur turned up towards the chin,
+    // whose back slopes down into the arm so it reads as part of it.
+    // From the bend, the arm heads in to its tip at 40° below the horizontal.
+    const start = below(diagonal * 1.5 + cut), bend = crossing(start, .44), inward = degrees(40), reach = .264;
+    const tip = [bend[0] - Math.cos(inward) * reach, bend[1] - Math.sin(inward) * reach];
+    const [outside, inside] = bandSides([start, bend, tip], diagonal);
+    const end = outside.at(-1), endInside = inside.at(-1);
+    const toTip = [tip[0] - bend[0], tip[1] - bend[1]], toTipLength = Math.hypot(...toTip);
+    const back = [-toTip[0] / toTipLength, -toTip[1] / toTipLength], spurUp = [(endInside[0] - end[0]) / diagonal, (endInside[1] - end[1]) / diagonal];
+    const spurTop = [endInside[0] + spurUp[0] * spur.height, endInside[1] + spurUp[1] * spur.height];
+    slab(mirror(polygon([
+      // The end face runs straight on into the spur's front, so the corner between them is left out: a point in line
+      // with both would leave a flat sliver in the triangulation, and its edge would show as a line.
+      ...outside, spurTop, [spurTop[0] + back[0] * spur.width, spurTop[1] + back[1] * spur.width],
+      [endInside[0] + back[0] * (spur.width + spur.height), endInside[1] + back[1] * (spur.width + spur.height)],
+      ...inside.slice(0, -1).reverse(),
+    ])), .035, "arm");
+
+    // After the in-game mask's patterned horns: the outer half of each arm in a darker band edged with gold, with a
+    // few gold dots along it. Laid on the arms' front face, without outlines, which would be noise at this size.
+    const trim = (outerEdge, innerEdge, material, depth) => {
+      slab(mirror(polygon([...outerEdge, ...innerEdge.slice().reverse()])), depth, material, .035).userData.noEdges = true;
+    };
+    const dot = ([x, y]) => {
+      slab(mirror(new THREE.Shape().absarc(x, y, .011, 0, Math.PI * 2, false)), .006, "gold", .035).userData.noEdges = true;
+    };
+    const stripe = { inner: .447, gold: .468 };
+    // The ring sections, kept a few degrees clear of their slanted or squared-off ends.
+    for (const [from, to, dots] of [
+      [90 - angleAt(ring.outer, post.left) - 4, hornEnd + 1, [72, 56, 40]],
+      [angleOf(crossing(bracketLow, ring.outer)) + 4, angleAt(ring.outer, barTop) - 1, [-12, 4]],
+    ]) {
+      trim(onRing(ring.outer, from, to), onRing(stripe.inner, from, to), "band", .004);
+      trim(onRing(ring.outer, from, to), onRing(stripe.gold, from, to), "gold", .006);
+      for (const angle of dots) dot(onRing((stripe.inner + stripe.gold) / 2, angle, angle, 0)[0]);
+    }
+    // The bottom arm, along its outer side.
+    const path = [start, bend, tip];
+    trim(outside, path, "band", .004);
+    trim(outside, bandSides(path, diagonal - 2 * (ring.outer - stripe.gold))[0], "gold", .006);
+    const dotLine = bandSides(path, diagonal * .55)[0];
+    const along = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+    dot(along(dotLine[0], dotLine[1], .75));
+    dot(along(dotLine[1], dotLine[2], .5));
+  }
+  slab(polygon(backing), .04, "frame");
+  slab(polygon(face), .025, "face", .04);
+  // The nose: a raised bar from where the three eyes meet down the middle of the chin, a hair lower than the eye
+  // frames so they cover its top, framing a strip in the face's colour like the eyes frame their lenses.
+  slab(polygon([[-.03, .02], [.03, .02], [.03, -.2], [-.03, -.2]]), .018, "frame", .065);
+  slab(polygon([[-.012, -.02], [.012, -.02], [.012, -.18], [-.012, -.18]]), .01, "face", .078);
+  // Three diamond eyes, each a raised frame around a yellow lens with a dark core.
+  for (const [x, y] of [[0, .13], [-.11, .02], [.11, .02]]) {
+    slab(diamond(x, y, .105), .02, "frame", .065);
+    slab(diamond(x, y, .075), .01, "eye", .08).name = "eye";
+    slab(diamond(x, y, .02), .006, "pupil", .09);
+  }
+  return mask;
+}
+
+// Counter-Strike's crosshair printed on a round dark badge, drawn on a transparent 256 × 256 canvas: four short green
+// bars round a gap, and a thin crescent of gloss along the badge's top left edge.
+function drawCrosshairBadge() {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  const context = canvas.getContext("2d");
+  context.translate(128, 128);
+  context.fillStyle = STICKERS.badge;
+  context.beginPath();
+  context.arc(0, 0, 128, 0, Math.PI * 2);
+  context.fill();
+  // Angles on the canvas run clockwise, as its y axis points down.
+  const degrees = THREE.MathUtils.degToRad;
+  context.fillStyle = STICKERS.gloss;
+  context.beginPath();
+  context.arc(0, 0, 128 * .86, degrees(-105), degrees(-195), true);
+  context.arc(0, 0, 128 * .74, degrees(-195), degrees(-105), false);
+  context.fill();
+  // Bars from .24 to .77 of the radius, .13 of it thick.
+  context.fillStyle = STICKERS.crosshair;
+  for (let quarter = 0; quarter < 4; quarter++) {
+    context.save();
+    context.rotate(quarter * Math.PI / 2);
+    context.fillRect(128 * .24, -128 * .065, 128 * .53, 128 * .13);
+    context.restore();
+  }
+  return canvas;
+}
+
 // A spilled coffee puddle: a flat blob with a wobbly outline, lying on y = 0, about .08 across.
 function buildPuddle() {
   const points = [];
@@ -455,10 +789,26 @@ function buildDesk() {
   const top = .384, slab = .03, under = top - slab;
   part(desk, .72, slab, .38, "body", .36, top - slab / 2, -.19);
 
-  // The pedestal stops short of the floor and stands on a short foot at each corner.
-  const pedestal = { x: .125, width: .22, depth: .35, front: -.015, bottom: .06 };
+  // The pedestal stops short of the floor and stands on a short foot at each corner. It is hollow, so an open drawer
+  // shows its tray running on back inside: two sides, a back, and a shelf under each drawer and above the top one,
+  // sitting behind the gaps between the fronts. Like the wardrobe's carcass, it gets one outline without the joins.
+  const pedestal = { x: .125, width: .22, depth: .35, front: -.015, bottom: .06, wall: .015 };
   const pedestalHeight = under - pedestal.bottom;
-  part(desk, pedestal.width, pedestalHeight, pedestal.depth, "body", pedestal.x, pedestal.bottom + pedestalHeight / 2, pedestal.front - pedestal.depth / 2);
+  const gap = .01, frontHeight = (pedestalHeight - gap * 4) / 3;
+  const carcass = [];
+  const shell = (width, height, depth, x, y, z) => {
+    part(desk, width, height, depth, "body", x, y, z).userData.noEdges = true;
+    carcass.push(new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(x, y, z), new THREE.Vector3(width, height, depth)));
+  };
+  const pedestalMiddle = pedestal.bottom + pedestalHeight / 2, pedestalBack = pedestal.front - pedestal.depth;
+  for (const side of [-1, 1]) {
+    shell(pedestal.wall, pedestalHeight, pedestal.depth, pedestal.x + side * (pedestal.width - pedestal.wall) / 2, pedestalMiddle, pedestal.front - pedestal.depth / 2);
+  }
+  const innerWidth = pedestal.width - 2 * pedestal.wall;
+  shell(innerWidth, pedestalHeight, pedestal.wall, pedestal.x, pedestalMiddle, pedestalBack + pedestal.wall / 2);
+  for (let i = 0; i <= 3; i++) {
+    shell(innerWidth, gap, pedestal.depth - pedestal.wall, pedestal.x, pedestal.bottom + gap / 2 + i * (frontHeight + gap), pedestal.front - (pedestal.depth - pedestal.wall) / 2);
+  }
   for (const x of [pedestal.x - pedestal.width / 2 + .0125, pedestal.x + pedestal.width / 2 - .0125]) {
     for (const z of [pedestal.front - .0125, pedestal.front - pedestal.depth + .0125]) part(desk, .025, pedestal.bottom, .025, "body", x, pedestal.bottom / 2, z);
   }
@@ -468,7 +818,6 @@ function buildDesk() {
   part(desk, .015, .26, .29, "body", .69, under - .13, -.19);
 
   // Each drawer: a front with a pull, and a tray hidden inside the pedestal until it slides out.
-  const gap = .01, frontHeight = (pedestalHeight - gap * 4) / 3;
   const trayWidth = pedestal.width - .04, trayDepth = .26, trayHeight = frontHeight - .03;
   const drawers = [0, 1, 2].map((i) => {
     const drawer = new THREE.Group();
@@ -484,14 +833,25 @@ function buildDesk() {
     desk.add(drawer);
     return drawer;
   });
-  return { desk, drawers };
+  return { desk, drawers, outline: outlineBoxes(carcass) };
 }
 
+// The room is built once and kept for the whole visit of the site: leaving the page only takes its canvas off (it
+// draws nothing meanwhile), and coming back puts it, as it was left, into the new page.
+let deskRoom = null;
+export const deskRoomBuilt = () => deskRoom !== null;
 export function enableDeskRoom(host) {
+  deskRoom ??= createDeskRoom();
+  deskRoom.attach(host);
+  return () => deskRoom.detach(host);
+}
+
+function createDeskRoom() {
   const canvas = document.createElement("canvas");
   canvas.className = "about-room-canvas";
   canvas.setAttribute("aria-hidden", "true");
-  host.append(canvas);
+  // The room's frame on the page it is shown on, if any (see attach).
+  let host = null;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -531,7 +891,9 @@ export function enableDeskRoom(host) {
   // Interactive parts: each has a spring driven between 0 (rest) and 1 (open / on).
   const parts = [];
   let radius = .8;
-  let disposed = false;
+  // Nothing is drawn while the room is off the page, nor before the shaders are compiled (see the end of the setup).
+  let attached = false;
+  let compiled = false;
   let frame = 0;
   let last = 0;
 
@@ -560,13 +922,242 @@ export function enableDeskRoom(host) {
   }
 
   // A paper note taped near the top of a door's inner face, only seen once the door swings open.
-  function addNote(door) {
+  // A door's bounds in its own space, taken before anything is stuck on it.
+  function doorFace(door) {
     door.updateWorldMatrix(true, true);
     const box = new THREE.Box3().setFromObject(door);
     const min = door.worldToLocal(box.min.clone()), max = door.worldToLocal(box.max.clone());
-    const width = Math.abs(max.x - min.x) * .68;
+    return { min, max, width: Math.abs(max.x - min.x), centre: (min.x + max.x) / 2, top: Math.max(min.y, max.y), bottom: Math.min(min.y, max.y), inner: Math.min(min.z, max.z) };
+  }
+
+  // Stickers on the same door as the note, slightly askew.
+  function addStickers(door, face) {
+    const note = face.width * .68;
+    // A sticker from a picture with a transparent surround (a file next to this module, or a drawn canvas), cut out with
+    // a white border once it is in: the picture is width wide, centred on (x, y), turned by tilt degrees and lifted by
+    // lift off the door so it can cover the stickers under it.
+    const sticker = (source, width, x, y, tilt, lift = 0) => {
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ roughness: 1, side: THREE.DoubleSide, alphaTest: .5, visible: false }));
+      mesh.receiveShadow = true;
+      // Tiny until the picture is in, so it doesn't widen the room's bounds the camera is fitted to.
+      mesh.scale.setScalar(.001);
+      mesh.position.set(x, y, face.inner - .002 - lift);
+      mesh.rotation.set(0, Math.PI, THREE.MathUtils.degToRad(tilt));
+      door.add(mesh);
+      const apply = ({ canvas, logoWidth }) => {
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 4;
+        mesh.material.map = texture;
+        mesh.material.visible = true;
+        mesh.material.needsUpdate = true;
+        const scale = width / logoWidth;
+        mesh.scale.set(canvas.width * scale, canvas.height * scale, 1);
+        wake();
+      };
+      if (typeof source !== "string") return apply(dieCutImage(source));
+      const image = new Image();
+      image.onload = () => apply(dieCutImage(image));
+      image.src = new URL(`./${source}`, import.meta.url).href;
+    };
+
+    // Spread out down the door under the note, zigzagging from side to side, each at its own angle. In note widths:
+    // across from the door's middle (+ is the viewer's left), and down from the note's bottom edge, 1.825 note widths
+    // below the door's top.
+    const at = (across, down) => [face.centre + note * across, face.top - note * (1.825 + down)];
+
+    // Counter-Strike's crosshair badge (drawCrosshairBadge) is set aside for now; its spot was on the right:
+    // sticker(drawCrosshairBadge(), note * .676, ...at(-.18, .3), -5).
+
+    // Team Vitality's bee, from the team's logo (vita.png), on the left.
+    sticker("vita.png", note * .65, ...at(.2, 2.25), 10);
+
+    // Counter-Strike's logo (cs.png, on a white surround), on the right.
+    sticker("cs.png", note * .6, ...at(-.16, 3.2), -8, .0008);
+
+    // Twitch's logo (twitch.png), on the left.
+    sticker("twitch.png", note * .68, ...at(.18, 4.15), 6);
+  }
+
+  // An image with a transparent surround, cropped to its content and laid on a white die-cut backing with a thin
+  // outline in the shade the edge strokes give the wardrobe, drawn on a canvas. Returns the canvas and the width the
+  // image itself takes on it.
+  function dieCutImage(image, logoWidth = 256, border = 16, line = 3) {
+    const probe = document.createElement("canvas");
+    probe.width = image.naturalWidth || image.width;
+    probe.height = image.naturalHeight || image.height;
+    const probeContext = probe.getContext("2d", { willReadFrequently: true });
+    probeContext.drawImage(image, 0, 0);
+    const pixels = probeContext.getImageData(0, 0, probe.width, probe.height);
+    const { data } = pixels;
+    // An image on a plain white surround instead of a transparent one: the pure white reached from its edges is cleared.
+    // Whites inside the picture, even near-white ones, are kept.
+    const white = (i) => data[i * 4 + 3] > 0 && data[i * 4] >= 252 && data[i * 4 + 1] >= 252 && data[i * 4 + 2] >= 252;
+    if (white(0)) {
+      const queue = [];
+      for (let x = 0; x < probe.width; x++) queue.push(x, (probe.height - 1) * probe.width + x);
+      for (let y = 0; y < probe.height; y++) queue.push(y * probe.width, y * probe.width + probe.width - 1);
+      while (queue.length) {
+        const i = queue.pop();
+        if (!white(i)) continue;
+        data[i * 4 + 3] = 0;
+        const x = i % probe.width;
+        if (x > 0) queue.push(i - 1);
+        if (x < probe.width - 1) queue.push(i + 1);
+        if (i >= probe.width) queue.push(i - probe.width);
+        if (i < data.length / 4 - probe.width) queue.push(i + probe.width);
+      }
+      probeContext.putImageData(pixels, 0, 0);
+    }
+    let left = probe.width, right = 0, top = probe.height, bottom = 0;
+    for (let y = 0; y < probe.height; y++) {
+      for (let x = 0; x < probe.width; x++) {
+        if (data[(y * probe.width + x) * 4 + 3] < 16) continue;
+        left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y);
+      }
+    }
+    const scale = logoWidth / (right - left + 1), logoHeight = Math.round((bottom - top + 1) * scale);
+    const margin = border + line + 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = logoWidth + margin * 2;
+    canvas.height = logoHeight + margin * 2;
+    const context = canvas.getContext("2d");
+    // The image's shape filled with one colour, pushed out by a radius: drawn shifted all round a few circles.
+    const silhouette = (colour) => {
+      const shape = document.createElement("canvas");
+      shape.width = canvas.width;
+      shape.height = canvas.height;
+      const shapeContext = shape.getContext("2d");
+      shapeContext.drawImage(probe, left, top, right - left + 1, bottom - top + 1, margin, margin, logoWidth, logoHeight);
+      shapeContext.globalCompositeOperation = "source-in";
+      shapeContext.fillStyle = colour;
+      shapeContext.fillRect(0, 0, shape.width, shape.height);
+      return shape;
+    };
+    const grow = (shape, radius) => {
+      context.drawImage(shape, 0, 0);
+      for (const ring of [radius / 3, radius * 2 / 3, radius]) {
+        for (let i = 0; i < 32; i++) {
+          const angle = i / 32 * Math.PI * 2;
+          context.drawImage(shape, Math.cos(angle) * ring, Math.sin(angle) * ring);
+        }
+      }
+    };
+    grow(silhouette(STICKERS.cutLine), border + line);
+    grow(silhouette(STICKERS.cutBacking), border);
+    context.drawImage(probe, left, top, right - left + 1, bottom - top + 1, margin, margin, logoWidth, logoHeight);
+    return { canvas, logoWidth };
+  }
+
+  // The row of hearts in the top left corner of the door's inner face, above the note: one 9 × 8 pixel heart each,
+  // drawn on a see-through canvas. Each click on it fills half a heart more; filling the last one, or clicking the full
+  // row, plays a flourish: a gleam runs along the hearts a few times while the row swells and settles each time.
+  function addHearts(door, face) {
+    const note = face.width * .68;
+    const heart = [
+      ".XX...XX.",
+      "XFFX.XFFX",
+      "XFGFXFFFX",
+      "XFFFFFFFX",
+      ".XFFFFFX.",
+      "..XFFFX..",
+      "...XFX...",
+      "....X....",
+    ];
+    const pixel = 6, gap = 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = (heart[0].length * HEARTS.count + gap * (HEARTS.count - 1)) * pixel;
+    canvas.height = heart.length * pixel;
+    const context = canvas.getContext("2d");
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.magFilter = THREE.NearestFilter;
+    let halves = HEARTS.startHalves;
+    // gleam: where the flourish's gleam is along the row, in hearts from the first (none when off the row).
+    const draw = (gleam = -9) => {
+      for (let index = 0; index < HEARTS.count; index++) {
+        const left = index * (heart[0].length + gap);
+        // How much of this heart is full: 1, .5 (its left half) or 0.
+        const fill = THREE.MathUtils.clamp(halves / 2 - index, 0, 1);
+        const red = Math.abs(gleam - index) < .6 ? HEARTS.gleam : HEARTS.fill;
+        heart.forEach((line, y) => [...line].forEach((cell, x) => {
+          if (cell === ".") return;
+          const filled = fill === 1 || (fill === .5 && x < heart[0].length / 2);
+          context.fillStyle = cell === "X" ? HEARTS.outline : !filled ? HEARTS.empty : cell === "G" ? HEARTS.glint : red;
+          context.fillRect((left + x) * pixel, y * pixel, pixel, pixel);
+        }));
+      }
+      texture.needsUpdate = true;
+    };
+    draw();
+    const width = note * .95, height = width * canvas.height / canvas.width;
+    const hearts = new THREE.Mesh(new THREE.PlaneGeometry(width, height), new THREE.MeshStandardMaterial({ map: texture, roughness: 1, alphaTest: .5, side: THREE.DoubleSide }));
+    hearts.receiveShadow = true;
+    // Facing inwards like the note; the door's +x is the viewer's left.
+    hearts.position.set(face.centre + face.width / 2 - note * .1 - width / 2, face.top - note * .3, face.inner - .002);
+    hearts.rotation.y = Math.PI;
+    let flourish = null;
+    parts.push({
+      object: hearts, state: spring(), apply() {},
+      busy(now) {
+        if (flourish === null) return false;
+        const laps = (now - flourish) / (HEARTS.flourish * 1000);
+        if (laps >= HEARTS.laps) {
+          flourish = null;
+          hearts.scale.setScalar(1);
+          draw();
+          return false;
+        }
+        // Each lap: the gleam runs from just before the first heart to just past the last, the row swelling and back.
+        const u = laps % 1;
+        draw(-1 + u * (HEARTS.count + 1));
+        hearts.scale.setScalar(1 + .1 * Math.sin(Math.PI * u));
+        return true;
+      },
+    });
+    hearts.userData.onClick = () => {
+      if (halves < HEARTS.count * 2) {
+        halves++;
+        draw();
+      }
+      // A flourish under way plays to the end before another can start.
+      if (halves === HEARTS.count * 2 && flourish === null) flourish = performance.now();
+    };
+    door.add(hearts);
+  }
+
+  function addNote(door, face) {
+    const { min, max } = face;
+    const width = face.width * .68;
     const note = new THREE.Group();
-    const paper = new THREE.Mesh(new THREE.PlaneGeometry(width, width * 1.15), new THREE.MeshStandardMaterial({ color: NOTE.paper, roughness: 1, side: THREE.DoubleSide }));
+    // "TRY HARD" written on it in marker, in the site's handwriting font (Caveat) once it has loaded.
+    const writing = document.createElement("canvas");
+    writing.width = 256;
+    writing.height = Math.round(256 * 1.15);
+    const sheet = new THREE.CanvasTexture(writing);
+    sheet.colorSpace = THREE.SRGBColorSpace;
+    sheet.anisotropy = 4;
+    const write = () => {
+      const context = writing.getContext("2d");
+      context.fillStyle = `#${new THREE.Color(NOTE.paper).getHexString()}`;
+      context.fillRect(0, 0, writing.width, writing.height);
+      context.fillStyle = NOTE.ink;
+      context.font = `${NOTE.letters}px Caveat, cursive`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      // Each word is filled and outlined in the same ink, for a thick marker line.
+      context.strokeStyle = NOTE.ink;
+      context.lineWidth = 4;
+      context.lineJoin = "round";
+      for (const [word, y] of [["TRY", .36], ["HARD", .7]]) {
+        context.fillText(word, writing.width / 2, writing.height * y);
+        context.strokeText(word, writing.width / 2, writing.height * y);
+      }
+      sheet.needsUpdate = true;
+    };
+    write();
+    document.fonts.load(`${NOTE.letters}px Caveat`).then(() => { write(); wake(); }).catch(() => {});
+    const paper = new THREE.Mesh(new THREE.PlaneGeometry(width, width * 1.15), new THREE.MeshStandardMaterial({ map: sheet, roughness: 1, side: THREE.DoubleSide }));
     const tape = new THREE.Mesh(new THREE.PlaneGeometry(width * .45, width * .14), new THREE.MeshStandardMaterial({ color: NOTE.tape, roughness: 1, side: THREE.DoubleSide }));
     tape.position.set(0, width * .575, .001);
     const outline = new THREE.LineSegments(new THREE.EdgesGeometry(paper.geometry), edgeMaterial);
@@ -576,7 +1167,7 @@ export function enableDeskRoom(host) {
     note.add(paper, tape);
     // Inner face is the door's back (-z); the note faces inwards, slightly askew.
     const inner = Math.min(min.z, max.z) - .002;
-    note.position.set((min.x + max.x) / 2, Math.max(min.y, max.y) - width * .9, inner);
+    note.position.set((min.x + max.x) / 2, Math.max(min.y, max.y) - width * 1.25, inner);
     note.rotation.set(0, Math.PI, THREE.MathUtils.degToRad(-4));
     door.add(note);
   }
@@ -588,13 +1179,23 @@ export function enableDeskRoom(host) {
     return part;
   }
 
-  const { desk, drawers } = buildDesk();
+  const { desk, drawers, outline: deskOutline } = buildDesk();
   const { cabinet, doorLeft, doorRight, outline } = buildCabinet();
   recolour(desk, DESK);
   recolour(cabinet, CABINET);
+  const pedestalOutline = new THREE.LineSegments(deskOutline, edgeMaterial);
+  pedestalOutline.raycast = () => {};
+  desk.add(pedestalOutline);
   const cabinetOutline = new THREE.LineSegments(outline, edgeMaterial);
   cabinetOutline.raycast = () => {};
   cabinet.add(cabinetOutline);
+  // The doors open on a click anywhere on the wardrobe. Registered before the things stored inside, which then claim
+  // their own clicks.
+  const leftFace = doorFace(doorLeft);
+  addNote(doorLeft, leftFace);
+  addHearts(doorLeft, leftFace);
+  addStickers(doorLeft, leftFace);
+  addPart(cabinet, (t) => { doorLeft.rotation.y = -t * 1.9; doorRight.rotation.y = t * 1.9; });
   // A toolbox on the bottom shelf, seen once the doors open.
   const { toolbox, loose } = buildToolbox();
   recolour(toolbox, TOOLBOX);
@@ -613,13 +1214,66 @@ export function enableDeskRoom(host) {
   recolour(computer, RETRO_PC);
   computer.position.set(.34, .384, -.25);
   room.add(computer);
-  // A Rubik's cube lying in the top drawer, set back from the front but still in the part that slides out (.16).
+  // A Rubik's cube lying in the middle drawer, set back from the front but still in the part that slides out (.16).
   const rubiksCube = buildRubiksCube();
   recolour(rubiksCube, RUBIK);
-  const topDrawer = drawers[drawers.length - 1];
-  rubiksCube.position.set(.025, topDrawer.userData.floor, -.11);
+  const middleDrawer = drawers[1];
+  rubiksCube.position.set(.025, middleDrawer.userData.floor, -.11);
   rubiksCube.rotation.y = -.45;
-  topDrawer.add(rubiksCube);
+  middleDrawer.add(rubiksCube);
+  // A Game Boy lying in the top drawer, screen end towards the back, in the part that slides out.
+  const gameBoy = buildGameBoy();
+  recolour(gameBoy, GAMEBOY);
+  const topDrawer = drawers[drawers.length - 1];
+  gameBoy.position.set(-.032, topDrawer.userData.floor, -.08);
+  gameBoy.rotation.y = .3;
+  gameBoy.scale.setScalar(1.2);
+  topDrawer.add(gameBoy);
+  // Its cartridges: Red and Blue stood on their long sides in the strip between it and the tray's left wall, labels to
+  // the camera, Red leaning on the wall and Blue on Red; a grey one lying flat further back.
+  const addCartridge = (name) => {
+    const cartridge = buildCartridge();
+    recolour(cartridge, CARTRIDGES[name]);
+    topDrawer.add(cartridge);
+    return cartridge;
+  };
+  const greyCartridge = addCartridge("grey");
+  greyCartridge.position.set(.045, topDrawer.userData.floor, -.225);
+  greyCartridge.rotation.y = .1;
+  // Leaning .45 rad off upright, a cartridge's lower back edge rests .019 below its centre and its top reaches .009
+  // towards the wall; Blue sits one cartridge thickness out from Red, along Red's front.
+  for (const [name, x, y, z] of [["red", -.078, .019, -.09], ["blue", -.0721, .0218, -.11]]) {
+    const cartridge = addCartridge(name);
+    cartridge.position.set(x, topDrawer.userData.floor + y, z);
+    cartridge.rotation.z = .45 - Math.PI / 2;
+  }
+  // The Nomai mask stands on a small stand at the left end of the wardrobe's top shelf (shelf top at y .651 in wardrobe units, inside
+  // x .04 → .36), scaled to fit under the top, with the mask held parallel to the screen (turned and leaning back by
+  // the camera's own angles): anything else looks skewed this far from the middle of the view.
+  const nomai = new THREE.Group();
+  const stand = (width, height, depth, x, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshStandardMaterial({ name: "stand" }));
+    mesh.position.set(x, y, z);
+    nomai.add(mesh);
+  };
+  stand(.09, .014, .06, 0, .007, 0);
+  stand(.012, .07, .012, 0, .049, -.012);
+  const mask = buildNomaiMask();
+  mask.scale.setScalar(.2);
+  mask.position.set(0, .112, -.008);
+  mask.rotation.x = -VIEW_ELEVATION;
+  nomai.add(mask);
+  recolour(nomai, NOMAI);
+  nomai.position.set(.11, .651, -.13);
+  nomai.scale.setScalar(.65);
+  nomai.rotation.y = VIEW_AZIMUTH;
+  cabinet.add(nomai);
+  // A small ? block kept as a souvenir in the middle of the wardrobe's middle shelf (shelf top at y .475 in wardrobe
+  // units, shelf z -.23 → -.05). Set aside for now: built but not added, as a hidden mesh would still catch clicks.
+  const questionBlock = buildQuestionBlock();
+  recolour(questionBlock, QUESTION_BLOCK);
+  questionBlock.scale.setScalar(.6);
+  questionBlock.position.set(.2, .475, -.14);
   // The mug sits in a "tipper" group whose origin is the mug's bottom centre: the tipper turns to face the way the mug
   // falls and pitches over the bottom edge on that side, while the mug inside keeps its handle where it was.
   const mug = buildMug();
@@ -685,7 +1339,7 @@ export function enableDeskRoom(host) {
   screenMaterial.needsUpdate = true;
   let bootStart = 0;
   const ledMaterial = computer.getObjectByName("led").material;
-  const ledOff = new THREE.Color(RETRO_PC.led), ledOn = new THREE.Color(LED_ON);
+  const ledOff = new THREE.Color(RETRO_PC.led), ledOn = new THREE.Color(PC_LED_ON.colour);
   // Smoke puffs that rise from the front right of the case after a short circuit, drifting clear of the monitor.
   const smoke = Array.from({ length: SMOKE.puffs }, (_, i) => {
     const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshStandardMaterial({ color: SMOKE.colour, transparent: true, depthWrite: false, flatShading: true }));
@@ -717,7 +1371,7 @@ export function enableDeskRoom(host) {
     // The power LED glows red while the computer is on, and stutters while it shorts out or fails to boot.
     const stutter = (crashStart !== null || failing) && screen.state.target === 1 ? (Math.sin(performance.now() * .09) > 0 ? 1 : .15) : 1;
     ledMaterial.color.lerpColors(ledOff, ledOn, t * stutter);
-    ledMaterial.emissive.copy(ledOn).multiplyScalar(t * stutter * .6);
+    ledMaterial.emissive.copy(ledOn).multiplyScalar(t * stutter * PC_LED_ON.glow);
     if (t < .02 && !screen.state.target) display.clear();
   });
   // Coffee in the case: the picture tears and collapses, the computer cuts out and smoke rises from it.
@@ -760,8 +1414,56 @@ export function enableDeskRoom(host) {
   for (const drawer of drawers) {
     const rest = drawer.position.z;
     addPart(drawer, (t) => { drawer.position.z = rest + t * .16; });  }
-  addNote(doorLeft);
-  addPart(cabinet, (t) => { doorLeft.rotation.y = -t * 1.9; doorRight.rotation.y = t * 1.9; });
+
+  // Clicking the Game Boy switches it on: its LED glows and its screen lights up and plays the boot; clicking again
+  // switches it off. Registered after the drawers, so its clicks are its own.
+  const gameBoyScreen = gameBoy.getObjectByName("gameBoyScreen").material;
+  const gameBoyLed = gameBoy.getObjectByName("gameBoyLed").material;
+  const gameBoyDisplay = document.createElement("canvas");
+  gameBoyDisplay.width = 160;
+  gameBoyDisplay.height = 144;
+  const gameBoyPicture = new THREE.CanvasTexture(gameBoyDisplay);
+  gameBoyPicture.colorSpace = THREE.SRGBColorSpace;
+  gameBoyPicture.magFilter = THREE.NearestFilter;
+  const drawGameBoyBoot = (seconds) => {
+    const context = gameBoyDisplay.getContext("2d");
+    context.fillStyle = GAMEBOY_BOOT.lightest;
+    context.fillRect(0, 0, 160, 144);
+    const y = THREE.MathUtils.lerp(-10, 72, Math.min(1, seconds / GAMEBOY_BOOT.slide));
+    context.fillStyle = GAMEBOY_BOOT.darkest;
+    context.font = "bold 30px sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText("Nintendo", 80, Math.round(y));
+    gameBoyPicture.needsUpdate = true;
+  };
+  const screenDull = new THREE.Color(GAMEBOY.screen), screenLit = new THREE.Color(0xffffff);
+  const gameBoyLedOff = new THREE.Color(GAMEBOY.led), gameBoyLedOn = new THREE.Color(LED_ON);
+  let gameBoyStart = 0;
+  const gameBoyPower = addPart(gameBoy, (t) => {
+    const on = THREE.MathUtils.clamp(t, 0, 1);
+    gameBoyScreen.color.lerpColors(screenDull, screenLit, on);
+    gameBoyScreen.emissive.setScalar(on * .35);
+    gameBoyLed.color.lerpColors(gameBoyLedOff, gameBoyLedOn, on);
+    gameBoyLed.emissive.copy(gameBoyLedOn).multiplyScalar(on * .6);
+    // Off, the screen is plain again.
+    const lit = on > .02 || gameBoyPower.state.target === 1;
+    if (lit !== Boolean(gameBoyScreen.map)) {
+      gameBoyScreen.map = gameBoyScreen.emissiveMap = lit ? gameBoyPicture : null;
+      gameBoyScreen.needsUpdate = true;
+    }
+  });
+  gameBoyPower.onToggle = (on) => {
+    if (!on) return;
+    gameBoyStart = performance.now();
+    drawGameBoyBoot(0);
+  };
+  gameBoyPower.busy = (now) => {
+    if (!gameBoyPower.state.target) return false;
+    const seconds = (now - gameBoyStart) / 1000;
+    drawGameBoyBoot(seconds);
+    return seconds < GAMEBOY_BOOT.end;
+  };
 
   // Clicking the toolbox knocks it off the shelf edge: it tips over and drops, accelerating, lands on
   // its front with a little rock, and its contents fly out on arcs, spinning, before bouncing to rest around it.
@@ -851,8 +1553,13 @@ export function enableDeskRoom(host) {
   pivot.position.y = -box.getSize(new THREE.Vector3()).y / 2;
   radius = box.getBoundingSphere(new THREE.Sphere()).radius;
   resize();
-  host.classList.add("has-room");
-  wake();
+  // The shaders compile in the background where the browser can, so the first frame doesn't freeze the page; the room
+  // fades in once they are ready.
+  renderer.compileAsync(scene, camera).catch(() => {}).then(() => {
+    compiled = true;
+    host?.classList.add("has-room");
+    wake();
+  });
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -874,13 +1581,13 @@ export function enableDeskRoom(host) {
     return object.userData.part ?? null;
   }
 
-  const events = new AbortController();
-  const options = { signal: events.signal };
   // The canvas lets clicks through (it overflows onto the text column), so the page listens instead and only acts
-  // when the pointer is over a piece of the room; links and buttons keep their own clicks.
+  // when the pointer is over a piece of the room; links and buttons keep their own clicks. Off the page, the room
+  // ignores them.
   const onControl = (event) => event.target instanceof Element && event.target.closest("a, button, input, .project-dock");
   const pointing = (on) => document.documentElement.classList.toggle("is-pointing-room", on);
   document.addEventListener("pointermove", (event) => {
+    if (!attached) return;
     pointing(!onControl(event) && Boolean(pick(event)));
     // Once the desktop is up, its pointer follows the visitor's mouse: exactly under it over the screen, and anywhere
     // else on the page as if the browser window were that screen.
@@ -892,14 +1599,20 @@ export function enableDeskRoom(host) {
     if (onScreen) display.point(hit.uv.x, 1 - hit.uv.y);
     else display.point(event.clientX / window.innerWidth, event.clientY / window.innerHeight);
     wake();
-  }, options);
+  });
   // Rapid clicks on the room would otherwise count as double and triple clicks and select nearby text (the page arrows).
   document.addEventListener("mousedown", (event) => {
-    if (!onControl(event) && pickHit(event)) event.preventDefault();
-  }, options);
+    if (attached && !onControl(event) && pickHit(event)) event.preventDefault();
+  });
   document.addEventListener("click", (event) => {
-    if (onControl(event)) return;
+    if (!attached || onControl(event)) return;
     const hit = pickHit(event);
+    // Some things on a door have a click of their own (the hearts) instead of opening or closing it.
+    if (hit?.object.userData.onClick) {
+      hit.object.userData.onClick();
+      wake();
+      return;
+    }
     const part = hit?.object.userData.part;
     if (!part) return;
     // Any part of the computer switches it on, but only the case switches it off: once on, the monitor's frame does
@@ -914,11 +1627,12 @@ export function enableDeskRoom(host) {
     part.state.target = part.state.target ? 0 : 1;
     part.onToggle?.(part.state.target === 1);
     wake();
-  }, options);
+  });
 
   function resize() {
     // The canvas overflows its frame (see .about-room-canvas) so things can fall or spill past the frame's edges;
     // the camera still frames the room in the frame and renders the overflow around it.
+    if (!host) return;
     const frameWidth = host.clientWidth, frameHeight = host.clientHeight;
     const width = canvas.clientWidth, height = canvas.clientHeight;
     if (!width || !height || !frameWidth || !frameHeight) return;
@@ -949,27 +1663,35 @@ export function enableDeskRoom(host) {
       part.apply(part.state.value);
     }
     renderer.render(scene, camera);
-    if (moving && !disposed) wake();
+    if (moving) wake();
     else last = 0;
   }
 
   function wake() {
-    if (!frame && !disposed) frame = requestAnimationFrame(tick);
+    if (!frame && attached && compiled) frame = requestAnimationFrame(tick);
   }
 
-  return () => {
-    disposed = true;
-    cancelAnimationFrame(frame);
-    events.abort();
-    pointing(false);
-    document.documentElement.classList.remove("is-on-room-screen");
-    observer.disconnect();
-    scene.traverse((child) => {
-      if (!child.isMesh && !child.isLineSegments) return;
-      child.geometry.dispose();
-      (Array.isArray(child.material) ? child.material : [child.material]).forEach((m) => { m.map?.dispose(); m.dispose(); });
-    });
-    renderer.dispose();
-    canvas.remove();
+  return {
+    // Shows the room in this frame, straight away if it is ready (with no fade) and otherwise once the shaders are in.
+    attach(next) {
+      host = next;
+      host.append(canvas);
+      attached = true;
+      if (compiled) host.classList.add("has-room");
+      resize();
+    },
+    // Takes the room off this frame's page and stops it drawing; anything still moving carries on when it is back.
+    detach(from) {
+      // A newer page may already be showing it.
+      if (host !== from) return;
+      attached = false;
+      cancelAnimationFrame(frame);
+      frame = 0;
+      last = 0;
+      pointing(false);
+      document.documentElement.classList.remove("is-on-room-screen");
+      canvas.remove();
+      host = null;
+    },
   };
 }

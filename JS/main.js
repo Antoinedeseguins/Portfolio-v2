@@ -542,6 +542,8 @@ projectRail.addEventListener("error", (event) => {
 }, true);
 
 let finishActivePageTransition = null;
+// When the last page change finished sliding in (see stepToAdjacentPage).
+let pageSettledAt = -Infinity;
 let pendingPagePreview = null;
 
 function replaceProjectView(markup, navigationDirection, animateTransition) {
@@ -589,7 +591,6 @@ function replaceProjectView(markup, navigationDirection, animateTransition) {
   incomingPage.removeAttribute("inert");
   incomingPage.style.removeProperty("translate");
   if (preview) {
-    incomingPage.style.setProperty("--page-entry-opacity", "1");
     incomingPage.querySelectorAll("video").forEach((video) => {
       video.controls = false;
       video.autoplay = false;
@@ -620,7 +621,8 @@ function replaceProjectView(markup, navigationDirection, animateTransition) {
   outgoingScrollPositions.forEach(([gallery, scrollLeft]) => { gallery.scrollLeft = scrollLeft; });
   let transitionFinished = false;
   let transitionTimer;
-  const finishTransition = () => {
+  // Cut short by the next page change, the incoming page is about to leave: it isn't told it has settled.
+  const finishTransition = (interrupted = false) => {
     if (transitionFinished) return;
     transitionFinished = true;
     window.clearTimeout(transitionTimer);
@@ -629,17 +631,26 @@ function replaceProjectView(markup, navigationDirection, animateTransition) {
     outgoingPage.querySelectorAll(".hero-frame, .toy-widget").forEach((frame) => frame.dispatchEvent(new Event("hero-dispose")));
     incomingPage.classList.remove("page-entering");
     finishActivePageTransition = null;
+    pageSettledAt = performance.now();
     if (incomingPage === projectView.firstElementChild) {
       previousProjectButton.disabled = false;
       nextProjectButton.disabled = false;
       incomingPage.querySelectorAll(".hero-frame, .toy-widget").forEach((frame) => frame.dispatchEvent(new Event("hero-ready")));
+      if (!interrupted) incomingPage.dispatchEvent(new Event("page-ready"));
     }
   };
   outgoingPage.addEventListener("animationend", (event) => {
     if (event.target === outgoingPage) finishTransition();
   });
   transitionTimer = window.setTimeout(finishTransition, 1000);
-  finishActivePageTransition = finishTransition;
+  finishActivePageTransition = () => finishTransition(true);
+}
+
+// Runs once the page has finished sliding in (straight away if it isn't sliding), so heavy set-up doesn't stall the
+// slide; a page only passed through on the way to another never runs it.
+function whenPageSettled(page, callback) {
+  if (page.classList.contains("page-entering")) page.addEventListener("page-ready", callback, { once: true });
+  else callback();
 }
 
 function enableHeroAutoplay(frame) {
@@ -1205,18 +1216,23 @@ function renderAbout(navigationDirection = -1) {
   projectView.setAttribute("aria-busy", "true");
   const aboutMarkup = aboutPageMarkup();
   replaceProjectView(aboutMarkup, navigationDirection, true);
-  // A small desk diorama sits right of the pitch; it stays drawn while the page slides out.
+  // A small desk diorama sits right of the pitch; it stays drawn while the page slides out. It is built the first time
+  // the page has slid in, then kept: later visits show it as it was left, sliding in with the page.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=54", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=130", document.baseURI).href)
     .then(module => {
-      if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;
-      const dispose = module.enableDeskRoom(aboutRoom);
-      aboutPage.addEventListener("page-dispose", function onDispose(event) {
-        if (event.detail?.preserveVisual) return;
-        aboutPage.removeEventListener("page-dispose", onDispose);
-        dispose();
-      });
+      const show = () => {
+        if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;
+        const hide = module.enableDeskRoom(aboutRoom);
+        aboutPage.addEventListener("page-dispose", function onDispose(event) {
+          if (event.detail?.preserveVisual) return;
+          aboutPage.removeEventListener("page-dispose", onDispose);
+          hide();
+        });
+      };
+      if (module.deskRoomBuilt()) show();
+      else whenPageSettled(aboutPage, show);
     })
     .catch(error => console.error("About room could not be loaded", error));
   projectView.setAttribute("aria-busy", "false");
@@ -1313,12 +1329,20 @@ function selectAdjacentProject(direction) {
   return true;
 }
 
-previousProjectButton.addEventListener("click", () => selectAdjacentProject(-1));
-nextProjectButton.addEventListener("click", () => selectAdjacentProject(1));
+// The edge arrows and the keyboard wait a moment after each page has arrived before moving on again, so spamming them
+// can't start a page's video, mini-games or room right as the next slide begins.
+const ADJACENT_PAGE_COOLDOWN = 350;
+function stepToAdjacentPage(direction) {
+  if (performance.now() - pageSettledAt < ADJACENT_PAGE_COOLDOWN) return;
+  selectAdjacentProject(direction);
+}
+
+previousProjectButton.addEventListener("click", () => stepToAdjacentPage(-1));
+nextProjectButton.addEventListener("click", () => stepToAdjacentPage(1));
 
 function navigateWithKeyboard(direction) {
   if (pageDrag || mediaDragActive) return;
-  selectAdjacentProject(direction);
+  stepToAdjacentPage(direction);
 }
 
 document.addEventListener("keydown", (event) => {

@@ -677,10 +677,11 @@ img.hero-image { object-fit: cover; }
 .project-link[data-project="proteo"]:hover :is(img, svg.dock-logo), .project-link[data-project="proteo"][aria-current="page"] :is(img, svg.dock-logo) { filter: saturate(.7); }
 .project-link[data-project="impact"]:hover :is(img, svg.dock-logo), .project-link[data-project="impact"][aria-current="page"] :is(img, svg.dock-logo) { filter: saturate(.8); }
 
-@keyframes page-enter-from-right { from { opacity: var(--page-entry-opacity, .35); translate: var(--page-entry-offset, 100vw) 0; } to { opacity: 1; translate: 0 0; } }
-@keyframes page-enter-from-left { from { opacity: var(--page-entry-opacity, .35); translate: var(--page-entry-offset, -100vw) 0; } to { opacity: 1; translate: 0 0; } }
-@keyframes page-exit-to-left { from { opacity: 1; translate: var(--drag-offset, 0px) 0; } to { opacity: .35; translate: -100vw 0; } }
-@keyframes page-exit-to-right { from { opacity: 1; translate: var(--drag-offset, 0px) 0; } to { opacity: .35; translate: 100vw 0; } }
+/* The pages only slide: fading two whole pages into each other made the GPU redraw and blend both every frame. */
+@keyframes page-enter-from-right { from { translate: var(--page-entry-offset, 100vw) 0; } to { translate: 0 0; } }
+@keyframes page-enter-from-left { from { translate: var(--page-entry-offset, -100vw) 0; } to { translate: 0 0; } }
+@keyframes page-exit-to-left { from { translate: var(--drag-offset, 0px) 0; } to { translate: -100vw 0; } }
+@keyframes page-exit-to-right { from { translate: var(--drag-offset, 0px) 0; } to { translate: 100vw 0; } }
 
 @media (min-width: 901px) {
   /* The footer separator sits 25px below the top of the dock. */
