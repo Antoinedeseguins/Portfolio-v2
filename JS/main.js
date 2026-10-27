@@ -1220,7 +1220,7 @@ function renderAbout(navigationDirection = -1) {
   // the page has slid in, then kept: later visits show it as it was left, sliding in with the page.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=130", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=180", document.baseURI).href)
     .then(module => {
       const show = () => {
         if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;
