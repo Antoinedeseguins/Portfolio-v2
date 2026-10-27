@@ -41,13 +41,28 @@
 				]
 			}
 		</script>
+		<!-- The home page's desk toy (only on screens wide enough to show it) is a chain of modules, each found only once
+		     the one before has arrived: fetch them all now, alongside the page. Ahead of the stylesheets, which would hold
+		     this script back. The ?v must stay the one in JS/main.js's import, or the toy is fetched twice. The picture
+		     shown in its place until it is ready comes first. -->
+		<script>
+			if (matchMedia("(min-width: 1181px)").matches) {
+				document.head.append(Object.assign(document.createElement("link"), {
+					rel: "preload", as: "image", href: "three.js/about/desk-room-poster-1x.webp",
+					imageSrcset: "three.js/about/desk-room-poster-1x.webp 1x, three.js/about/desk-room-poster-2x.webp 2x",
+				}));
+				for (const path of ["three.js/about/desk-room.js?v=181", "three.js/vendor/three.module.js", "three.js/vendor/three.core.js", "three.js/vendor/GLTFLoader.js", "three.js/vendor/BufferGeometryUtils.js"]) {
+					document.head.append(Object.assign(document.createElement("link"), { rel: "modulepreload", href: path }));
+				}
+			}
+		</script>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,800;1,350;1,500&display=swap" rel="stylesheet" />
 		<!-- The name and the handwritten hello stay hidden until their fonts arrive instead of flashing a fallback. -->
 		<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&family=Caveat:wght@400&display=block" rel="stylesheet" />
-		<link rel="stylesheet" href="CSS/styles.css?v=20261026-glitch" />
-		<script src="JS/main.js?v=20261026-room-kept" defer></script>
+		<link rel="stylesheet" href="CSS/styles.css?v=20261027-room-poster" />
+		<script src="JS/main.js?v=20261027-room-poster" defer></script>
 	</head>
 	<body class="is-about-page">
 		<main class="portfolio">

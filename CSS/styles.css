@@ -599,8 +599,13 @@ img.hero-image { object-fit: cover; }
 /* A desk diorama fills the free space right of the pitch, sharing the copy's grid cell. */
 .about-room { position: relative; justify-self: end; width: calc(100% - 420 * var(--u)); height: clamp(300 * var(--u), 52 * var(--vh), 540 * var(--u)); }
 /* The canvas overflows the frame by a quarter on every side, so things can spill past it (the layout only sees the frame). */
-.about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; opacity: 0; pointer-events: none; transition: opacity 500ms ease; }
+.about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; opacity: 0; pointer-events: none; }
 .about-room.has-room .about-room-canvas { opacity: 1; }
+/* A picture of the room at rest holds its place until the room is ready, then gives way to it at once. Square, over the
+   canvas's area: the camera fits the room to the frame's narrower side, so "contain" lines the two up. Remade with
+   tools/desk-room-poster.sh. */
+.about-room-poster { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; object-fit: contain; pointer-events: none; user-select: none; }
+.about-room.has-room .about-room-poster { visibility: hidden; }
 .is-pointing-room, .is-pointing-room * { cursor: pointer; }
 .is-on-room-screen, .is-on-room-screen * { cursor: none; }
 @media (max-width: 1180px) { .about-room { display: none; } }

@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- Draws the home page's desk room at rest in a square frame and prints the picture (a WebP data URL, see-through
+     around the room) into #picture. Run through tools/desk-room-poster.sh, which saves it at 1x and 2x. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Desk room poster</title>
+		<style>
+			body { margin: 0; }
+			/* A square frame: the camera fits the room to its narrower side, so the picture lines up with any frame once
+			   shown "contain" over the canvas's area. The canvas overflows it as on the site. */
+			.about-room { position: absolute; top: 150px; left: 150px; width: 600px; height: 600px; }
+			.about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; }
+			#picture { display: none; }
+		</style>
+	</head>
+	<body>
+		<div class="about-room"></div>
+		<pre id="picture"></pre>
+		<script type="module">
+			import { enableDeskRoom, deskRoomPicture } from "../three.js/about/desk-room.js";
+
+			const room = document.querySelector(".about-room");
+			enableDeskRoom(room);
+			await new Promise((resolve) => {
+				const ready = () => (room.classList.contains("has-room") ? resolve() : setTimeout(ready, 50));
+				ready();
+			});
+			// Leaves time for the model and pictures that load on their own.
+			await new Promise((resolve) => setTimeout(resolve, 3000));
+			document.getElementById("picture").textContent = deskRoomPicture("image/webp", 0.9);
+		</script>
+	</body>
+</html>

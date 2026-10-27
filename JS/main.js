@@ -1134,7 +1134,9 @@ function aboutPageMarkup() {
             : `<span class="is-pending" title="Link to add">${escapeText(link.label)}</span>`).join("")}</nav>` : ""}
         </div>
       </div>
-      <div class="about-room" aria-hidden="true"></div>
+      <div class="about-room" aria-hidden="true">
+        <img class="about-room-poster" src="three.js/about/desk-room-poster-1x.webp" srcset="three.js/about/desk-room-poster-1x.webp 1x, three.js/about/desk-room-poster-2x.webp 2x" alt="" />
+      </div>
     </div>
   `;
 }
@@ -1220,7 +1222,7 @@ function renderAbout(navigationDirection = -1) {
   // the page has slid in, then kept: later visits show it as it was left, sliding in with the page.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=180", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=181", document.baseURI).href)
     .then(module => {
       const show = () => {
         if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;

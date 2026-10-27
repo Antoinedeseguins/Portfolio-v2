@@ -1005,6 +1005,9 @@ export function enableDeskRoom(host) {
   deskRoom.attach(host);
   return () => deskRoom.detach(host);
 }
+// The room as it stands, drawn and returned as a data URL (type and quality as for canvas.toDataURL). Used to make the
+// picture shown in its place until it is ready (tools/desk-room-poster.html).
+export const deskRoomPicture = (type, quality) => deskRoom?.picture(type, quality);
 
 function createDeskRoom() {
   const canvas = document.createElement("canvas");
@@ -2360,7 +2363,13 @@ function createDeskRoom() {
   }
 
   return {
-    // Shows the room in this frame, straight away if it is ready (with no fade) and otherwise once the shaders are in.
+    // Read straight after drawing, while the canvas still holds the frame.
+    picture(type, quality) {
+      beforeRender?.();
+      renderer.render(scene, camera);
+      return canvas.toDataURL(type, quality);
+    },
+    // Shows the room in this frame, straight away if it is ready and otherwise once the shaders are in.
     attach(next) {
       host = next;
       host.append(canvas);
