@@ -1,4 +1,4 @@
-﻿const siteBaseUrl = new URL(".", document.baseURI);
+const siteBaseUrl = new URL(".", document.baseURI);
 const useHashNavigation = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname)
   || window.location.port !== "";
 const siteBaseElement = document.querySelector("base") || document.head.appendChild(document.createElement("base"));
@@ -1222,7 +1222,7 @@ function renderAbout(navigationDirection = -1) {
   // the page has slid in, then kept: later visits show it as it was left, sliding in with the page.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=181", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=323", document.baseURI).href)
     .then(module => {
       const show = () => {
         if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;

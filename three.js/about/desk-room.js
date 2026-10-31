@@ -1,17 +1,59 @@
 import * as THREE from "../vendor/three.module.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
+import { mergeGeometries } from "../vendor/BufferGeometryUtils.js";
 
 // Everything is built in code below, in the site's cool greys and blue.
 // The slate wardrobe, with light handles.
 const CABINET = { body: 0x7d8894, handle: 0xc9d0d6 };
 // The toolbox on the wardrobe's bottom shelf: classic red, steel bar and latches, black rubber grip.
 const TOOLBOX = { box: 0xc8453b, inside: 0x8f2f28, rim: 0xd9584d, metal: 0xc9d0d6, rubber: 0x2b333b };
-// The toolbox fall, in seconds: land on the floor, settle; contents leave from scatter and fly for flight.
-const FALL = { land: .45, end: .75, scatter: .25, flight: .5 };
-// Where each loose piece of the toolbox lands when it is knocked over, in wardrobe units: x, y, z, turn, lying on its side.
-const SPILL = [];
+// The cartoon claw hammer in it: dark grey shaft in a slightly lighter grey grip, light steel head; its handle length
+// and head size (against the head as drawn).
+const HAMMER = { handle: 0x2f363d, grip: 0x4d565f, steel: 0x9aa4ae, handleLength: .115, headSize: 1 };
+// A Wera Kraftform screwdriver beside it: black handle with Wera green soft pads, steel blade; how far its handle's
+// three lobes swell out and in (a fraction of its radius), and how much bigger than drawn it is made so it still reads
+// as a Wera once small on the floor.
+const SCREWDRIVER = { kraftform: 0x22b573, kraftformBlack: 0x1d2126, chrome: 0x98a2ac, lobes: .07, size: 1.2 };
+// Knipex combination pliers behind the hammer: chromed head and its stamped boss, Knipex red and blue two-component
+// handles with a grey anti-slip patch; how long they are, nose to handle ends.
+const PLIERS = { knipexSteel: 0xcfd5db, knipexMark: 0xcfd5db, knipexRed: 0xd7262e, knipexBlue: 0x2d4fb8, knipexGrey: 0x5b6169,
+  length: .11 };
+// The dark outline drawn round the tools in it, and its thickness in CSS pixels.
+const TOOL_OUTLINE = { colour: 0x1b2127, width: .6 };
+// The Zelda chest behind the toolbox: warm brown wood, dark iron straps, gold lock plate.
+const CHEST = { wood: 0x8a5a2e, iron: 0x2f3439, gold: 0xe0b53c, keyhole: 0x1d2126 };
+// Zelda clay pots round the chest, hidden with it behind the toolbox: terracotta, a darker band round the shoulder, dark
+// inside. Each: x, z on the bottom shelf in wardrobe units, scale, turn.
+const POTS = {
+  clay: 0xb5653a, band: 0x8a4526, inside: 0x2a1a12,
+  pots: [[.088, -.18, 1, 0], [.235, -.185, 1, .6], [.272, -.205, .8, 1.2]],
+};
+// The VHS cassette left of the toolbox: black shell, white label, smoky window, dark tape round white hubs; it leans
+// lean rad on the wardrobe side. Its label's scribbles: [colour, row, from x, to x, crossed out] on a 256 x 64 label.
+const VHS = {
+  shell: 0x1d2126, label: 0xeeeae0, window: 0x3a4148, tape: 0x241f1c, hub: 0xeef1f3, lean: .25,
+  scribbles: [["#c8302a", 0, 14, 150, true], ["#2f5fb0", 0, 160, 236, false], ["#1d2126", 1, 14, 120, true], ["#c8302a", 1, 130, 210, true], ["#2f5fb0", 2, 30, 200, false]],
+};
+// The toolbox fall, in seconds: land on the floor, settle. Its contents ride along until it lands, then go on alone.
+const FALL = { land: .45, end: .75 };
+// How the toolbox's contents move once loose, worked out as rigid bodies (see simulateDrops), in wardrobe units:
+// gravity (about 2.3 m to a unit), the simulation step and the rate the result is kept at, in seconds; a piece counts
+// as at rest once it has stayed within rest units and turn radians of where it was for settle seconds, or after
+// longest seconds. The friction of a tool against another, and against the box's painted inside: both slip more than
+// a tool on the floor (each tool's own friction).
+const DROP = { gravity: 4.2, step: 1 / 600, rate: 120, rest: .0005, turn: .005, settle: .15, longest: 3, slip: .2, boxSlip: .25 };
 // The desk built below: same anthracite as before, light pulls, darker drawer insides.
 const DESK = { body: 0x3a4148, pull: 0xc9d0d6, inside: 0x2b3238 };
+// A drawer slides out travel. What lies in it feels a jolt from how hard the drawer moves (push): it slides once the
+// jolt beats friction, then friction stops it; it never ends up further than reach from where it was put. Things differ
+// a little in weight (spread); the light cartridges move less (cartridge). Tall things also rock on their base, each
+// its own way: tipped over by tip, brought back upright by their weight (upright, rock), swaying sideways by sway.
+// The cube is heavy and stiff; the duck is light and bouncy, and wobbles off to the side.
+const DRAWER_JOLT = {
+  travel: .16, push: .18, friction: .9, reach: .02, spread: .2, cartridge: .7,
+  cube: { tip: 12, upright: 330, rock: 9, sway: 0 },
+  duck: { tip: 14, upright: 170, rock: 4.5, sway: .45 },
+};
 // The 90s computer built below: beige-era shapes in the site's light greys, dark screen and power LED that light up.
 const RETRO_PC = { case: 0xd3d9de, caseShade: 0xb3bcc4, slot: 0x2b333b, screen: 0x1d2227, led: 0x2b333b, postIt: 0xf3d34a };
 const LED_ON = 0xe0392f;
@@ -25,12 +67,18 @@ const SCREEN = {
 };
 // The coffee mug on the desk: white, in the site's light grey, full of coffee.
 const MUG = { mug: 0xeef1f3, coffee: 0x4a2e22 };
+// Wayfarer sunglasses on the desk: glossy black frame and arms (frame gloss = roughness), the classic dark green lenses
+// with a sheen (shine = roughness), silver rivets.
+const SUNGLASSES = { frame: 0x121416, lens: 0x26302a, rivet: 0xd5dade, gloss: .4, shine: .2 };
 // Classic cube colours, matched to the scene's existing reds, yellows and blues; the core shows between the cubies.
 const RUBIK = { white: 0xeef1f3, yellow: 0xf3d34a, red: 0xc8453b, orange: 0xe8833a, blue: 0x4a86c8, green: 0x49a868, core: 0x2b333b };
 // The note on the door: blank paper held by blue tape. Slam the doors enough times in a row (clicks within seconds)
 // and the tape gives: the note flutters down to the floor (in seconds), showing a hole knocked through the door
 // behind it (splintered rim, dark inside) with a small golden key hidden in it.
-const NOTE = { paper: 0xf4f5f2, tape: 0x9cbbe0, slams: 6, within: 2.5, fall: 1.8 };
+// Opening the door lifts the note off it: at most lift (a fraction of its width) at its bottom edge, gathering gust
+// per unit of the door's opening speed and dying away over settle seconds, a ripple running down it ripple times a
+// second.
+const NOTE = { paper: 0xf4f5f2, tape: 0x9cbbe0, slams: 6, within: 2.5, fall: 1.8, lift: .18, gust: 1.5, settle: .45, ripple: 1.6 };
 // The key glows: its light colour and strength.
 const HOLE = { rim: 0x5f6873, dark: 0x15191d, key: 0xf2c443, glow: 0xffc634, shine: 1.2 };
 // Zelda's row of hearts on the door, in pixel art: dark outline, red fill with a white glint, and the used-up ones
@@ -40,8 +88,9 @@ const HEARTS = {
   outline: "#2a1416", fill: "#e0303a", glint: "#ffffff", empty: "#5a4a4c", gleam: "#ffc2c6",
   count: 5, startHalves: 3, flourish: .7, laps: 3,
 };
-// Stickers on the wardrobe door, under the note, all painted on canvases: Team Vitality's bee, Counter-Strike's logo
-// and Twitch's. Each has a white die-cut backing with a cut line in the shade the edge strokes give the wardrobe.
+// Stickers on the wardrobe door, under the note, all painted on canvases: StarCraft's Terran emblem, Team Vitality's
+// bee, Counter-Strike's logo and Twitch's. Each has a white die-cut backing with a cut line in the shade the edge
+// strokes give the wardrobe.
 // They have seen some life: a corner may have come unstuck and folded back over (how far it stands off the sticker, how
 // far in the fold runs as a share of the sticker, and how far over it turns, in degrees), and they are a little faded,
 // scuffed, grimy and nicked at the edges. A holo one's rainbow: how strongly it glows, how many bands cross it, and how
@@ -50,7 +99,14 @@ const STICKERS = {
   cutBacking: "#f4f5f2", cutLine: "#5e6771",
   peel: .0004, peelFrom: .14, fold: 160,
   holo: .22, holoBands: 1.2, holoShift: 3,
+  // A glossy one's streak of light: how bright, how narrow (higher is narrower), how many cross it, how fast they slide,
+  // and where they sit (a share of the gap between two): off the ink once the door is wide open, so it only shines on
+  // the swing.
+  gloss: { strength: .45, sharpness: 8, bands: .4, shift: 3, phase: .8 },
   fade: .1, scuffs: 7, scuff: "rgba(255, 255, 255, .45)", grime: "rgba(90, 80, 60, .07)", nicks: 6,
+  // StarCraft's Terran emblem (drawn white), reprinted in black. In the game it is yellow: { colour: "#f2c12e", outline:
+  // "#1d2125", width: 9 } prints it so, inside a thin dark outline (its width in the picture's pixels).
+  terran: { colour: "#000000" },
 };
 // The e-sport pass on its lanyard: Vitality-yellow strap, steel clip, dark magnet, white card; sizes in note widths
 // (strap width, card width and height, how far the clip hangs below the magnet) and thickness in door units; the
@@ -78,9 +134,20 @@ const CARTRIDGES = {
 // The Nomai mask from Outer Wilds, in its in-game colours: pale grey face, mid-grey frames, silver arms banded in darker
 // grey with gold edges and dots, and yellow eyes with a dark core; its stand matches the desk.
 const NOMAI = { frame: 0x9ea4ab, face: 0xdde0e3, arm: 0xbcc1c7, band: 0x868c94, gold: 0xc9a64a, eye: 0xe0bf4a, pupil: 0x2b333b, stand: 0x3a4148 };
+// TARS from Interstellar: brushed metal slabs, a dark display with a pale readout line, its name stencilled in faint
+// orange.
+const TARS = { metal: 0xaeb5bc, screen: 0x24292e, readout: 0x9cbbe0, name: "#e8833a", nameOpacity: .85 };
+// A click makes it walk on the spot: steps in a given time (seconds), how far its legs swing and its body slabs rock
+// (radians) and how high the body bobs at each step.
+const TARS_STRIDE = { time: 2.6, steps: 4, legs: .3, arms: .025, bob: .006 };
+// Meanwhile its readout refreshes: every so often (seconds) each line is rewritten to a new length, from shortest to
+// longest (scene units).
+const TARS_READOUT = { every: .22, shortest: .005, longest: .021 };
 // The rubber duck of rubber-duck debugging: yellow body and head, orange beak, black eyes. A click squeezes it: it
 // squashes and hops (times in seconds). Its outline: colour and thickness in desk units.
 const DUCK = { body: 0xf3d34a, beak: 0xe8833a, eye: 0x1d2126, outline: 0x2b333b, line: .0012, squeeze: .14, hop: .36 };
+// Matrix's red and blue pills in a blister pack: silver foil card, clear bubbles (opacity), one pill of each.
+const BLISTER = { foil: 0xc9d0d6, bubble: 0xeef4f8, opacity: .3, red: 0xd0302a, blue: 0x2f6fd0 };
 // Mario's ? block: golden body, white question mark with a brown drop shadow, brown rivets in the corners.
 const QUESTION_BLOCK = { body: 0xf0ad2e, mark: 0xf7f4ea, shadow: 0x8a5420, rivet: 0x8a5420 };
 // Portal's Companion Cube: dark core, light corner bumpers and edge handles, pale face plates with pink hearts.
@@ -95,7 +162,9 @@ const HEARTHSTONE = {
 };
 // The cube's trip through a pair of portals, in seconds: both open, it drops into the first, shoots out of the second
 // (on the back wall above), then they close. Portals: glowing rim and paler inside, radius across and along.
-const PORTAL_TRIP = { open: .3, fall: .35, fly: .4, close: .35 };
+// It can be switched off (enabled: it then stays put and ignores clicks). For now (stay) it comes back out where it went
+// in, onto the top shelf, instead of travelling between shelves.
+const PORTAL_TRIP = { enabled: true, stay: true, open: .3, fall: .35, fly: .4, close: .35 };
 const PORTALS = { blue: { rim: 0x2f8cff, inside: 0xb5dcff }, orange: { rim: 0xff8a1a, inside: 0xffd6aa }, across: .056, along: .073 };
 // Camera angles: front right, slightly above.
 const VIEW_ELEVATION = THREE.MathUtils.degToRad(24);
@@ -153,7 +222,7 @@ function buildRetroComputer() {
   screen.name = "screen";
   // A yellow sticky note on the right of the monitor frame, overhanging its edge a little. It stands just clear of
   // the frame and the glass so neither shows through it.
-  const postIt = part(new THREE.BoxGeometry(.06, .06, .002), "postIt", .158, .31, .0445);
+  const postIt = part(new THREE.BoxGeometry(.06, .06, .002), "postIt", .172, .31, .0445);
   postIt.rotation.z = THREE.MathUtils.degToRad(-7);
   postIt.userData.monitor = true;
 
@@ -206,13 +275,13 @@ function buildCabinet() {
   shell(innerWidth, innerHeight, .02, width / 2, inside.bottom + innerHeight / 2, -depth + .01);
   for (let k = 1; k <= 3; k++) part(cabinet, innerWidth, .015, depth - .07, "body", width / 2, inside.bottom + innerHeight * k / 4, -depth / 2 - .015);
 
-  // Each door sits slightly back inside the frame; the handles meet at the central seam.
+  // Each door sits slightly back inside the frame; the handles stand either side of the central seam.
   const [doorLeft, doorRight] = [-1, 1].map((side) => {
     const door = new THREE.Group();
     // Hinged on the front outer edge, so the door swings out without cutting into the frame.
     door.position.set(side < 0 ? inside.left : inside.right, inside.bottom, -doorInset);
     part(door, doorWidth, innerHeight, doorDepth, "body", -side * doorWidth / 2, innerHeight / 2, -doorDepth / 2);
-    part(door, .015, .06, .02, "handle", -side * (doorWidth - .02), innerHeight * .42, .01);
+    part(door, .015, .06, .02, "handle", -side * (doorWidth - .025), innerHeight * .42, .01);
     cabinet.add(door);
     return door;
   });
@@ -266,6 +335,22 @@ const FAIL = { boot: .55, tear: 1.05, end: 1.35 };
 // Smoke puffs rising from the computer case after the short circuit: how many, the gap between them, how long each lasts.
 const SMOKE = { puffs: 8, gap: .14, life: 1.3, colour: 0x5f676f };
 const CLOSE_BOX = { x: 232, y: 6, size: 18 };
+// The Matrix code rain a click on the pills puts on the screen, in seconds (time, fading in and out over fade): a grid
+// of columns x rows, each column falling at a speed between speed[0] and speed[1] rows a second with a trail of symbols.
+// Its bugs: the rain is cut into stretches of every seconds; in odds of them it glitches for length seconds (a torn
+// band tall[0] to tall[1] px high, its slices slid up to reach / 2 px, or a roll of the whole picture), the
+// whole screen warped in waves up to wave px.
+const MATRIX = {
+  time: 3.5, fade: .35, columns: 18, rows: 14, trail: 9, speed: [12, 24],
+  bugs: { every: .45, length: .18, odds: .9, reach: 90, tall: [24, 70], wave: 10 },
+  black: "#020803", rain: "#22d34b", head: "#d8ffe0", glyphs: "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜ0123456789Z:.=*+<>",
+};
+// Then the message, typed out at rate letters a second in size px type, its cursor blinking every blink seconds,
+// left on screen for hold seconds once typed: it flickers on about flicker of its frames, and tears apart and fades
+// away over its last out seconds.
+const MATRIX_MESSAGE = { text: "Wake up...", size: 32, rate: 14, blink: .45, hold: 2, flicker: .12, out: .5 };
+// The whole show: the rain, then the message typed and left a moment.
+const MATRIX_END = MATRIX.time + MATRIX_MESSAGE.text.length / MATRIX_MESSAGE.rate + MATRIX_MESSAGE.hold;
 const GLYPHS = "01{}<>/\\#$%&*+=?!;:[]";
 function createScreenDisplay() {
   const canvas = document.createElement("canvas");
@@ -428,12 +513,211 @@ function createScreenDisplay() {
     else collapse(Math.min(1, (seconds - FAIL.tear) / (FAIL.end - FAIL.tear)));
     texture.needsUpdate = true;
   };
+  // A repeatable random number in [0, 1) for each n.
+  const chance = (n) => { const x = Math.sin(n * 91.7 + 17.3) * 43758.5453; return x - Math.floor(x); };
+  // The picture between from and to cut into thin bands, most of them slid sideways by up to reach / 2; frame picks
+  // the pattern.
+  const slip = (frame, reach, from = 0, to = height) => {
+    copyContext.drawImage(canvas, 0, 0);
+    rect(MATRIX.black, 0, from, width, to - from);
+    for (let top = from, n = 0; top < to; n++) {
+      const band = Math.min(to - top, 2 + Math.floor(chance(frame * 31 + n) * 6));
+      const shift = chance(frame * 17 + n + 300) < .65 ? (chance(frame * 7 + n + 600) - .5) * reach : 0;
+      context.drawImage(copy, 0, top, width, band, shift, top, width, band);
+      top += band;
+    }
+  };
+  // The Matrix's falling green code, seconds in: columns of symbols raining at their own speeds, each led by a pale
+  // head and trailing off into the dark; the symbols keep changing. Fades in from and out to black.
+  const matrix = (seconds) => {
+    blank = false;
+    if (seconds >= MATRIX.time) { message(seconds - MATRIX.time); return; }
+    const { columns, rows, trail, speed } = MATRIX;
+    const cellWidth = width / columns, cellHeight = height / rows;
+    rect(MATRIX.black, 0, 0, width, height);
+    context.font = `700 ${Math.round(cellHeight * .9)}px monospace`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    // The same column always gets the same speed and start, so the rain flows from frame to frame.
+    const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    for (let column = 0; column < columns; column++) {
+      const rate = speed[0] + hash(column) * (speed[1] - speed[0]);
+      const head = (seconds * rate + hash(column + 50) * (rows + trail)) % (rows + trail);
+      for (let back = 0; back < trail; back++) {
+        const row = Math.floor(head) - back;
+        if (row < 0 || row >= rows) continue;
+        const symbol = MATRIX.glyphs[Math.floor(hash(column * 31 + row * 7 + Math.floor(seconds * 9 + hash(row + column)) * 13) * MATRIX.glyphs.length)];
+        context.fillStyle = back === 0 ? MATRIX.head : MATRIX.rain;
+        context.globalAlpha = back === 0 ? 1 : 1 - back / trail;
+        context.fillText(symbol, (column + .5) * cellWidth, (row + .5) * cellHeight);
+      }
+    }
+    context.globalAlpha = 1;
+    // Bugs in the Matrix: in most stretches of the rain, the picture glitches for a split second. The whole screen
+    // warps in waves, and each time something else goes wrong too, in turn: a band of it tears sideways, or the whole
+    // picture rolls down like a losing hold. All in the rain's green.
+    const { every, length, odds, reach, tall, wave } = MATRIX.bugs;
+    const stretch = Math.floor(seconds / every), start = stretch * every + chance(stretch) * (every - length);
+    if (stretch > 0 && chance(stretch + 70) < odds && seconds >= start && seconds < start + length) {
+      const bandHeight = tall[0] + chance(stretch + 140) * (tall[1] - tall[0]);
+      const top = chance(stretch + 210) * (height - bandHeight);
+      const frame = Math.floor(seconds * 24);
+      const kind = ["tear", "roll"][stretch % 2];
+      if (kind === "tear") slip(frame, reach, top, top + bandHeight);
+      else {
+        // Rolled down by a jumping amount, what drops off the bottom coming back in at the top, with a bright seam.
+        const drop = Math.floor(height * (.15 + chance(frame + 350) * .5));
+        copyContext.drawImage(canvas, 0, 0);
+        context.drawImage(copy, 0, 0, width, height - drop, 0, drop, width, height - drop);
+        context.drawImage(copy, 0, height - drop, width, drop, 0, 0, width, drop);
+        rect(MATRIX.rain, 0, drop - 1, width, 2);
+      }
+      // The warp: each thin row slid sideways along a wave that ripples down the screen and shifts every frame.
+      copyContext.drawImage(canvas, 0, 0);
+      rect(MATRIX.black, 0, 0, width, height);
+      const phase = chance(frame + 420) * Math.PI * 2;
+      for (let y = 0; y < height; y += 2) {
+        const shift = Math.sin(y * .06 + phase) * wave + Math.sin(y * .23 + phase * 3) * wave * .35;
+        context.drawImage(copy, 0, y, width, 2, shift, y, width, 2);
+      }
+      // Back to the rain's green: any colour the glitches made takes its hue, keeping its lightness.
+      context.globalCompositeOperation = "color";
+      rect(MATRIX.rain, 0, 0, width, height);
+      context.globalCompositeOperation = "source-over";
+    }
+    const fade = Math.max(0, 1 - seconds / MATRIX.fade, 1 - (MATRIX.time - seconds) / MATRIX.fade);
+    if (fade > 0) { context.globalAlpha = Math.min(1, fade); rect(SCREEN.black, 0, 0, width, height); context.globalAlpha = 1; }
+    texture.needsUpdate = true;
+  };
+  // After the rain, seconds in: the message typed out letter by letter on the black screen, top left, with a blinking
+  // block cursor after it. Once typed it flickers now and then, and at the end it tears apart and fades away.
+  const message = (seconds) => {
+    const { text, size, rate, blink, hold, flicker, out } = MATRIX_MESSAGE;
+    rect(MATRIX.black, 0, 0, width, height);
+    context.font = `700 ${size}px monospace`;
+    context.textAlign = "left";
+    context.textBaseline = "top";
+    context.fillStyle = MATRIX.rain;
+    const frame = Math.floor(seconds * 24), typedAt = text.length / rate, leaving = seconds - (typedAt + hold - out);
+    // A flicker: a frame here and there drawn faint and nudged sideways.
+    const flickering = seconds > typedAt && chance(frame) < flicker;
+    if (flickering) {
+      context.globalAlpha = .3 + chance(frame + 500) * .3;
+      context.translate(Math.round((chance(frame + 900) - .5) * 8), 0);
+    }
+    // Broken into lines between words wherever it would run past the screen's right margin.
+    const margin = 14, lineHeight = size * 1.3, lines = [""];
+    for (const word of text.split(" ")) {
+      const line = lines[lines.length - 1], longer = line ? `${line} ${word}` : word;
+      if (line && context.measureText(longer).width > width - 2 * margin - size * .6) lines.push(word);
+      else lines[lines.length - 1] = longer;
+    }
+    let left = Math.floor(seconds * rate), x = margin, y = margin + 6;
+    lines.forEach((line, i) => {
+      if (left <= 0 && i > 0) return;
+      const shown = line.slice(0, Math.max(0, left));
+      context.fillText(shown, margin, margin + 6 + i * lineHeight);
+      x = margin + context.measureText(shown).width;
+      y = margin + 6 + i * lineHeight;
+      // The space at the line break counts as a letter typed.
+      left -= line.length + 1;
+    });
+    const typing = Math.floor(seconds * rate) < text.length;
+    if (leaving < 0 && (typing || Math.floor(seconds / blink) % 2 === 0)) rect(MATRIX.rain, x + 2, y, size * .55, size);
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.globalAlpha = 1;
+    // Leaving: the text cut into thin bands slid sideways, further and further, while it fades to black.
+    if (leaving > 0) {
+      const u = Math.min(1, leaving / out);
+      slip(frame, 70 * u);
+      context.globalAlpha = u * u;
+      rect(MATRIX.black, 0, 0, width, height);
+      context.globalAlpha = 1;
+    }
+    texture.needsUpdate = true;
+  };
   clear();
-  return { texture, draw: show, clear, click, reset, crash, fail, point, width, height };
+  return { texture, draw: show, clear, click, reset, crash, fail, matrix, point, width, height };
+}
+
+// A VHS cassette standing on its long edge on y = 0, its top face (label and window) towards +z: .095 long, .052 tall,
+// .013 thick, about half life size like the wardrobe's other things. On that face, a white label along the top and the
+// window below it, showing the two reels of tape round their white hubs.
+function buildVhs() {
+  const vhs = new THREE.Group();
+  const add = (geometry, material, x, y, z) => {
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ name: material }));
+    mesh.position.set(x, y, z);
+    vhs.add(mesh);
+    return mesh;
+  };
+  const long = .095, tall = .052, thick = .013, face = thick / 2;
+  add(new THREE.BoxGeometry(long, tall, thick), "shell", 0, tall / 2, 0);
+  add(new THREE.BoxGeometry(long * .82, tall * .26, .0008), "label", 0, tall * .76, face + .0004).name = "label";
+  add(new THREE.BoxGeometry(long * .62, tall * .34, .0008), "window", 0, tall * .38, face + .0004);
+  // Round shapes: no edge strokes, they would only draw smudges.
+  for (const side of [-1, 1]) {
+    const tape = add(new THREE.CylinderGeometry(tall * .15, tall * .15, .0006, 24).rotateX(Math.PI / 2), "tape", side * long * .22, tall * .38, face + .0011);
+    const hub = add(new THREE.CylinderGeometry(tall * .06, tall * .06, .0006, 16).rotateX(Math.PI / 2), "hub", side * long * .22, tall * .38, face + .0015);
+    tape.userData.noEdges = hub.userData.noEdges = true;
+  }
+  return vhs;
+}
+
+// A small Zelda treasure chest standing on y = 0, its front towards +z: a wooden box under a rounded lid, held by dark
+// iron straps and a rim, with a gold lock plate on the front. .07 wide, .045 deep, about .046 tall. The lid is its own
+// group hinged on the back top edge (named "lid"), ready to open.
+function buildChest() {
+  const chest = new THREE.Group();
+  const width = .07, depth = .045, body = .024, radius = depth / 2;
+  const add = (parent, geometry, material, x, y, z) => {
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ name: material }));
+    mesh.position.set(x, y, z);
+    parent.add(mesh);
+    return mesh;
+  };
+  add(chest, new THREE.BoxGeometry(width, body, depth), "wood", 0, body / 2, 0);
+  // The lid: half a log lying along x, hinged at the back.
+  const lid = new THREE.Group();
+  lid.name = "lid";
+  lid.position.set(0, body, -radius);
+  chest.add(lid);
+  const dome = (r, length, material) => add(lid, new THREE.CylinderGeometry(r, r, length, 20, 1, false, 0, Math.PI).rotateZ(Math.PI / 2), material, 0, 0, radius);
+  dome(radius, width, "wood");
+  // Iron straps over the lid and down the body, and a rim where the lid meets the body.
+  for (const x of [-width * .3, width * .3]) {
+    dome(radius + .0012, .007, "iron").position.x = x;
+    add(chest, new THREE.BoxGeometry(.007, body, depth + .0024), "iron", x, body / 2, 0);
+  }
+  add(chest, new THREE.BoxGeometry(width + .002, .004, depth + .002), "iron", 0, body - .002, 0);
+  // The gold lock plate hanging from the lid's front edge, with its keyhole.
+  add(chest, new THREE.BoxGeometry(.014, .016, .002), "gold", 0, body - .004, depth / 2 + .0012);
+  add(chest, new THREE.BoxGeometry(.003, .006, .001), "keyhole", 0, body - .006, depth / 2 + .0025);
+  return chest;
+}
+
+// A Zelda clay pot standing on y = 0: round belly, narrow neck, flared lip, a darker band round the shoulder and a dark
+// mouth. .036 tall, .035 across the belly.
+function buildPot() {
+  const pot = new THREE.Group();
+  const lathe = (points, material) => {
+    const mesh = new THREE.Mesh(new THREE.LatheGeometry(points.map(([r, y]) => new THREE.Vector2(r, y)), 24), new THREE.MeshStandardMaterial({ name: material }));
+    // Round shapes: no edge strokes, they would only draw smudges.
+    mesh.userData.noEdges = true;
+    pot.add(mesh);
+    return mesh;
+  };
+  lathe([[0, 0], [.011, 0], [.0155, .005], [.0175, .013], [.0165, .021], [.0125, .028], [.0085, .031], [.0085, .033], [.0105, .035], [.011, .036], [.0075, .036], [.0072, .033]], "clay");
+  lathe([[.0172, .017], [.0178, .0175], [.0178, .0205], [.0168, .021]], "band");
+  const mouth = new THREE.Mesh(new THREE.CircleGeometry(.0074, 20).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ name: "inside" }));
+  mouth.position.y = .033;
+  mouth.userData.noEdges = true;
+  pot.add(mouth);
+  return pot;
 }
 
 // An open red metal tote toolbox: rolled rim, latches, tapered ends holding a carry bar with a rubber grip.
-// Empty for now. Stands on y = 0, about .2 wide and .1 deep in the wardrobe's units.
+// Stands on y = 0, about .2 wide and .1 deep in the wardrobe's units.
 function buildToolbox() {
   const toolbox = new THREE.Group();
   const add = (parent, geometry, material, x, y, z) => {
@@ -460,11 +744,645 @@ function buildToolbox() {
   bar.rotation.z = Math.PI / 2;
   add(bar, rod(.009, .08), "rubber", 0, 0, 0);
 
-  // Empty for now; loose pieces added here, in the order of SPILL, fly out when the box is knocked over.
-  return { toolbox, loose: [] };
+  // Loose pieces: they fall out when the box is knocked over.
+  // The hammer lying on its side on the box floor, handle to the left, head to the right with the claw to the back: the
+  // head just fits across between the front and back walls.
+  const hammer = buildHammer();
+  hammer.position.set(-.07, .006 + .009 * HAMMER.headSize, .012);
+  hammer.rotation.set(Math.PI / 2, Math.PI / 2, 0, "YXZ");
+  toolbox.add(hammer);
+  // The screwdriver lying on top of the pliers (placed below), along the groove between their handles, handle to the
+  // left, blade to the right, on the face between two lobes of its handle.
+  const screwdriver = buildScrewdriver();
+  screwdriver.position.set(-.09, .028, -.0205);
+  screwdriver.rotation.set(0, Math.PI / 3, -Math.PI / 2, "ZXY");
+  toolbox.add(screwdriver);
+  // The pliers lying flat on the box floor on their guards, under the screwdriver, in the strip behind the hammer's
+  // handle, handles to the left, nose to the right short of the hammer's head, the stamped boss up.
+  const pliers = buildPliers();
+  pliers.position.set(.025, .006 + 72 * PLIERS.length / 1275, -.0205);
+  pliers.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(0, 1, 0)));
+  toolbox.add(pliers);
+  return { toolbox, loose: [hammer, screwdriver, pliers] };
+}
+
+// A Wera Kraftform Plus screwdriver (after the user's photos, tmp/kraft*) lying along +y from the end of its handle at
+// y = 0, its handle measured off the side view (tmp/kraft.PNG): rounded triangular section (three lobes) in black hard
+// plastic, a domed back end, swelling to its thickest a little behind the middle then slimming down a long neck to a
+// big hexagonal anti-roll collar. Two rings of green soft pads, one behind and one in front of the thickest part with a
+// black band between them: six long pads with round ends round each ring, one on each lobe and one on each face, thin
+// black gaps between them (the real one joins them by thin green bars, left out here). Then a round steel blade with a
+// cross tip, shorter than life so it fits the box. Drawn about .1 long, then scaled by SCREWDRIVER.size.
+function buildScrewdriver() {
+  const screwdriver = new THREE.Group();
+  const { lobes } = SCREWDRIVER;
+  // The handle's turned profile (radius, y), and its surface's distance from the axis at y and a lobe angle (from +x
+  // towards +z, the lobes at 0 and every third of a turn).
+  const profile = [[0, 0], [.003, .00013], [.005, .00053], [.0063, .0012], [.007, .002], [.0087, .0053], [.01, .01],
+    [.0107, .0147], [.011, .0187], [.0109, .022], [.0103, .0267], [.0093, .03], [.0087, .036], [.008, .0413], [.0072, .048],
+    [.0067, .0533], [.0068, .0565], [0, .0565]];
+  const radiusAt = (y, angle) => {
+    const k = profile.findIndex(([, py], i) => i > 0 && py >= y);
+    const [r0, y0] = profile[Math.max(0, k - 1)], [r1, y1] = profile[Math.max(0, k)];
+    const r = y1 > y0 ? r0 + (r1 - r0) * (y - y0) / (y1 - y0) : r1;
+    return r * (1 + lobes * Math.cos(3 * angle));
+  };
+  const handle = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 48);
+  const position = handle.attributes.position;
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i), z = position.getZ(i);
+    const swell = 1 + lobes * Math.cos(3 * Math.atan2(z, x));
+    position.setX(i, x * swell);
+    position.setZ(i, z * swell);
+  }
+  handle.computeVertexNormals();
+  const add = (geometry, y, material) => {
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ name: material }));
+    mesh.position.y = y;
+    mesh.userData.noEdges = true;
+    screwdriver.add(mesh);
+    return mesh;
+  };
+  add(handle, 0, "kraftformBlack");
+  // The green pads, all in one mesh: each a patch a little proud of the handle, centred on a lobe angle and a height,
+  // half as wide (radians) and half as tall, its ends rounded off as round as it is wide and its rim tucked down into
+  // the handle.
+  const vertices = [], index = [];
+  const pad = (angle, y, wide, tall) => {
+    const across = 16, along = 32, raise = .0004, tuck = -.0004;
+    const end = Math.min(tall, wide * radiusAt(y, angle));
+    const first = vertices.length / 3, row = across + 3;
+    for (let j = 0; j <= along + 2; j++) {
+      const t = THREE.MathUtils.clamp(-1 + 2 * (j - 1) / along, -1, 1);
+      // Rows bunch up towards the round ends, where the outline turns fastest.
+      const v = Math.sin(t * Math.PI / 2);
+      const past = Math.abs(v) * tall - (tall - end);
+      const width = past > 0 ? wide * Math.sqrt(Math.max(0, 1 - (past / end) ** 2)) : wide;
+      for (let i = 0; i < row; i++) {
+        const u = THREE.MathUtils.clamp(-1 + 2 * (i - 1) / across, -1, 1);
+        const rim = i === 0 || i === row - 1 || j === 0 || j === along + 2;
+        const a = angle + u * width, h = y + v * tall;
+        const r = radiusAt(h, a) + (rim ? tuck : raise);
+        vertices.push(Math.cos(a) * r, h, Math.sin(a) * r);
+      }
+    }
+    for (let j = 0; j < along + 2; j++) for (let i = 0; i < row - 1; i++) {
+      const p = first + j * row + i;
+      index.push(p, p + row, p + 1, p + 1, p + row, p + row + 1);
+    }
+  };
+  for (const { y, tall } of [{ y: .0095, tall: .0078 }, { y: .0297, tall: .0077 }]) {
+    for (let k = 0; k < 6; k++) pad(k * Math.PI / 3, y, .41, tall);
+  }
+  const pads = new THREE.BufferGeometry();
+  pads.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  pads.setIndex(index);
+  pads.computeVertexNormals();
+  // Drawn without the tools' dark outline, which would only ring each pad.
+  add(pads, 0, "kraftform").userData.noOutline = true;
+  // The collar: a six-sided barrel with flat faces, then the blade and its cross tip.
+  const collar = new THREE.LatheGeometry([[0, .0563], [.0074, .0563], [.0085, .0573], [.0089, .0585], [.0085, .0597],
+    [.0074, .0607], [.0026, .061], [0, .061]].map(([r, y]) => new THREE.Vector2(r, y)), 6).toNonIndexed();
+  collar.computeVertexNormals();
+  add(collar, 0, "kraftformBlack");
+  add(new THREE.CylinderGeometry(.0021, .0021, .037, 12), .061 + .037 / 2, "chrome");
+  add(new THREE.CylinderGeometry(.0006, .0021, .005, 4), .098 + .0025, "chrome");
+  const { size } = SCREWDRIVER;
+  for (const part of screwdriver.children) part.position.multiplyScalar(size), part.scale.setScalar(size);
+
+  // As a rigid body (see simulateDrops), mass 1: plastic handle and steel blade, so the centre of mass sits near the
+  // collar. Inertia of a thin rod, very little about its own axis. Contact points: the three lobes along the handle (on
+  // which it rests, and which stop it rolling far), and the blade. Plastic on the floor: a livelier knock than the
+  // hammer's. For knocks against the other pieces: the handle and the blade as capsules.
+  const ridges = [.002, .0095, .0187, .03, .045, .055];
+  const points = ridges.flatMap((y) => [0, 1, 2].map((k) => {
+    const angle = k * Math.PI * 2 / 3, r = radiusAt(y, angle);
+    return [Math.cos(angle) * r, y, Math.sin(angle) * r];
+  }));
+  for (const y of [.07, .085, .102]) for (const [x, z] of [[.0021, 0], [-.0021, 0], [0, .0021], [0, -.0021]]) points.push([x, y, z]);
+  screwdriver.userData.body = {
+    com: new THREE.Vector3(0, .042 * size, 0),
+    inertia: new THREE.Vector3(.0009, .00004, .0009).multiplyScalar(size * size),
+    points: points.map(([x, y, z]) => new THREE.Vector3(x, y, z).multiplyScalar(size)),
+    bounce: .25,
+    friction: .4,
+    capsules: [
+      { a: new THREE.Vector3(0, .008 * size, 0), b: new THREE.Vector3(0, .046 * size, 0), radius: .0105 * size },
+      { a: new THREE.Vector3(0, .056 * size, 0), b: new THREE.Vector3(0, .102 * size, 0), radius: .0025 * size },
+    ],
+  };
+  return screwdriver;
+}
+
+// Knipex combination pliers (03 05 180) after the user's photos (tmp/knipex*), closed, their outline measured pixel by
+// pixel off the flat side view (tmp/knipex3.jpg: nose at x 205 px, handle ends near 1480, both halves averaged into a
+// mirror pair). Drawn with their length along +x from the nose at x = 0, the upper handle towards +y and the face with
+// the joint's stamped boss towards +z, PLIERS.length long. The head: two chromed jaws meeting on the centre line, fine
+// teeth at the nose, a pipe grip with three big teeth each side, then the cutting edges up to the joint, chamfered all
+// round and thinning towards the nose; on the joint a raised boss stamped KNIPEX 03-180 GERMANY with a six-lobed rivet
+// in its middle. Each handle: a faceted red guard behind the joint, then a rounded grip, red on its inner side and blue
+// on its outer side, the blue wide near the guard with a grey anti-slip patch along the outer edge, thinning to a
+// strip down the middle and widening again over the rounded end.
+function buildPliers() {
+  const pliers = new THREE.Group();
+  const k = PLIERS.length / 1275;
+  // A point of the photo (x px, height px above the centre line) in the pliers' own space.
+  const at = (x, y) => new THREE.Vector2((x - 205) * k, y * k);
+  const add = (geometry, material, edges = false) => {
+    const mesh = new THREE.Mesh(geometry, Array.isArray(material)
+      ? material.map((name) => new THREE.MeshStandardMaterial({ name }))
+      : new THREE.MeshStandardMaterial({ name: material }));
+    mesh.userData.noEdges = !edges;
+    pliers.add(mesh);
+    return mesh;
+  };
+  // A value read off a table of [x px, value] rows at x, straight between the rows.
+  const read = (table, x, column = 1) => {
+    if (x <= table[0][0]) return table[0][column];
+    const i = table.findIndex((row) => row[0] >= x);
+    if (i < 0) return table.at(-1)[column];
+    const a = table[i - 1], b = table[i];
+    return a[column] + (b[column] - a[column]) * (x - a[0]) / (b[0] - a[0]);
+  };
+
+  // The head, 70 px thick at the joint and .55 of that at the nose. The jaws' meeting line from the nose back: fine
+  // teeth, then the pipe grip (the upper jaw's side of it; the lower jaw's is its mirror), then the cutting edges a
+  // hair apart back to the handles.
+  const half = 35;
+  const teeth = [];
+  for (let i = 0; i < 7; i++) teeth.push([206 + i * 9.4, 0], [206 + (i + .5) * 9.4, 5]);
+  teeth.push([272, 0]);
+  const grip = [[282, 8], [287, 6], [294, 18], [299, 12], [306, 20], [311, 14], [318, 20], [324, 15], [348, 1.5]];
+  for (const side of [1, -1]) {
+    const outline = [[206, 20 * side], [410, 87 * side], [600, 87 * side], [600, 1.5 * side],
+      ...grip.map(([x, y]) => [x, y * side]).reverse(), ...[...teeth].reverse()];
+    const bevel = .00022;
+    const depth = 2 * half * k - 2 * bevel;
+    const geometry = new THREE.ExtrudeGeometry(new THREE.Shape(outline.map(([x, y]) => at(x, y))), {
+      depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelOffset: -bevel, bevelSegments: 1,
+    }).translate(0, 0, -depth / 2);
+    const position = geometry.attributes.position;
+    for (let i = 0; i < position.count; i++) {
+      const u = THREE.MathUtils.smoothstep(position.getX(i) / k + 205, 206, 430);
+      position.setZ(i, position.getZ(i) * (.55 + .45 * u));
+    }
+    geometry.computeVertexNormals();
+    add(geometry, "knipexSteel", true);
+  }
+  // The boss on the joint, a little proud of the head, stamped on its face (the stamp is drawn on once the pliers are
+  // recoloured, see knipexStamp), with the rivet's six-lobed head in its middle; the rivet's plain other end below.
+  const joint = at(533, -5);
+  const boss = add(new THREE.CylinderGeometry(80 * k, 85 * k, 6 * k, 64).rotateX(Math.PI / 2),
+    ["knipexSteel", "knipexMark", "knipexSteel"]);
+  boss.name = "knipexBoss";
+  boss.position.set(joint.x, joint.y, (half + 1) * k);
+  const flower = new THREE.Shape();
+  for (let i = 0; i <= 96; i++) {
+    const angle = i / 96 * Math.PI * 2, r = 28 * k * (1 + .13 * Math.cos(6 * angle));
+    flower[i ? "lineTo" : "moveTo"](Math.cos(angle) * r, Math.sin(angle) * r);
+  }
+  const rivet = add(new THREE.ExtrudeGeometry(flower, { depth: 1.5 * k, bevelEnabled: true, bevelThickness: k,
+    bevelSize: k, bevelSegments: 2 }), "knipexSteel");
+  rivet.position.set(joint.x, joint.y, (half + 4) * k);
+  const pin = add(new THREE.CylinderGeometry(52 * k, 56 * k, 4 * k, 48).rotateX(-Math.PI / 2), "knipexSteel");
+  pin.position.set(joint.x, joint.y, -(half + .5) * k);
+  for (const part of [boss, rivet, pin]) part.userData.noOutline = true;
+
+  // The handles, measured as [x px, outer edge, inner edge, half thickness] in px from the centre line: the guard, then
+  // the grip up to where its rounded end starts. Along the grip, the blue's inner border and the grey patch's, across
+  // the grip from -1 on its inner edge to 1 on its outer edge (beyond 1: none).
+  const guard = [[600, 106.5, 2, 36], [615, 120, 2.5, 48], [630, 132, 3, 57], [650, 147, 5, 65], [665, 154, 6.5, 70],
+    [680, 160, 7.5, 72], [695, 155, 9.5, 71], [710, 145.5, 12, 68], [722, 140, 14.5, 65], [732, 136.5, 16, 63]];
+  const handle = [[725, 136, 16, 63], [740, 134, 18, 62], [760, 130.5, 22.5, 60], [780, 131.5, 27, 59], [800, 135, 31.5, 58],
+    [830, 141.5, 39, 56], [850, 146.5, 44, 55], [870, 151, 48.5, 54.5], [900, 158.5, 56.5, 53.5], [930, 165, 63.5, 52.5],
+    [950, 170, 68.5, 52], [980, 176.5, 77, 51], [1000, 180.5, 80.5, 50.5], [1030, 184.5, 88, 50], [1060, 188, 93.5, 49.5],
+    [1100, 190.5, 98.5, 49], [1130, 191, 99, 48.5], [1160, 190.5, 99, 48], [1200, 187.5, 95.5, 47.5],
+    [1250, 181, 91, 47], [1300, 172.5, 85.5, 46], [1350, 164, 80.5, 45], [1400, 156.5, 77, 44], [1440, 150, 76.5, 43]];
+  const blue = [[725, 0], [760, -.1], [800, -.15], [900, -.14], [930, -.09], [945, .2], [960, .48], [980, .62],
+    [1000, .67], [1350, .66], [1370, .58], [1380, .41], [1390, .07], [1400, -.08], [1440, -.1]];
+  const grey = [[725, 1.1], [745, .85], [860, .85], [880, 1.1]];
+  // The grip's section: a rounded square (squareness 3), out along n (in the pliers' plane) and up along z.
+  const square = 3;
+  const bend = (v) => Math.sign(v) * Math.abs(v) ** (2 / square);
+  // Where across the section a border at b (-1 inner .. 1 outer) falls, as an angle from the outer edge.
+  const angleOf = (b) => Math.acos(THREE.MathUtils.clamp(Math.sign(b) * Math.abs(b) ** (square / 2), -1, 1));
+  for (const side of [1, -1]) {
+    // A tube through sections: each { centre (Vector2), across (Vector2, half width in the plane), up (half thickness),
+    // from, to (angles round it, 0 = the outer edge, a quarter turn = the +z face) }; segments round each.
+    const tube = (sections, segments, flat = false) => {
+      const vertices = [], index = [];
+      sections.forEach(({ centre, across, up, from, to }, j) => {
+        for (let i = 0; i <= segments; i++) {
+          const angle = from + (to - from) * i / segments;
+          const p = centre.clone().addScaledVector(across, bend(Math.cos(angle)));
+          vertices.push(p.x, p.y * side, up * bend(Math.sin(angle)));
+          if (j && i < segments) {
+            const a = (j - 1) * (segments + 1) + i, b = a + segments + 1;
+            if (side > 0) index.push(a, a + 1, b, a + 1, b + 1, b);
+            else index.push(a, b, a + 1, a + 1, b, b + 1);
+          }
+        }
+      });
+      let geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(index);
+      if (!flat) geometry.computeVertexNormals();
+      geometry = geometry.toNonIndexed();
+      if (flat) geometry.computeVertexNormals();
+      return geometry;
+    };
+    // A section at x px of a table, square to the centre line there.
+    const section = (table, x) => {
+      const outer = read(table, x, 1), inner = read(table, x, 2);
+      const ahead = (read(table, x + 5, 1) + read(table, x + 5, 2) - read(table, x - 5, 1) - read(table, x - 5, 2)) / 2;
+      const along = new THREE.Vector2(10, ahead).normalize();
+      const width = (outer - inner) / 2 * along.x;
+      return { centre: at(x, (outer + inner) / 2), across: new THREE.Vector2(-along.y, along.x).multiplyScalar(width * k),
+        up: read(table, x, 3) * k, along };
+    };
+    // The guard: eight facets round it, each flat across and smooth along, closed at both ends.
+    const guardSections = guard.map(([x]) => ({ ...section(guard, x), from: Math.PI / 8, to: Math.PI * 17 / 8 }));
+    const shut = (s) => ({ ...s, across: new THREE.Vector2(), up: 0 });
+    const guardShell = mergeGeometries([
+      ...Array.from({ length: 8 }, (_, f) => {
+        const from = Math.PI / 8 + f * Math.PI / 4;
+        return tube(guardSections.map((s) => ({ ...s, from, to: from + Math.PI / 4 })), 1);
+      }),
+      tube([guardSections[0], shut(guardSections[0])], 8, true),
+      tube([shut(guardSections.at(-1)), guardSections.at(-1)], 8, true),
+    ]);
+    // The grip, then its rounded end: sections stepping on along the centre line, shrinking to nothing.
+    const gripSections = [];
+    for (let x = 725; x <= 1440; x += 15) gripSections.push({ ...section(handle, x), x });
+    const last = gripSections.at(-1);
+    for (let j = 1; j <= 8; j++) {
+      const turn = j / 8 * Math.PI / 2;
+      gripSections.push({ ...last, centre: last.centre.clone().addScaledVector(last.along, last.across.length() * Math.sin(turn)),
+        across: last.across.clone().multiplyScalar(Math.cos(turn)), up: last.up * Math.cos(turn) ** .7 });
+    }
+    // Split round into red (inner side), blue (outer side) and grey (outer edge), along the grip's borders.
+    const borders = gripSections.map(({ x = 1440 }) => ({ b: angleOf(read(blue, x)), g: read(grey, x) > 1 ? 0 : angleOf(read(grey, x)) }));
+    const strip = (from, to, segments) => tube(gripSections.map((s, j) => ({ ...s, from: from(borders[j]), to: to(borders[j]) })), segments);
+    const parts = [guardShell, strip(({ b }) => b, ({ b }) => Math.PI * 2 - b, 20),
+      strip(({ g }) => g, ({ b }) => b, 6), strip(({ b }) => -b, ({ g }) => -g, 6), strip(({ g }) => -g, ({ g }) => g, 4)];
+    add(mergeGeometries(parts, true), ["knipexRed", "knipexRed", "knipexBlue", "knipexBlue", "knipexGrey"]);
+  }
+
+  // As a rigid body (see simulateDrops), mass 1: the steel head weighs about half, so the centre of mass sits just
+  // behind the guards. Inertia of a flat bar .11 by .033. Contact points: the head's corners, and round each guard
+  // and grip, on both faces. Steel and plastic on the floor: a dull knock. For knocks against the other pieces: the
+  // head and each handle as capsules.
+  const corner = .79;
+  const points = [[206, 20, half * .55], [410, 87, half], [600, 87, half], [533, 0, half + 5]].flatMap(([x, y, z]) =>
+    [[x, y, z], [x, -y, z], [x, y, -z], [x, -y, -z]].map(([px, py, pz]) => [(px - 205) * k, py * k, pz * k]));
+  for (const side of [1, -1]) for (const [x, outer, inner, up] of [...guard.filter((_, i) => i % 3 === 0), ...handle.filter((_, i) => i % 4 === 0), handle.at(-1)]) {
+    const centre = (outer + inner) / 2, width = (outer - inner) / 2;
+    for (const across of [-corner, corner]) for (const z of [-corner, corner]) points.push([(x - 205) * k, side * (centre + across * width) * k, z * up * k]);
+  }
+  points.push(...[1, -1].map((side) => [(1476 - 205) * k, side * 111 * k, 0]));
+  const capsule = (x1, y1, x2, y2, radius) => ({ a: new THREE.Vector3((x1 - 205) * k, y1 * k, 0), b: new THREE.Vector3((x2 - 205) * k, y2 * k, 0), radius: radius * k });
+  pliers.userData.body = {
+    com: new THREE.Vector3((700 - 205) * k, 0, 0),
+    inertia: new THREE.Vector3(.0001, .001, .0011),
+    points: points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
+    bounce: .2,
+    friction: .45,
+    capsules: [capsule(300, 40, 590, 55, 33), capsule(300, -40, 590, -55, 33),
+      ...[1, -1].flatMap((side) => [capsule(640, side * 80, 900, side * 107, 50), capsule(900, side * 107, 1150, side * 145, 46),
+        capsule(1150, side * 145, 1440, side * 113, 42)])],
+  };
+  return pliers;
+}
+
+// The stamp on the pliers' joint boss, to lay over its face: KNIPEX 03-180 reading clockwise up its left side and over
+// the top, GERMANY reading the other way down its right side, round the rim of a sunk middle; in grey on white, so the
+// steel colour shows through.
+function knipexStamp() {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  const pen = canvas.getContext("2d");
+  pen.fillStyle = "#fff";
+  pen.fillRect(0, 0, 256, 256);
+  pen.translate(128, 128);
+  const ring = (radius, colour, width) => {
+    pen.strokeStyle = colour;
+    pen.lineWidth = width;
+    pen.beginPath();
+    pen.arc(0, 0, radius, 0, Math.PI * 2);
+    pen.stroke();
+  };
+  ring(122, "#e9ecef", 6);
+  ring(68, "#7f868e", 4);
+  ring(64, "#f4f6f8", 3);
+  pen.font = "bold 30px Arial, sans-serif";
+  pen.textAlign = "center";
+  pen.textBaseline = "middle";
+  // Letters round a circle from an angle (canvas angles, clockwise from the right), clockwise with their tops out, or
+  // anticlockwise with their tops in; each raised: a light edge above, a shadow below.
+  const arc = (text, start, clockwise) => {
+    let angle = start;
+    for (const letter of text) {
+      const step = (pen.measureText(letter).width + 3) / 95;
+      angle += (clockwise ? 1 : -1) * step / 2;
+      pen.save();
+      pen.rotate(angle);
+      pen.translate(95, 0);
+      pen.rotate(clockwise ? Math.PI / 2 : -Math.PI / 2);
+      for (const [colour, dy] of [["#ffffff", -1.5], ["#5d646b", 1.5], ["#9aa1a8", 0]]) {
+        pen.fillStyle = colour;
+        pen.fillText(letter, 0, dy);
+      }
+      pen.restore();
+      angle += (clockwise ? 1 : -1) * step / 2;
+    }
+  };
+  // The boss's face shows the canvas a quarter turn anticlockwise: these start KNIPEX at its bottom and GERMANY at its
+  // lower right.
+  arc("KNIPEX 03-180", Math.PI * .06, true);
+  arc("GERMANY", -Math.PI * .12, false);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+// A chunky cartoon claw hammer standing on the end of its handle at y = 0, the handle along +y: a short thick shaft in
+// a fat rounded grip, and across the top a plain head in one piece: a block with its flat striking face towards -x,
+// running out into a straight claw sloping down to a blunt tip towards +x. The handle is HAMMER.handleLength long; the
+// head, drawn .065 across and .018 thick, is scaled by HAMMER.headSize.
+function buildHammer() {
+  const hammer = new THREE.Group();
+  const add = (geometry, material, x, y, round = true) => {
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ name: material }));
+    mesh.position.set(x, y, 0);
+    // Round parts: no edge strokes, they would only stripe them.
+    mesh.userData.noEdges = round;
+    hammer.add(mesh);
+    return mesh;
+  };
+  const { handleLength: length, headSize: size } = HAMMER;
+  const top = length + .007 * size;
+  add(new THREE.CylinderGeometry(.0068, .0068, length, 14), "handle", 0, length / 2);
+  add(new THREE.CapsuleGeometry(.0092, .036, 6, 16), "grip", 0, .027);
+  // The head seen from the side (x along it, y up), extruded across with slightly rounded edges.
+  const profile = [[-.027, -.011], [-.027, .011], [.012, .011], [.038, -.004], [.035, -.008], [.012, -.001], [.008, -.011]];
+  const shape = new THREE.Shape(profile.map(([x, y]) => new THREE.Vector2(x, y)));
+  const bevel = { bevelEnabled: true, bevelThickness: .002, bevelSize: .0015, bevelSegments: 2 };
+  const head = add(new THREE.ExtrudeGeometry(shape, { depth: .014, ...bevel }).translate(0, 0, -.007), "steel", 0, top, false);
+  head.scale.setScalar(size);
+
+  // As a rigid body (see simulateDrops), mass 1: the steel head weighs .7, the handle .3, so the centre of mass sits
+  // high up the handle. Inertia about it from a point-mass head with its bar and a thick rod handle. Contact points
+  // trace the grip and shaft (a square of four lines, enough for it to lie still) and the head's profile on both sides.
+  // Steel on the floor: a dull knock that hardly bounces, and a fair grip. For knocks against the other pieces: the
+  // handle, the head's block and its claw as capsules.
+  const handle = [[0, .0092], [.027, .0092], [.054, .0092], [length * .75, .0068], [length - .005, .0068]].flatMap(([y, r]) => [[r, y, 0], [-r, y, 0], [0, y, r], [0, y, -r]]);
+  const corners = profile.flatMap(([x, y]) => [[x, y, -.009], [x, y, .009]]);
+  hammer.userData.body = {
+    com: new THREE.Vector3(0, .7 * top + .3 * length / 2, 0),
+    inertia: new THREE.Vector3(.0012, .0004, .0014),
+    points: [...handle, ...corners.map(([x, y, z]) => [x * size, top + y * size, z * size])].map(([x, y, z]) => new THREE.Vector3(x, y, z)),
+    bounce: .15,
+    friction: .45,
+    capsules: [
+      { a: new THREE.Vector3(0, .009, 0), b: new THREE.Vector3(0, length - .007, 0), radius: .0085 },
+      { a: new THREE.Vector3(-.018 * size, top, 0), b: new THREE.Vector3(.004 * size, top, 0), radius: .01 * size },
+      { a: new THREE.Vector3(.012 * size, top + .003 * size, 0), b: new THREE.Vector3(.033 * size, top - .005 * size, 0), radius: .005 * size },
+    ],
+  };
+  return hammer;
+}
+
+// Works out how loose rigid bodies move from their start poses and velocities until they all come to rest, and at least
+// busy seconds (while what they lie on still moves): gravity, the ground and walls each one's contact points sink into
+// (groundAt gives, for a point and a time, how deep it has sunk into which surface, how fast that surface moves there
+// and, if not the body's own, the friction against it: { depth, normal, velocity, friction }, or nothing) pushing back
+// and rubbing, and the bodies knocking into each other (with DROP.slip between them), all by impulses, a few passes per
+// step. Each body: mass 1, com and contact points in the object's own space, the diagonal inertia about com along those
+// axes, bounce (restitution), friction, and the capsules (segment a to b, radius) it is made of for knocks between
+// bodies. Each start: position and quaternion of the object's origin, velocity of its com, angular velocity. Returns
+// each object's pose every 1 / DROP.rate seconds.
+function simulateDrops(bodies, starts, groundAt, busy = 0) {
+  const states = bodies.map((body, k) => {
+    const { com, inertia } = body, start = starts[k];
+    const q = start.quaternion.clone();
+    const x = start.position.clone().add(com.clone().applyQuaternion(q));
+    return {
+      body, q, x, v: start.velocity.clone(), w: start.angular.clone(),
+      inverse: new THREE.Vector3(1 / inertia.x, 1 / inertia.y, 1 / inertia.z),
+      held: { x: x.clone(), q: q.clone() }, still: 0, track: [],
+    };
+  });
+  const back = new THREE.Quaternion();
+  // The inverse inertia in the room's axes, applied to a vector.
+  const turnBy = (state, vector) => vector.applyQuaternion(back.copy(state.q).invert()).multiply(state.inverse).applyQuaternion(state.q);
+  const pointVelocity = (state, r) => new THREE.Vector3().crossVectors(state.w, r).add(state.v);
+  // How much an impulse along a direction at r changes the speed there: 1 / that is the effective mass.
+  const reach = (state, r, direction) => 1 + turnBy(state, new THREE.Vector3().crossVectors(r, direction)).cross(r).dot(direction);
+  const push = (state, r, impulse) => {
+    state.v.add(impulse);
+    state.w.add(turnBy(state, new THREE.Vector3().crossVectors(r, impulse)));
+  };
+  // A point of the object's own space, from its com in the room's axes.
+  const lever = (state, point) => point.clone().sub(state.body.com).applyQuaternion(state.q);
+  const keep = () => {
+    for (const { track, x, q, body } of states) track.push({ position: x.clone().sub(body.com.clone().applyQuaternion(q)), quaternion: q.clone() });
+  };
+  // The speed of a contact on a relative to the same spot on b (or on the ground), the effective mass along a
+  // direction there, and an impulse given to a and taken from b.
+  const relative = (contact) => {
+    const speed = pointVelocity(contact.a, contact.r);
+    return speed.sub(contact.b ? pointVelocity(contact.b, contact.rb) : contact.drift);
+  };
+  const mass = (contact, direction) => 1 / (reach(contact.a, contact.r, direction) + (contact.b ? reach(contact.b, contact.rb, direction) : 0));
+  const give = (contact, impulse) => {
+    push(contact.a, contact.r, impulse);
+    if (contact.b) push(contact.b, contact.rb, impulse.clone().negate());
+  };
+  const every = Math.round(1 / (DROP.step * DROP.rate));
+  const spin = new THREE.Quaternion();
+  for (let i = 0; i * DROP.step < DROP.longest && (i * DROP.step < busy || states.some((state) => state.still < DROP.settle)); i++) {
+    if (i % every === 0) keep();
+    // Contacts with the ground and walls (normal out of them), and between bodies (normal from b towards a).
+    const contacts = [];
+    for (const state of states) {
+      state.v.y -= DROP.gravity * DROP.step;
+      for (const point of state.body.points) {
+        const r = lever(state, point);
+        const hit = groundAt(r.clone().add(state.x), i * DROP.step);
+        if (hit) contacts.push({ a: state, r, n: hit.normal, depth: hit.depth, drift: hit.velocity, bounce: state.body.bounce, friction: hit.friction ?? state.body.friction });
+      }
+    }
+    for (let k = 0; k < states.length; k++) for (let m = k + 1; m < states.length; m++) {
+      const a = states[k], b = states[m];
+      for (const one of a.body.capsules) for (const two of b.body.capsules) {
+        const [pa, pb] = closestOnSegments(lever(a, one.a).add(a.x), lever(a, one.b).add(a.x), lever(b, two.a).add(b.x), lever(b, two.b).add(b.x));
+        const n = pa.clone().sub(pb);
+        const gap = n.length();
+        const depth = one.radius + two.radius - gap;
+        if (depth <= 0 || gap < 1e-9) continue;
+        n.divideScalar(gap);
+        const at = pb.addScaledVector(n, two.radius - depth / 2);
+        contacts.push({
+          a, b, r: at.clone().sub(a.x), rb: at.clone().sub(b.x), n, depth,
+          bounce: Math.min(a.body.bounce, b.body.bounce), friction: DROP.slip,
+        });
+      }
+    }
+    for (const contact of contacts) {
+      // It only bounces off a real knock, so resting contacts don't jitter.
+      const approach = relative(contact).dot(contact.n);
+      Object.assign(contact, { target: approach < -.05 ? -contact.bounce * approach : 0, normal: 0, side: new THREE.Vector3() });
+    }
+    for (let pass = 0; pass < 8; pass++) {
+      for (const contact of contacts) {
+        const { n } = contact;
+        const normal = Math.max(0, contact.normal + (contact.target - relative(contact).dot(n)) * mass(contact, n));
+        give(contact, n.clone().multiplyScalar(normal - contact.normal));
+        contact.normal = normal;
+        // Friction opposes the sliding along the contact, at most friction times the push there.
+        const slide = relative(contact);
+        slide.addScaledVector(n, -slide.dot(n));
+        const speed = slide.length();
+        if (speed < 1e-9) continue;
+        slide.divideScalar(speed);
+        const side = contact.side.clone().addScaledVector(slide, -speed * mass(contact, slide));
+        const limit = contact.friction * contact.normal;
+        if (side.length() > limit) side.setLength(limit);
+        give(contact, side.clone().sub(contact.side));
+        contact.side.copy(side);
+      }
+    }
+    // Lifts each one out of the ground or wall it sank deepest into during the step, and eases bodies that sank into each
+    // other apart.
+    for (const state of states) {
+      const sunk = contacts.filter((contact) => contact.a === state && !contact.b);
+      if (!sunk.length) continue;
+      const deepest = sunk.reduce((most, contact) => (contact.depth > most.depth ? contact : most));
+      state.x.addScaledVector(deepest.n, deepest.depth * .5);
+    }
+    for (const contact of contacts) if (contact.b) {
+      contact.a.x.addScaledVector(contact.n, contact.depth * .25);
+      contact.b.x.addScaledVector(contact.n, -contact.depth * .25);
+    }
+    for (const state of states) {
+      const { x, v, w, q, held } = state;
+      x.addScaledVector(v, DROP.step);
+      spin.set(w.x, w.y, w.z, 0).multiply(q);
+      q.set(q.x + spin.x * DROP.step / 2, q.y + spin.y * DROP.step / 2, q.z + spin.z * DROP.step / 2, q.w + spin.w * DROP.step / 2).normalize();
+      if (x.distanceTo(held.x) < DROP.rest && q.angleTo(held.q) < DROP.turn) state.still += DROP.step;
+      else state.still = 0, held.x.copy(x), held.q.copy(q);
+    }
+  }
+  keep();
+  return states.map((state) => state.track);
+}
+
+// The closest points between segments p1 q1 and p2 q2.
+function closestOnSegments(p1, q1, p2, q2) {
+  const d1 = q1.clone().sub(p1), d2 = q2.clone().sub(p2), r = p1.clone().sub(p2);
+  const a = d1.dot(d1), e = d2.dot(d2), f = d2.dot(r), c = d1.dot(r), b = d1.dot(d2);
+  const clamp = (value) => THREE.MathUtils.clamp(value, 0, 1);
+  const denominator = a * e - b * b;
+  let s = denominator > 1e-12 ? clamp((b * f - c * e) / denominator) : 0;
+  let t = (b * s + f) / e;
+  if (t < 0 || t > 1) {
+    t = clamp(t);
+    s = clamp((b * t - c) / a);
+  }
+  return [p1.clone().addScaledVector(d1, s), p2.clone().addScaledVector(d2, t)];
+}
+
+// Sets an object to its pose time seconds into a track from simulateDrops, between the kept poses.
+function followTrack(object, track, time) {
+  const at = THREE.MathUtils.clamp(time * DROP.rate, 0, track.length - 1);
+  const i = Math.min(Math.floor(at), track.length - 2), u = at - i;
+  if (i < 0) return object.position.copy(track[0].position), object.quaternion.copy(track[0].quaternion);
+  object.position.lerpVectors(track[i].position, track[i + 1].position, u);
+  object.quaternion.slerpQuaternions(track[i].quaternion, track[i + 1].quaternion, u);
 }
 
 // A coffee mug, standing on y = 0: hollow body, coffee near the rim, a handle on its right side.
+// Wayfarer sunglasses standing on y = 0 with their arms open towards -z, as if put down on a desk: a thick black
+// frame, wider at the top with its outer top corners swept up, dark green lenses following its shape, a silver rivet in
+// each outer top corner, and thick arms sloping down from those corners to rest their tips on the desk. About .085
+// across, a little bigger than life like the mug.
+function buildSunglasses() {
+  const glasses = new THREE.Group();
+  const depth = .005, armLength = .078, bridge = .011;
+  // A smooth closed outline through corner points, each corner rounded off between the midpoints of its edges.
+  const outline = (points, side) => {
+    const shape = new THREE.Shape();
+    const at = (i) => new THREE.Vector2(points[(i + points.length) % points.length][0] * side, points[(i + points.length) % points.length][1]);
+    const middle = (i) => at(i).add(at(i + 1)).multiplyScalar(.5);
+    shape.moveTo(middle(-1).x, middle(-1).y);
+    points.forEach((_, i) => {
+      const corner = at(i), next = middle(i);
+      shape.quadraticCurveTo(corner.x, corner.y, next.x, next.y);
+    });
+    return shape;
+  };
+  // Lens and frame outlines for the right eye, x outwards from the lens centre (mirrored for the left).
+  const lens = [[-.0145, -.0115], [.0135, -.0115], [.0185, .0085], [.0175, .0125], [-.0165, .0105], [-.0175, -.001]];
+  const frame = [[-.0175, -.0145], [.0165, -.0145], [.0225, .0115], [.0225, .0175], [-.0195, .0145], [-.0205, -.002]];
+  const centre = .0205 + bridge / 2, height = .0145;
+  // An arm seen from the side: a strip .006 tall along a line that runs straight for bend, then curves down by drop
+  // over the rest of its length, ending in a round tip. Drawn with its length along x, then turned to run along -z,
+  // .0035 thick.
+  const armHeight = .006, armThick = .0035, bend = .056, drop = .012;
+  const spine = (u) => (u <= bend ? 0 : -drop * ((u - bend) / (armLength - bend)) ** 2);
+  const armSide = new THREE.Shape(), steps = 24;
+  const along = Array.from({ length: steps + 1 }, (_, i) => armLength * i / steps);
+  // Offsets along the line's normal, so the strip keeps its height round the curve.
+  const edge = (u, offset) => {
+    const slope = (spine(Math.min(armLength, u + .001)) - spine(Math.max(0, u - .001))) / .002;
+    const length = Math.hypot(1, slope);
+    return new THREE.Vector2(u - offset * slope / length, spine(u) + offset / length);
+  };
+  along.forEach((u, i) => { const p = edge(u, armHeight / 2); if (i) armSide.lineTo(p.x, p.y); else armSide.moveTo(p.x, p.y); });
+  const tipAngle = Math.atan2(spine(armLength) - spine(armLength - .001), .001);
+  armSide.absarc(...edge(armLength, 0).toArray(), armHeight / 2, tipAngle + Math.PI / 2, tipAngle - Math.PI / 2, true);
+  for (const u of along.slice().reverse()) { const p = edge(u, -armHeight / 2); armSide.lineTo(p.x, p.y); }
+  const armGeometry = new THREE.ExtrudeGeometry(armSide, { depth: armThick, bevelEnabled: false, curveSegments: 8 })
+    .translate(0, 0, -armThick / 2).rotateY(Math.PI / 2);
+  // The arm's tilt (about x) that sets the lowest point of its underside on the desk, from a hinge that high.
+  const armTilt = (hinge) => {
+    let low = -.6, high = 0;
+    const lowest = (tilt) => Math.min(...along.map((u) => hinge + (spine(u) - armHeight / 2) * Math.cos(tilt) + u * Math.sin(tilt)));
+    for (let i = 0; i < 30; i++) { const mid = (low + high) / 2; if (lowest(mid) < 0) low = mid; else high = mid; }
+    return (low + high) / 2;
+  };
+  for (const side of [-1, 1]) {
+    const ring = outline(frame, side);
+    ring.holes.push(outline(lens, side));
+    const front = new THREE.Mesh(new THREE.ExtrudeGeometry(ring, { depth, bevelEnabled: false, curveSegments: 5 }), new THREE.MeshStandardMaterial({ name: "frame" }));
+    front.position.set(side * centre, height, -depth);
+    const glass = new THREE.Mesh(new THREE.ShapeGeometry(outline(lens, side), 5), new THREE.MeshStandardMaterial({ name: "lens", side: THREE.DoubleSide }));
+    glass.position.set(side * centre, height, -depth / 2);
+    glass.name = "lens";
+    glass.userData.noEdges = true;
+    glasses.add(front, glass);
+    // The rivet on the front, in the swept-up corner.
+    const rivet = new THREE.Mesh(new THREE.CylinderGeometry(.0013, .0013, .0008, 12).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ name: "rivet" }));
+    rivet.position.set(side * (centre + .0185), height + .0135, .0003);
+    rivet.userData.noEdges = true;
+    glasses.add(rivet);
+    // Each thick arm leaves the frame's outer top corner and slopes down to the desk, its end curving down round where
+    // the ear would be and finished round.
+    const top = height + .0145;
+    const arm = new THREE.Mesh(armGeometry, new THREE.MeshStandardMaterial({ name: "frame" }));
+    arm.position.set(side * (centre + .0205), top - .003, -depth);
+    arm.rotation.x = armTilt(top - .003);
+    glasses.add(arm);
+  }
+  // The bridge: a thick bar joining the two fronts high up.
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(bridge + .004, .006, depth), new THREE.MeshStandardMaterial({ name: "frame" }));
+  bar.position.set(0, height + .0075, -depth / 2);
+  glasses.add(bar);
+  return glasses;
+}
+
 function buildMug() {
   const mug = new THREE.Group();
   const add = (geometry, material, y = 0) => {
@@ -589,6 +1507,31 @@ function buildRubberDuck() {
     add(new THREE.SphereGeometry(.0022, 10, 8), "eye", side * .0068, .041, .0205).userData.noEdges = true;
   }
   return duck;
+}
+
+// A blister pack lying on y = 0, .064 x .036: a foil card with two capsule bubbles side by side, red pill on the left,
+// blue on the right, each pill lying in its bubble along z.
+function buildBlister() {
+  const blister = new THREE.Group();
+  const cardHeight = .0015;
+  const card =new THREE.Mesh(new THREE.BoxGeometry(.064, cardHeight, .036), new THREE.MeshStandardMaterial({ name: "foil" }));
+  card.position.y = cardHeight / 2;
+  blister.add(card);
+  for (const [x, pill] of [[-.016, "red"], [.016, "blue"]]) {
+    // Round shapes: no edge strokes, they would only draw smudges.
+    const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(.0052, .011, 8, 20).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ name: pill }));
+    capsule.position.set(x, cardHeight + .0045, 0);
+    capsule.userData.noEdges = true;
+    blister.add(capsule);
+    // The bubble: a flattened capsule whose lower half sinks into the card.
+    const bubble = new THREE.Mesh(new THREE.CapsuleGeometry(.0072, .013, 8, 20).rotateX(Math.PI / 2), new THREE.MeshStandardMaterial({ name: "bubble" }));
+    bubble.position.set(x, cardHeight, 0);
+    bubble.scale.y = 1.45;
+    bubble.name = "bubble";
+    bubble.userData.noEdges = true;
+    blister.add(bubble);
+  }
+  return blister;
 }
 
 // Mario's ? block, standing on y = 0, .12 across: on each side a pixel-art question mark with its drop shadow and a
@@ -924,6 +1867,64 @@ function buildNomaiMask() {
   return mask;
 }
 
+// TARS from Interstellar: four tall slabs side by side, each cut by a joint near its top, and a dark display with
+// lines of text across the middle two, just under that joint. Stands on y = 0, centred on x, its front facing +z;
+// about .1 tall. Switched on, as if mid-stride: the middle pair (the body) rides up a little and each outer slab
+// swings forward from its top joint, each by its own angle.
+function buildTars() {
+  const tars = new THREE.Group();
+  const part = (parent, width, height, depth, material, x, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), new THREE.MeshStandardMaterial({ name: material }));
+    mesh.position.set(x, y, z);
+    parent.add(mesh);
+    return mesh;
+  };
+  const height = .1, slab = .014, gap = .002, depth = .035, joint = .022, seam = .0015, lift = .008;
+  // A slab whose top rests at y = top: a short head block over the long one, a thin seam between them.
+  const addSlab = (parent, x, top) => {
+    part(parent, slab, joint, depth, "metal", x, top - joint / 2, 0);
+    const rest = height - joint - seam;
+    part(parent, slab, rest, depth, "metal", x, top - height + rest / 2, 0);
+  };
+  // Its joints, each with its rest angle and which way it swings on a stride: legs one way, body slabs the other.
+  const joints = [];
+  const body = new THREE.Group();
+  body.position.y = lift;
+  tars.add(body);
+  // Its two slabs tilt a touch each way about their top joints, little enough to stay behind the screen, which stands
+  // out far enough for them to rock a little on a stride.
+  for (const [i, tilt] of [[1, -.035], [2, .02]]) {
+    const arm = new THREE.Group();
+    arm.position.set((i - 1.5) * (slab + gap), height, 0);
+    arm.rotation.x = tilt;
+    addSlab(arm, 0, 0);
+    body.add(arm);
+    joints.push({ group: arm, rest: tilt, way: -1 });
+    // Its name goes down the front of the left one, under the screen, added once it is recoloured.
+    if (i === 1) tars.userData.nameplate = { slab: arm, width: slab * .6, height: .032, y: -.076, z: depth / 2 + .0003 };
+  }
+  const screen = { width: 2 * slab + gap - .003, height: .024, y: height - joint - seam - .005 - .012 };
+  part(body, screen.width, screen.height, .004, "screen", 0, screen.y, depth / 2 + .001);
+  // Left-aligned lines of text, the way its settings read out, each kept with its rest width so a stride can rewrite it.
+  const left = -screen.width / 2 + .003;
+  const lines = [.019, .013, .016].map((width, k) => ({
+    width, mesh: part(body, width, .0022, .001, "readout", left + width / 2, screen.y + .0065 - k * .0065, depth / 2 + .0035),
+  }));
+  for (const [i, swing] of [[0, .05], [3, .32]]) {
+    const limb = new THREE.Group();
+    limb.position.set((i - 1.5) * (slab + gap), height, 0);
+    limb.rotation.x = -swing;
+    addSlab(limb, 0, 0);
+    tars.add(limb);
+    joints.push({ group: limb, rest: -swing, way: 1 });
+  }
+  // Back down so the lowest corner of the swung slabs rests on y = 0.
+  const lowest = new THREE.Box3().setFromObject(tars).min.y;
+  for (const child of tars.children) child.position.y -= lowest;
+  tars.userData.stride = { body, joints, lines, left };
+  return tars;
+}
+
 // A spilled coffee puddle: a flat blob with a wobbly outline, lying on y = 0, about .08 across.
 function buildPuddle() {
   const points = [];
@@ -990,6 +1991,10 @@ function buildDesk() {
     part(drawer, trayWidth, trayHeight, .006, "inside", 0, floor + trayHeight / 2, -trayDepth);
     // Height of the tray's floor surface, for things put in the drawer.
     drawer.userData.floor = floor + .003;
+    // The drawer's own pieces, to tell them from what gets put in it.
+    drawer.userData.shell = new Set(drawer.children);
+    // The inner face of the tray's back wall, for things that slide in the drawer.
+    drawer.userData.back = -trayDepth + .003;
     desk.add(drawer);
     return drawer;
   });
@@ -1017,10 +2022,24 @@ function createDeskRoom() {
   let host = null;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // Drawn at twice the screen's pixels each way (the browser scales the picture down), so small things such as the
+  // tools on the floor come out smooth; at the screen's own pixels where the browser draws without a graphics card.
+  // Oversample: canvas pixels to a screen pixel.
+  const screenRatio = window.devicePixelRatio || 1;
+  const gl = renderer.getContext();
+  let graphics = String(gl.getParameter(gl.RENDERER));
+  if (graphics === "WebKit WebGL") {
+    const unmasked = gl.getExtension("WEBGL_debug_renderer_info");
+    if (unmasked) graphics = String(gl.getParameter(unmasked.UNMASKED_RENDERER_WEBGL));
+  }
+  const software = /swiftshader|llvmpipe|software|basic render/i.test(graphics);
+  renderer.setPixelRatio(software ? Math.min(screenRatio, 2) : 2);
+  const oversample = Math.max(1, renderer.getPixelRatio() / screenRatio);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // The tools' outline thickness in the canvas's pixels and the canvas's size in them, kept up to date by resize.
+  const outlineUniforms = { outlineWidth: { value: TOOL_OUTLINE.width }, outlineResolution: { value: new THREE.Vector2(1, 1) } };
   // Lets single objects be cut by a plane (the Companion Cube passing through its portals).
   renderer.localClippingEnabled = true;
 
@@ -1065,8 +2084,9 @@ function createDeskRoom() {
   let last = 0;
 
 
-  // Thin dark strokes on the hard edges give an illustrated, technical-drawing look.
-  const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1b2127, transparent: true, opacity: .32 });
+  // Thin dark strokes on the hard edges give an illustrated, technical-drawing look. A stroke is always one canvas pixel
+  // wide: when oversampled, it is drawn that much darker so it still reads as one screen pixel.
+  const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1b2127, transparent: true, opacity: Math.min(1, .32 * oversample) });
 
   // edgeAngle: how sharp a fold must be, in degrees, to get an edge stroke; either one angle, or angles by material
   // name with "*" for the rest.
@@ -1108,7 +2128,9 @@ function createDeskRoom() {
     // door so it can cover the stickers under it. If peel is given, its corner that way (an angle in degrees, 0 = the
     // picture's right, 90 its top) has come unstuck and folded back over it, showing the white back of the paper. A holo
     // sticker shimmers with rainbow bands that slide across it as it is seen from another angle (the door swinging).
-    const sticker = (source, width, x, y, tilt, peel, lift = 0, holo = false) => {
+    // Given ink ({ colour, outline, width }), the picture is reprinted in that colour, inside that outline if any. A
+    // glossy one has its dark ink varnished: a streak of light slides over it as the angle changes, the paper stays matt.
+    const sticker = (source, width, x, y, tilt, peel, lift = 0, holo = false, ink = null, gloss = false) => {
       const plane = new THREE.PlaneGeometry(1, 1, 24, 24);
       if (peel !== null) {
         const position = plane.attributes.position;
@@ -1134,6 +2156,19 @@ function createDeskRoom() {
               + normalize(vViewPosition).x * ${STICKERS.holoShift.toFixed(2)} + (vMapUv.x + vMapUv.y) * ${STICKERS.holoBands.toFixed(2)});
             totalEmissiveRadiance += (.5 + .5 * cos(6.2832 * (holoBand + vec3(0., .33, .67)))) * ${STICKERS.holo.toFixed(2)};`);
         };
+      }
+      if (gloss) {
+        // A narrow band of light the same way, added only as dark as the picture is there (the varnished ink).
+        const { strength, sharpness, bands, shift, phase } = STICKERS.gloss;
+        mesh.material.onBeforeCompile = (shader) => {
+          shader.fragmentShader = shader.fragmentShader.replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+            float glossBand = fract(dot(normal, normalize(vViewPosition)) * ${shift.toFixed(2)}
+              + normalize(vViewPosition).x * ${shift.toFixed(2)} + (vMapUv.x + vMapUv.y) * ${bands.toFixed(2)} + ${phase.toFixed(2)});
+            float glossInk = 1. - dot(diffuseColor.rgb, vec3(.3333));
+            totalEmissiveRadiance += pow(max(0., 1. - abs(glossBand - .5) * 2.), ${sharpness.toFixed(1)}) * glossInk * ${strength.toFixed(2)};`);
+        };
+        // Its shader differs from a holo one's though the function reads the same: keep three.js from sharing them.
+        mesh.material.customProgramCacheKey = () => "sticker-gloss";
       }
       // Its back, plain paper in the backing's white, seen where the corner has turned over.
       const paper = new THREE.Mesh(plane, new THREE.MeshStandardMaterial({ roughness: 1, side: THREE.BackSide, alphaTest: .5, visible: false }));
@@ -1170,7 +2205,7 @@ function createDeskRoom() {
         wake();
       };
       const image = new Image();
-      image.onload = () => apply(dieCutImage(image));
+      image.onload = () => apply(dieCutImage(ink ? inkImage(image, ink) : image));
       image.src = new URL(`./${source}`, import.meta.url).href;
     };
 
@@ -1178,6 +2213,9 @@ function createDeskRoom() {
     // across from the door's middle (+ is the viewer's left), and down from the note's bottom edge, 1.825 note widths
     // below the door's top.
     const at = (across, down) => [face.centre + note * across, face.top - note * (1.825 + down)];
+
+    // StarCraft's Terran emblem (terran.png), centred above the Vitality bee, its black ink glossy.
+    sticker("terran.png", note * .75, ...at(0, 1.1), -6, null, 0, false, STICKERS.terran, true);
 
     // Team Vitality's bee, from the team's logo (vita.png), on the left, a holo one.
     sticker("vita.png", note * .65, ...at(.2, 2.25), 10, null, 0, true);
@@ -1242,6 +2280,37 @@ function createDeskRoom() {
     cardBox.add(print);
     pivot.add(lanyard);
     return pivot;
+  }
+
+  // A picture with a transparent surround reprinted in one colour, inside an outline of another width wide if given, on
+  // a canvas grown to fit the outline.
+  function inkImage(image, { colour, outline, width = 0 }) {
+    const fill = (shade) => {
+      const shape = document.createElement("canvas");
+      shape.width = image.naturalWidth;
+      shape.height = image.naturalHeight;
+      const shapeContext = shape.getContext("2d");
+      shapeContext.drawImage(image, 0, 0);
+      shapeContext.globalCompositeOperation = "source-in";
+      shapeContext.fillStyle = shade;
+      shapeContext.fillRect(0, 0, shape.width, shape.height);
+      return shape;
+    };
+    const pad = width + 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth + pad * 2;
+    canvas.height = image.naturalHeight + pad * 2;
+    const context = canvas.getContext("2d");
+    // The outline: the shape in its colour drawn shifted all round two circles.
+    const ring = outline && fill(outline);
+    for (const radius of outline ? [width / 2, width] : []) {
+      for (let i = 0; i < 32; i++) {
+        const angle = i / 32 * Math.PI * 2;
+        context.drawImage(ring, pad + Math.cos(angle) * radius, pad + Math.sin(angle) * radius);
+      }
+    }
+    context.drawImage(fill(colour), pad, pad);
+    return canvas;
   }
 
   // A sticker's picture worn by time, the same way each visit (seed): a little faded, a few light scuffs across it, a
@@ -1344,17 +2413,46 @@ function createDeskRoom() {
       shapeContext.fillRect(0, 0, shape.width, shape.height);
       return shape;
     };
-    const grow = (shape, radius) => {
-      context.drawImage(shape, 0, 0);
+    // Its layer, drawn on the canvas once whole: the shifted copies can leave pinholes in a nook they close off, so
+    // anything see-through the outside doesn't reach is filled in its colour.
+    const grow = (colour, radius) => {
+      const shape = silhouette(colour);
+      const layer = document.createElement("canvas");
+      layer.width = canvas.width;
+      layer.height = canvas.height;
+      const layerContext = layer.getContext("2d", { willReadFrequently: true });
+      layerContext.drawImage(shape, 0, 0);
       for (const ring of [radius / 3, radius * 2 / 3, radius]) {
         for (let i = 0; i < 32; i++) {
           const angle = i / 32 * Math.PI * 2;
-          context.drawImage(shape, Math.cos(angle) * ring, Math.sin(angle) * ring);
+          layerContext.drawImage(shape, Math.cos(angle) * ring, Math.sin(angle) * ring);
         }
       }
+      const pixels = layerContext.getImageData(0, 0, layer.width, layer.height);
+      const { data } = pixels, outside = new Uint8Array(layer.width * layer.height);
+      const clear = (i) => data[i * 4 + 3] < 128;
+      const edge = [];
+      for (let x = 0; x < layer.width; x++) edge.push(x, (layer.height - 1) * layer.width + x);
+      for (let y = 0; y < layer.height; y++) edge.push(y * layer.width, y * layer.width + layer.width - 1);
+      while (edge.length) {
+        const i = edge.pop();
+        if (outside[i] || !clear(i)) continue;
+        outside[i] = 1;
+        const x = i % layer.width;
+        if (x > 0) edge.push(i - 1);
+        if (x < layer.width - 1) edge.push(i + 1);
+        if (i >= layer.width) edge.push(i - layer.width);
+        if (i < outside.length - layer.width) edge.push(i + layer.width);
+      }
+      const rgb = parseInt(colour.slice(1), 16);
+      for (let i = 0; i < outside.length; i++) {
+        if (!outside[i] && clear(i)) data.set([rgb >> 16, (rgb >> 8) & 255, rgb & 255, 255], i * 4);
+      }
+      layerContext.putImageData(pixels, 0, 0);
+      context.drawImage(layer, 0, 0);
     };
-    grow(silhouette(STICKERS.cutLine), border + line);
-    grow(silhouette(STICKERS.cutBacking), border);
+    grow(STICKERS.cutLine, border + line);
+    grow(STICKERS.cutBacking, border);
     context.drawImage(probe, left, top, right - left + 1, bottom - top + 1, margin, margin, logoWidth, logoHeight);
     return { canvas, logoWidth };
   }
@@ -1440,12 +2538,37 @@ function createDeskRoom() {
     const { min, max } = face;
     const width = face.width * .68;
     const note = new THREE.Group();
-    const paper = new THREE.Mesh(new THREE.PlaneGeometry(width, width * 1.15), new THREE.MeshStandardMaterial({ color: NOTE.paper, roughness: 1, side: THREE.DoubleSide }));
+    // The paper in a grid fine enough to bend (see liftNote), its outline running round the grid's rim.
+    const across = 6, down = 10, height = width * 1.15;
+    const paper = new THREE.Mesh(new THREE.PlaneGeometry(width, height, across, down), new THREE.MeshStandardMaterial({ color: NOTE.paper, roughness: 1, side: THREE.DoubleSide }));
     const tape = new THREE.Mesh(new THREE.PlaneGeometry(width * .45, width * .14), new THREE.MeshStandardMaterial({ color: NOTE.tape, roughness: 1, side: THREE.DoubleSide }));
     tape.position.set(0, width * .575, .001);
-    const outline = new THREE.LineSegments(new THREE.EdgesGeometry(paper.geometry), edgeMaterial);
+    const corner = (i, j) => j * (across + 1) + i;
+    const rim = [
+      ...Array.from({ length: across }, (_, i) => corner(i, 0)), ...Array.from({ length: down }, (_, j) => corner(across, j)),
+      ...Array.from({ length: across }, (_, i) => corner(across - i, down)), ...Array.from({ length: down }, (_, j) => corner(0, down - j)),
+    ];
+    const outline = new THREE.LineLoop(new THREE.BufferGeometry(), edgeMaterial);
+    outline.geometry.setAttribute("position", new THREE.Float32BufferAttribute(rim.length * 3, 3));
     outline.raycast = () => {};
     paper.add(outline);
+    const flat = paper.geometry.attributes.position.clone();
+    // Lifts the paper off the door by lift (a fraction of its width), most at its free bottom edge, nothing at the
+    // taped top, with a ripple phase turns along its way running down it.
+    const bend = (lift, phase) => {
+      const position = paper.geometry.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        const x = flat.getX(i), y = flat.getY(i);
+        const s = (height / 2 - y) / height;
+        const wave = .65 + .35 * Math.sin((s * 1.3 - phase) * Math.PI * 2);
+        position.setZ(i, lift * width * s ** 1.5 * wave * (1 + .2 * x / (width / 2)));
+      }
+      position.needsUpdate = true;
+      paper.geometry.computeVertexNormals();
+      rim.forEach((k, n) => outline.geometry.attributes.position.setXYZ(n, position.getX(k), position.getY(k), position.getZ(k)));
+      outline.geometry.attributes.position.needsUpdate = true;
+    };
+    bend(0, 0);
     paper.receiveShadow = tape.receiveShadow = true;
     note.add(paper, tape);
     // Inner face is the door's back (-z); the note faces inwards, slightly askew.
@@ -1498,7 +2621,7 @@ function createDeskRoom() {
     // Hidden while the note covers it: the note sits so close that the key's strokes would show through it.
     hole.visible = false;
     door.add(hole);
-    return { note, tape, hole, key: keyGroup };
+    return { note, tape, hole, key: keyGroup, bend };
   }
 
   function addPart(object, apply) {
@@ -1573,6 +2696,22 @@ function createDeskRoom() {
       lying: new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, .5)),
     };
   };
+  // Opening the door draws air past its inner face: the note lifts off it from the bottom, a ripple running down it,
+  // and settles back flat. Pinned only: once shaken loose it flutters down as it is.
+  let noteLift = 0, notePhase = 0, noteClock = 0;
+  parts.push({
+    object: pinned.note, state: spring(), apply() {},
+    busy(now) {
+      if (flyaway || (!noteLift && doors.state.velocity <= 0)) return (noteClock = 0), false;
+      const dt = noteClock ? Math.min(.033, (now - noteClock) / 1000) : 0;
+      noteClock = now;
+      noteLift = Math.min(1, noteLift + Math.max(0, doors.state.velocity) * NOTE.gust * dt) * Math.exp(-dt / NOTE.settle);
+      notePhase += dt * NOTE.ripple;
+      if (noteLift < .01) noteLift = 0;
+      pinned.bend(noteLift * NOTE.lift, notePhase);
+      return noteLift > 0;
+    },
+  });
   const sway = new THREE.Quaternion(), swayAxis = new THREE.Vector3(0, 0, 1);
   parts.push({
     object: pinned.note, state: spring(), apply() {},
@@ -1592,11 +2731,110 @@ function createDeskRoom() {
   });
   // A toolbox on the bottom shelf, seen once the doors open.
   const { toolbox, loose } = buildToolbox();
-  recolour(toolbox, TOOLBOX);
+  recolour(toolbox, { ...TOOLBOX, ...HAMMER, ...SCREWDRIVER, ...PLIERS });
+  const knipexBoss = toolbox.getObjectByName("knipexBoss");
+  knipexBoss.material[1].map = knipexStamp();
+  knipexBoss.material[1].needsUpdate = true;
+  // The tools' silhouettes drawn a touch darker, as for the duck: a copy of each part turned inside out, whose back
+  // shows only round the edges, pushed out on screen by TOOL_OUTLINE.width pixels along the part's surface: the line
+  // keeps its thickness on a thin blade as round a hammer's head, at any size of the room. It follows the normals
+  // averaged where faces meet at a crease, so it doesn't split open at the corners.
+  const toolOutline = new THREE.MeshBasicMaterial({ color: TOOL_OUTLINE.colour, side: THREE.BackSide });
+  toolOutline.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, outlineUniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec3 outlineNormal;\nuniform float outlineWidth;\nuniform vec2 outlineResolution;")
+      .replace("#include <project_vertex>", `#include <project_vertex>
+        vec2 outlineDirection = (projectionMatrix * vec4(normalMatrix * outlineNormal, 0.0)).xy * outlineResolution;
+        if (dot(outlineDirection, outlineDirection) > 1e-12) {
+          gl_Position.xy += normalize(outlineDirection) * outlineWidth * 2.0 / outlineResolution * gl_Position.w;
+        }`);
+  };
+  const creaseNormals = (geometry) => {
+    if (geometry.attributes.outlineNormal) return;
+    if (!geometry.attributes.normal) geometry.computeVertexNormals();
+    const position = geometry.attributes.position, normal = geometry.attributes.normal;
+    const sums = new Map();
+    const keys = Array.from({ length: position.count }, (_, i) => {
+      const key = [position.getX(i), position.getY(i), position.getZ(i)].map((v) => Math.round(v * 1e5)).join();
+      if (!sums.has(key)) sums.set(key, new THREE.Vector3());
+      sums.get(key).add(new THREE.Vector3().fromBufferAttribute(normal, i));
+      return key;
+    });
+    const averaged = new Float32Array(position.count * 3);
+    keys.forEach((key, i) => {
+      const sum = sums.get(key);
+      const n = sum.lengthSq() > 1e-12 ? sum.clone().normalize() : new THREE.Vector3().fromBufferAttribute(normal, i);
+      averaged.set([n.x, n.y, n.z], i * 3);
+    });
+    geometry.setAttribute("outlineNormal", new THREE.BufferAttribute(averaged, 3));
+  };
+  const toolParts = [];
+  for (const tool of loose) tool.traverse((child) => { if (child.isMesh && !child.userData.noOutline) toolParts.push(child); });
+  toolParts.forEach((mesh) => {
+    creaseNormals(mesh.geometry);
+    const hull = new THREE.Mesh(mesh.geometry, toolOutline);
+    hull.raycast = () => {};
+    mesh.add(hull);
+  });
   // Right at the front edge of the shelf, just behind the closed doors: ready to fall.
   toolbox.position.set(.2, .116, -.105);
   toolbox.rotation.set(0, .18, 0, "YXZ");
   cabinet.add(toolbox);
+  // A VHS cassette in the gap left of the toolbox, mostly hidden behind it: standing on its long edge, its label and
+  // window turned to the toolbox, leaning back against the wardrobe's left side (inner face at x .04).
+  const vhs = buildVhs();
+  recolour(vhs, VHS);
+  vhs.position.set(.04 + .0065 + .052 * Math.sin(VHS.lean) + .001, .116, -.13);
+  vhs.rotation.set(-VHS.lean, Math.PI / 2, 0, "YXZ");
+  cabinet.add(vhs);
+  // A Zelda treasure chest hidden behind the toolbox, against the back wall (inner face at z -.23), found once the
+  // toolbox is knocked over. Not animated yet.
+  const chest = buildChest();
+  recolour(chest, CHEST);
+  chest.scale.setScalar(1);
+  chest.position.set(.165, .116, -.178);
+  cabinet.add(chest);
+  // Clay pots standing round it.
+  for (const [x, z, scale, turn] of POTS.pots) {
+    const pot = buildPot();
+    recolour(pot, POTS);
+    pot.scale.setScalar(scale);
+    pot.position.set(x, .116, z);
+    pot.rotation.y = turn;
+    cabinet.add(pot);
+  }
+  // Its label, recorded over again and again: rows of felt-pen scribbles in red, blue and black, some crossed out.
+  const labelPicture = document.createElement("canvas");
+  labelPicture.width = 256;
+  labelPicture.height = 64;
+  const pen = labelPicture.getContext("2d");
+  pen.fillStyle = "#ffffff";
+  pen.fillRect(0, 0, 256, 64);
+  pen.lineCap = pen.lineJoin = "round";
+  let seed = 7;
+  const random = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  VHS.scribbles.forEach(([colour, row, from, to, crossed]) => {
+    pen.strokeStyle = colour;
+    pen.lineWidth = 3;
+    const y = 12 + row * 20;
+    // Handwriting at this size: a quick zigzag of letters, each a little taller or shorter.
+    pen.beginPath();
+    pen.moveTo(from, y + 4);
+    for (let x = from; x < to; x += 5) pen.lineTo(x + 2.5, y - 4 - random() * 4), pen.lineTo(x + 5, y + 4);
+    pen.stroke();
+    if (!crossed) return;
+    pen.lineWidth = 4;
+    pen.beginPath();
+    pen.moveTo(from - 4, y + 1);
+    pen.lineTo(to + 4, y - 2);
+    pen.stroke();
+  });
+  const labelTexture = new THREE.CanvasTexture(labelPicture);
+  labelTexture.colorSpace = THREE.SRGBColorSpace;
+  const label = vhs.getObjectByName("label");
+  label.material.map = labelTexture;
+  label.material.needsUpdate = true;
 
   // Desk spans x 0 → .72, z -.38 → 0, top at y .384; the cabinet stands to its right.
   room.add(desk);
@@ -1608,12 +2846,40 @@ function createDeskRoom() {
   recolour(computer, RETRO_PC);
   computer.position.set(.34, .384, -.25);
   room.add(computer);
+  // Wayfarer sunglasses on the free left part of the desk, turned so both lenses and both arms show.
+  const sunglasses = buildSunglasses();
+  recolour(sunglasses, SUNGLASSES);
+  // Glossy acetate, dark glass with a sheen and metal rivets, rather than the matt finish everything else gets.
+  sunglasses.traverse((child) => {
+    if (!child.isMesh) return;
+    const name = child.material.name;
+    child.material.roughness = name === "lens" ? SUNGLASSES.shine : name === "frame" ? SUNGLASSES.gloss : .3;
+    if (name === "rivet") child.material.metalness = .8;
+  });
+  sunglasses.position.set(.13, .384, -.09);
+  sunglasses.rotation.y = -.25;
+  room.add(sunglasses);
+  // The red and blue pills at the front of the middle drawer, before the Rubik's cube and the duck, a little bigger than life so they read.
+  const blister = buildBlister();
+  recolour(blister, BLISTER);
+  // Clear plastic: set after the recolour, which makes every material opaque.
+  for (const bubble of blister.children.filter((child) => child.name === "bubble")) {
+    Object.assign(bubble.material, { transparent: true, opacity: BLISTER.opacity, roughness: .15, depthWrite: false });
+    bubble.castShadow = false;
+  }
+  blister.position.set(-.02, drawers[1].userData.floor, -.104);
+  blister.rotation.y = -.15;
+  blister.scale.setScalar(1.6);
+  drawers[1].add(blister);
+  // A click on the pack plays the Matrix code rain on the screen (it claims the click, so the drawer stays put).
+  blister.traverse((child) => { if (child.isMesh) child.userData.onClick = () => playMatrix(); });
   // A Rubik's cube lying in the middle drawer, set back from the front but still in the part that slides out (.16).
   const rubiksCube = buildRubiksCube();
   recolour(rubiksCube, RUBIK);
   const middleDrawer = drawers[1];
-  rubiksCube.position.set(.025, middleDrawer.userData.floor, -.11);
+  rubiksCube.position.set(.025, middleDrawer.userData.floor, -.156);
   rubiksCube.rotation.y = -.45;
+  rubiksCube.userData.tips = DRAWER_JOLT.cube;
   middleDrawer.add(rubiksCube);
   // A rubber duck beside it, back from the drawer front (which would hide it from above), looking out, a little
   // bigger than life so it reads. A click squeezes it (it claims the click, so the drawer stays put).
@@ -1630,10 +2896,11 @@ function createDeskRoom() {
     mesh.add(hull);
   }
   const duckSize = 1.3;
-  const duckSpot = new THREE.Vector3(-.045, middleDrawer.userData.floor, -.115);
+  const duckSpot = new THREE.Vector3(-.045, middleDrawer.userData.floor, -.161);
   duck.position.copy(duckSpot);
   duck.rotation.y = .5;
   duck.scale.setScalar(duckSize);
+  duck.userData.tips = DRAWER_JOLT.duck;
   middleDrawer.add(duck);
   let squeezed = null;
   parts.push({
@@ -1679,6 +2946,7 @@ function createDeskRoom() {
   const addCartridge = (name) => {
     const cartridge = buildCartridge();
     recolour(cartridge, CARTRIDGES[name]);
+    cartridge.userData.jolt = DRAWER_JOLT.cartridge;
     topDrawer.add(cartridge);
     return cartridge;
   };
@@ -1713,6 +2981,71 @@ function createDeskRoom() {
   nomai.scale.setScalar(.65);
   nomai.rotation.y = VIEW_AZIMUTH;
   cabinet.add(nomai);
+  // TARS standing in the middle of the compartment above the toolbox (shelf top at y .299 in wardrobe units), turned
+  // halfway towards the camera.
+  const tars = buildTars();
+  recolour(tars, TARS);
+  // Its name, written top to bottom on a see-through picture.
+  const nameplate = tars.userData.nameplate;
+  const nameCanvas = document.createElement("canvas");
+  nameCanvas.width = 64;
+  nameCanvas.height = 256;
+  const nameContext = nameCanvas.getContext("2d");
+  nameContext.translate(32, 128);
+  nameContext.rotate(Math.PI / 2);
+  nameContext.font = "bold 58px sans-serif";
+  nameContext.textAlign = "center";
+  nameContext.textBaseline = "middle";
+  nameContext.fillStyle = TARS.name;
+  nameContext.fillText("TARS", 0, 2, 240);
+  const nameTexture = new THREE.CanvasTexture(nameCanvas);
+  nameTexture.colorSpace = THREE.SRGBColorSpace;
+  nameTexture.anisotropy = 4;
+  const tarsName = new THREE.Mesh(new THREE.PlaneGeometry(nameplate.width, nameplate.height),
+    new THREE.MeshStandardMaterial({ map: nameTexture, transparent: true, opacity: TARS.nameOpacity, roughness: 1 }));
+  tarsName.position.set(0, nameplate.y, nameplate.z);
+  nameplate.slab.add(tarsName);
+  tars.position.set(.2, .299, -.13);
+  tars.rotation.y = VIEW_AZIMUTH / 2;
+  tars.scale.setScalar(.85);
+  cabinet.add(tars);
+  // A click on it walks it on the spot: legs and body slabs rock back and forth, the body bobbing at each step, easing
+  // in and out of its pose, while its readout lines keep being rewritten, back to their rest lengths at the end. It
+  // claims the click, so the wardrobe stays open.
+  const { body: tarsBody, joints: tarsJoints, lines: tarsLines, left: tarsLeft } = tars.userData.stride;
+  const tarsBodyY = tarsBody.position.y;
+  const writeLine = ({ mesh, width }, length) => {
+    mesh.scale.x = length / width;
+    mesh.position.x = tarsLeft + length / 2;
+  };
+  let strideStart = null, readoutTick = -1;
+  parts.push({
+    object: tars, state: spring(), apply() {},
+    busy(now) {
+      if (strideStart === null) return false;
+      const u = Math.min(1, (now - strideStart) / (TARS_STRIDE.time * 1000));
+      const ease = Math.sin(Math.PI * u), step = Math.sin(Math.PI * 2 * TARS_STRIDE.steps * u);
+      for (const { group, rest, way } of tarsJoints) {
+        group.rotation.x = rest + way * ease * step * (way > 0 ? TARS_STRIDE.legs : TARS_STRIDE.arms);
+      }
+      tarsBody.position.y = tarsBodyY + ease * Math.abs(step) * TARS_STRIDE.bob;
+      const tick = Math.floor((now - strideStart) / (TARS_READOUT.every * 1000));
+      if (tick !== readoutTick && u < 1) {
+        readoutTick = tick;
+        const { shortest, longest } = TARS_READOUT;
+        for (const line of tarsLines) writeLine(line, shortest + Math.random() * (longest - shortest));
+      }
+      if (u === 1) {
+        for (const line of tarsLines) writeLine(line, line.width);
+        strideStart = null;
+        readoutTick = -1;
+      }
+      return true;
+    },
+  });
+  tars.traverse((child) => {
+    if (child.isMesh) child.userData.onClick = () => { strideStart ??= performance.now(); };
+  });
   // A small ? block kept as a souvenir in the middle of the wardrobe's middle shelf (shelf top at y .475 in wardrobe
   // units, shelf z -.23 → -.05). Set aside for now: built but not added, as a hidden mesh would still catch clicks.
   const questionBlock = buildQuestionBlock();
@@ -1822,10 +3155,17 @@ function createDeskRoom() {
     const part = addPart(companionCube, () => {});
     // It starts up on the top shelf, so the first click sends it down.
     Object.assign(part.state, { value: 1, target: 1 });
+    // Trip switched off: no longer a part, so it neither takes clicks nor shows the pointing hand.
+    if (!PORTAL_TRIP.enabled) {
+      parts.splice(parts.indexOf(part), 1);
+      companionCube.traverse((child) => { delete child.userData.part; });
+    }
     // Clicks during a trip are ignored.
     part.onToggle = (up) => {
       if (trip) { part.state.target = up ? 0 : 1; return; }
-      trip = { start: performance.now(), from: stops[up ? "middle" : "top"], to: stops[up ? "top" : "middle"] };
+      trip = PORTAL_TRIP.stay
+        ? { start: performance.now(), from: stops.top, to: stops.top }
+        : { start: performance.now(), from: stops[up ? "middle" : "top"], to: stops[up ? "top" : "middle"] };
       // The blue one lies on the shelf under it; the orange one stands on the back wall behind where it lands, facing
       // out (an upright oval).
       portals[0].position.copy(trip.from.spot).y += .0015;
@@ -1992,10 +3332,11 @@ function createDeskRoom() {
   puddle.scale.setScalar(.001);
   puddle.userData.size = 1;
   room.add(puddle);
-  // Lays the puddle out past where the rim lands; spilled towards the computer it runs on under the case.
+  // Lays the puddle out ahead of where the rim lands, so it spreads in front of the mug rather than under it; spilled
+  // towards the computer it runs on under the case.
   const placePuddle = () => {
     const towardsComputer = mugYaw === fallYaw.computer;
-    const reach = mugHeight + (towardsComputer ? .03 : 0);
+    const reach = mugHeight + .03;
     puddle.position.set(Math.sin(mugYaw) * reach, .0008, Math.cos(mugYaw) * reach).add(mugHinge);
     puddle.rotation.y = mugYaw;
     puddle.userData.size = towardsComputer ? 1.4 : 1;
@@ -2052,6 +3393,8 @@ function createDeskRoom() {
   const smokeEnd = .25 + (SMOKE.puffs - 1) * SMOKE.gap + SMOKE.life;
   // fried: shorted out and not yet tried again, so the next boot fails once. failing: that failed boot is playing.
   let crashStart = null, fried = false, failing = false;
+  // The Matrix code rain set off by the pills: when it started, and whether the screen was off before it.
+  let matrixStart = null, matrixWasOff = false;
   const screen = addPart(computer, (t) => {
     screenMaterial.color.lerpColors(screenOff, screenOn, t);
     screenMaterial.emissive.setScalar(t * .5);
@@ -2065,10 +3408,20 @@ function createDeskRoom() {
   const shortCircuit = () => {
     crashStart = performance.now();
     fried = true;
+    matrixStart = null;
   };
+  // A click on the pills: the screen lights up, even with the computer off, and shows the code rain for a few seconds,
+  // then goes back to what it was. Not while the computer shorts out or fails to boot.
+  function playMatrix() {
+    if (crashStart !== null || failing) return;
+    if (matrixStart === null) matrixWasOff = screen.state.target === 0;
+    matrixStart = performance.now();
+    screen.state.target = 1;
+  }
   // Each switch-on replays the boot; frames keep coming until the desktop is up. Right after a short circuit the
   // first try fails and cuts out; the next one works.
   screen.onToggle = (on) => {
+    matrixStart = null;
     if (!on) { failing = false; return; }
     crashStart = null;
     poseSmoke(-1);
@@ -2078,7 +3431,7 @@ function createDeskRoom() {
     display.reset();
     display.draw(0);
   };
-  const screenReady = () => screen.state.target === 1 && crashStart === null && !failing && performance.now() - bootStart >= BOOT.end * 1000;
+  const screenReady = () => screen.state.target === 1 && crashStart === null && !failing && matrixStart === null && performance.now() - bootStart >= BOOT.end * 1000;
   screen.busy = (now) => {
     if (crashStart !== null) {
       const seconds = (now - crashStart) / 1000;
@@ -2088,6 +3441,13 @@ function createDeskRoom() {
       if (seconds < smokeEnd) return true;
       crashStart = null;
       return false;
+    }
+    if (matrixStart !== null) {
+      const seconds = (now - matrixStart) / 1000;
+      if (seconds < MATRIX_END) { display.matrix(seconds); return true; }
+      matrixStart = null;
+      // Back to how it was: switched off again, or the desktop (or the rest of the boot) as before.
+      if (matrixWasOff) { screen.state.target = 0; return false; }
     }
     if (!screen.state.target) return false;
     const seconds = (now - bootStart) / 1000;
@@ -2103,7 +3463,72 @@ function createDeskRoom() {
 
   for (const drawer of drawers) {
     const rest = drawer.position.z;
-    addPart(drawer, (t) => { drawer.position.z = rest + t * .16; });  }
+    const part = addPart(drawer, (t) => { drawer.position.z = rest + t * DRAWER_JOLT.travel; });
+    // What lies in the drawer lags behind a sharp pull or push: it slides against friction and stops where it is, and
+    // tall things (userData.tips) also rock on their base and settle back. Each thing rides in its own holders, so its
+    // own moves (the duck's squeeze) are left alone; each reacts a bit differently. It never ends up further than reach
+    // from where it was put, nor past the tray's front or back wall.
+    drawer.updateWorldMatrix(true, true);
+    const drawerAt = new THREE.Vector3().setFromMatrixPosition(drawer.matrixWorld);
+    const loose = drawer.children.filter((child) => !drawer.userData.shell.has(child)).map((object, i) => {
+      const box = new THREE.Box3().setFromObject(object).translate(drawerAt.clone().negate());
+      const back = Math.max(-DRAWER_JOLT.reach, drawer.userData.back - box.min.z);
+      const front = Math.min(DRAWER_JOLT.reach, -box.max.z);
+      // slider (slides along z) → rocker (turns about the middle of the object's base) → object back in place.
+      const base = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2);
+      const slider = new THREE.Group(), rocker = new THREE.Group(), inner = new THREE.Group();
+      rocker.position.copy(base);
+      inner.position.copy(base).negate();
+      drawer.add(slider);
+      slider.add(rocker);
+      rocker.add(inner);
+      inner.add(object);
+      return {
+        slider, rocker, tips: object.userData.tips, halfDepth: (box.max.z - box.min.z) / 2, floor: base.y,
+        give: object.userData.jolt ?? 1 + (i % 3) * DRAWER_JOLT.spread,
+        slide: 0, speed: 0, tilt: spring(), back: Math.min(0, back), front: Math.max(0, front),
+      };
+    });
+    let lastVelocity = 0, lastTime = 0;
+    part.busy = (now) => {
+      const dt = lastTime && now - lastTime < 100 ? (now - lastTime) / 1000 : .016;
+      lastTime = now;
+      const acceleration = (part.state.velocity - lastVelocity) / dt * DRAWER_JOLT.travel;
+      lastVelocity = part.state.velocity;
+      const { push, friction } = DRAWER_JOLT;
+      let moving = false;
+      for (const thing of loose) {
+        // The jolt felt in the drawer, the other way from where it moves.
+        const jolt = -push * thing.give * acceleration;
+        if (thing.speed === 0) {
+          // Held by friction until the jolt beats it.
+          if (Math.abs(jolt) > friction) thing.speed = (jolt - Math.sign(jolt) * friction) * dt;
+        } else {
+          const speed = thing.speed + (jolt - Math.sign(thing.speed) * friction) * dt;
+          // Stops once friction has used up its speed, unless the jolt keeps it going.
+          thing.speed = Math.sign(speed) !== Math.sign(thing.speed) && Math.abs(jolt) <= friction ? 0 : speed;
+        }
+        thing.slide += thing.speed * dt;
+        if (thing.slide <= thing.back || thing.slide >= thing.front) {
+          thing.slide = THREE.MathUtils.clamp(thing.slide, thing.back, thing.front);
+          thing.speed = 0;
+        }
+        thing.slider.position.z = thing.slide;
+        if (thing.speed !== 0) moving = true;
+        if (!thing.tips) continue;
+        // Rocks onto the edge the jolt pushes it over, which stays on the floor; its weight brings it back. Each tall
+        // thing rocks its own way (its tips settings), and may also sway sideways as it goes.
+        const { tilt } = thing, { tip, upright, rock, sway } = thing.tips;
+        tilt.velocity += (tip * jolt - upright * tilt.value - rock * tilt.velocity) * dt;
+        tilt.value += tilt.velocity * dt;
+        thing.rocker.rotation.x = tilt.value;
+        thing.rocker.rotation.z = tilt.value * sway;
+        thing.rocker.position.y = thing.floor + thing.halfDepth * Math.abs(Math.sin(tilt.value));
+        moving ||= Math.abs(tilt.value) > 1e-4 || Math.abs(tilt.velocity) > 1e-3;
+      }
+      return moving;
+    };
+  }
 
   // Clicking the Game Boy switches it on: its LED glows and its screen lights up and plays the boot; clicking again
   // switches it off. Registered after the drawers, so its clicks are its own.
@@ -2155,30 +3580,17 @@ function createDeskRoom() {
     return seconds < GAMEBOY_BOOT.end;
   };
 
-  // Clicking the toolbox knocks it off the shelf edge: it tips over and drops, accelerating, lands on
-  // its front with a little rock, and its contents fly out on arcs, spinning, before bouncing to rest around it.
+  // Clicking the toolbox knocks it off the shelf edge: it tips over and drops, accelerating, and lands on its front with
+  // a little rock. Its contents ride along until it lands, then carry on with the speed and spin they had: they drop
+  // onto its front wall, now the bottom, slide and tumble out of it and come to rest on the floor around it.
   // Clicking again plays the same fall backwards, a bit faster, to tidy everything away.
-  const spill = loose.map((object, i) => {
-    const [x, y, z, yaw, lay] = SPILL[i];
-    return {
-      object,
-      delay: FALL.scatter + i * .035,
-      spin: new THREE.Vector3(Math.sin(i * 2.1), 1, Math.cos(i * 1.7)).normalize(),
-      turns: i % 2 ? 1 : -1,
-      home: { position: object.position.clone(), quaternion: object.quaternion.clone() },
-      target: { position: new THREE.Vector3(x, y, z), quaternion: new THREE.Quaternion().setFromEuler(new THREE.Euler(lay ? Math.PI / 2 : 0, yaw, 0, "YXZ")) },
-      start: null,
-    };
-  });
   // The box tips over its front bottom edge, which stays on the shelf lip at first, then falls with it to the floor.
   const frontEdge = new THREE.Vector3(0, 0, .05);
   const lip = toolbox.position.clone().add(frontEdge.clone().applyEuler(toolbox.rotation));
   const landed = new THREE.Euler(Math.PI / 2, toolbox.rotation.y, 0, "YXZ");
   const floorEdge = new THREE.Vector3(toolbox.position.x, .05, .06).add(frontEdge.clone().applyEuler(landed));
   const hinge = new THREE.Vector3(), offset = new THREE.Vector3();
-  const spinQuaternion = new THREE.Quaternion();
   const easeIn = (u) => u * u;
-  const easeOut = (u) => 1 - (1 - u) * (1 - u);
   const poseToolbox = (time) => {
     const drop = THREE.MathUtils.clamp(time / FALL.land, 0, 1);
     const settle = THREE.MathUtils.clamp((time - FALL.land) / (FALL.end - FALL.land), 0, 1);
@@ -2189,48 +3601,105 @@ function createDeskRoom() {
     toolbox.position.copy(hinge).sub(offset.copy(frontEdge).applyEuler(toolbox.rotation));
     toolbox.position.y += Math.sin(settle * Math.PI) * .012 * (1 - settle);
   };
+  // The box as its contents feel it, in its own space: a tray open at the top (floor, front and back walls, end walls
+  // rising into the tapered ends that carry the bar). Not the bar: once the box lies on its front the bar spans the
+  // opening at mid height, lower than the hammer's head is tall, and would keep the hammer in. For a point sunk into
+  // it: how deep, and the shallowest way out (back into the tray, or out of the box), else nothing.
+  const outOfBox = (p) => {
+    const ax = Math.abs(p.x), az = Math.abs(p.z), sx = Math.sign(p.x) || 1, sz = Math.sign(p.z) || 1;
+    const ways = [];
+    const way = (depth, x, y, z) => ways.push({ depth, normal: new THREE.Vector3(x, y, z) });
+    if (ax < .1 && az < .05 && p.y > 0 && p.y < .006) {
+      way(.006 - p.y, 0, 1, 0);
+      way(p.y, 0, -1, 0);
+      way(.1 - ax, sx, 0, 0);
+      way(.05 - az, 0, 0, sz);
+    } else if (ax < .094 && az > .044 && az < .05 && p.y > 0 && p.y < .065) {
+      way(az - .044, 0, 0, -sz);
+      way(.05 - az, 0, 0, sz);
+      way(.065 - p.y, 0, 1, 0);
+    } else if (ax > .092 && ax < .1 && p.y > 0 && p.y < .1 && az < .05 - .28 * p.y) {
+      way(ax - .092, -sx, 0, 0);
+      way(.1 - ax, sx, 0, 0);
+      way(.05 - .28 * p.y - az, 0, 0, sz);
+      way(.1 - p.y, 0, 1, 0);
+    }
+    return ways.length ? ways.reduce((most, next) => (next.depth < most.depth ? next : most)) : null;
+  };
+  // A piece's pose in the wardrobe's space while it rides in the box, time seconds into the fall.
+  const ridingPose = (object, time) => {
+    poseToolbox(time);
+    toolbox.updateMatrix();
+    object.updateMatrix();
+    const position = new THREE.Vector3(), quaternion = new THREE.Quaternion();
+    new THREE.Matrix4().multiplyMatrices(toolbox.matrix, object.matrix).decompose(position, quaternion, new THREE.Vector3());
+    return { position, quaternion };
+  };
+  // What the contents rest on and knock against once the box has landed: the floor, and the box (it ignores the box's
+  // short rock as it settles). Of the two, the shallowest it has sunk into is the one it came through.
+  const up = new THREE.Vector3(0, 1, 0), still = new THREE.Vector3();
+  const landedBox = new THREE.Matrix4(), landedSpace = new THREE.Matrix4();
+  const groundAt = (point) => {
+    const floor = point.y < 0 ? { depth: -point.y, normal: up, velocity: still } : null;
+    const hit = outOfBox(point.clone().applyMatrix4(landedSpace));
+    if (!hit || (floor && floor.depth < hit.depth)) return floor;
+    return { depth: hit.depth, normal: hit.normal.transformDirection(landedBox), velocity: still, friction: DROP.boxSlip };
+  };
+  // The pieces' way out, worked out once and together, so they knock into each other: each leaves the box as it lands,
+  // with the speed and spin it had just before. Worked out once the page is idle, so loading doesn't wait for it, or at
+  // the first knock if that comes sooner.
+  let spill = null, fallEnd = FALL.end, fallTime = 0, fallClock = null;
+  const workOutSpill = () => {
+    if (spill) return;
+    poseToolbox(FALL.end);
+    toolbox.updateMatrix();
+    landedBox.copy(toolbox.matrix);
+    landedSpace.copy(toolbox.matrix).invert();
+    const starts = loose.map((object) => {
+      const lag = .004;
+      const before = ridingPose(object, FALL.land - lag), start = ridingPose(object, FALL.land);
+      const { com } = object.userData.body;
+      const velocity = com.clone().applyQuaternion(start.quaternion).add(start.position)
+        .sub(com.clone().applyQuaternion(before.quaternion).add(before.position)).divideScalar(lag);
+      const turn = start.quaternion.clone().multiply(before.quaternion.clone().invert());
+      const angle = 2 * Math.acos(THREE.MathUtils.clamp(turn.w, -1, 1));
+      const axis = new THREE.Vector3(turn.x, turn.y, turn.z);
+      const angular = axis.lengthSq() > 1e-12 ? axis.normalize().multiplyScalar((angle > Math.PI ? angle - 2 * Math.PI : angle) / lag) : new THREE.Vector3();
+      return { ...start, velocity, angular };
+    });
+    const tracks = simulateDrops(loose.map((object) => object.userData.body), starts, groundAt);
+    spill = loose.map((object, k) => ({
+      object, track: tracks[k], duration: (tracks[k].length - 1) / DROP.rate,
+      home: { position: object.position.clone(), quaternion: object.quaternion.clone() },
+    }));
+    fallEnd = Math.max(FALL.end, ...spill.map((piece) => FALL.land + piece.duration));
+    poseToolbox(fallTime);
+  };
+  if ("requestIdleCallback" in window) requestIdleCallback(workOutSpill, { timeout: 4000 });
+  else setTimeout(workOutSpill, 2000);
   const posePiece = (piece, time) => {
-    const flight = (time - piece.delay) / FALL.flight;
-    if (flight <= 0) {
-      if (piece.start && piece.object.parent !== toolbox) {
+    if (time <= FALL.land) {
+      if (piece.object.parent !== toolbox) {
         toolbox.add(piece.object);
         piece.object.position.copy(piece.home.position);
         piece.object.quaternion.copy(piece.home.quaternion);
       }
       return;
     }
-    if (piece.object.parent !== cabinet) {
-      if (!piece.start) {
-        // Where it leaves the box from: always the same moment of the fall, so it can be captured once.
-        poseToolbox(piece.delay);
-        toolbox.updateWorldMatrix(true, true);
-        cabinet.attach(piece.object);
-        piece.start = { position: piece.object.position.clone(), quaternion: piece.object.quaternion.clone() };
-        poseToolbox(time);
-      } else {
-        cabinet.add(piece.object);
-      }
-    }
-    const s = Math.min(1, flight);
-    const along = easeOut(s);
-    piece.object.position.lerpVectors(piece.start.position, piece.target.position, along);
-    // An arc up and down, then two small bounces once on the floor.
-    const bounce = Math.max(0, flight - 1) / .5;
-    piece.object.position.y += s < 1 ? Math.sin(s * Math.PI) * .05 : Math.abs(Math.sin(Math.min(bounce, 1) * Math.PI * 2)) * .008 * (1 - Math.min(bounce, 1));
-    piece.object.quaternion.slerpQuaternions(piece.start.quaternion, piece.target.quaternion, along);
-    piece.object.quaternion.premultiply(spinQuaternion.setFromAxisAngle(piece.spin, piece.turns * Math.PI * 2 * (1 - along)));
+    if (piece.object.parent !== cabinet) cabinet.add(piece.object);
+    followTrack(piece.object, piece.track, time - FALL.land);
   };
-  let fallTime = 0, fallClock = null;
   const fall = addPart(toolbox, () => {});
   fall.busy = (now) => {
+    if (!fall.state.target && fallTime === 0) return false;
+    workOutSpill();
     const dt = fallClock === null ? 0 : Math.min(.05, (now - fallClock) / 1000);
     fallClock = now;
-    const end = Math.max(FALL.end, (spill.at(-1)?.delay ?? 0) + FALL.flight * 1.5);
     const before = fallTime;
-    fallTime = fall.state.target ? Math.min(end, fallTime + dt) : Math.max(0, fallTime - dt * 1.4);
+    fallTime = fall.state.target ? Math.min(fallEnd, fallTime + dt) : Math.max(0, fallTime - dt * 1.4);
     poseToolbox(fallTime);
     for (const piece of spill) posePiece(piece, fallTime);
-    const moving = fallTime !== before || (fall.state.target ? fallTime < end : fallTime > 0);
+    const moving = fallTime !== before || (fall.state.target ? fallTime < fallEnd : fallTime > 0);
     if (!moving) fallClock = null;
     return moving;
   };
@@ -2327,6 +3796,8 @@ function createDeskRoom() {
     const width = canvas.clientWidth, height = canvas.clientHeight;
     if (!width || !height || !frameWidth || !frameHeight) return;
     renderer.setSize(width, height, false);
+    renderer.getDrawingBufferSize(outlineUniforms.outlineResolution.value);
+    outlineUniforms.outlineWidth.value = TOOL_OUTLINE.width * renderer.getPixelRatio();
     camera.aspect = frameWidth / frameHeight;
     camera.setViewOffset(frameWidth, frameHeight, canvas.offsetLeft, canvas.offsetTop, width, height);
     // Keep the whole room in view whatever the frame's shape: fit its bounding sphere to the narrower field of view.
@@ -2363,11 +3834,19 @@ function createDeskRoom() {
   }
 
   return {
-    // Read straight after drawing, while the canvas still holds the frame.
+    // Read straight after drawing, while the canvas still holds the frame. Brought down to the screen's pixels, as the
+    // browser shows the oversampled canvas.
     picture(type, quality) {
       beforeRender?.();
       renderer.render(scene, camera);
-      return canvas.toDataURL(type, quality);
+      if (oversample === 1) return canvas.toDataURL(type, quality);
+      const shown = document.createElement("canvas");
+      shown.width = Math.round(canvas.width / oversample);
+      shown.height = Math.round(canvas.height / oversample);
+      const context = shown.getContext("2d");
+      context.imageSmoothingQuality = "high";
+      context.drawImage(canvas, 0, 0, shown.width, shown.height);
+      return shown.toDataURL(type, quality);
     },
     // Shows the room in this frame, straight away if it is ready and otherwise once the shaders are in.
     attach(next) {
