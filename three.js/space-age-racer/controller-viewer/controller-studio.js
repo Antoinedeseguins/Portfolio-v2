@@ -1,4 +1,4 @@
-import * as THREE from "../../vendor/three.module.js";
+import * as THREE from "../../vendor/r180/three.module.js";
 
 // Transparent studio floor: the CSS backdrop remains continuous behind the scene.
 export function createControllerStudio(scene, renderer, keyLight) {

@@ -1,4 +1,4 @@
-import * as THREE from "../../vendor/three.module.js";
+import * as THREE from "../../vendor/r180/three.module.js";
 import { createController } from "./controller-model.js?v=15";
 import { createControllerStudio } from "./controller-studio.js";
 import { createControllerSignal } from "./controller-signal.js";

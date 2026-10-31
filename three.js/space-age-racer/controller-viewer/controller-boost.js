@@ -1,4 +1,4 @@
-import * as THREE from "../../vendor/three.module.js";
+import * as THREE from "../../vendor/r180/three.module.js";
 
 // Boost press kick: a short damped shake of the whole controller, an orange flash on the grip
 // and a spray of sparks thrown out of the button that fall and fade.

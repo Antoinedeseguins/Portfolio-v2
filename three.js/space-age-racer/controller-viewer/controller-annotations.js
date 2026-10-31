@@ -1,4 +1,4 @@
-import * as THREE from "../../vendor/three.module.js";
+import * as THREE from "../../vendor/r180/three.module.js";
 import { designPixel } from "../../design-pixel.js";
 
 export function attachControllerAnnotations(frame, model, camera, actions, events, descriptions) {

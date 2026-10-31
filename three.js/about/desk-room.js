@@ -1,6 +1,6 @@
-import * as THREE from "../vendor/three.module.js";
-import { GLTFLoader } from "../vendor/GLTFLoader.js";
-import { mergeGeometries } from "../vendor/BufferGeometryUtils.js";
+import * as THREE from "../vendor/r180/three.module.js";
+import { GLTFLoader } from "../vendor/r180/GLTFLoader.js";
+import { mergeGeometries } from "../vendor/r180/BufferGeometryUtils.js";
 
 // Everything is built in code below, in the site's cool greys and blue.
 // The slate wardrobe, with light handles.
@@ -17,9 +17,12 @@ const SCREWDRIVER = { kraftform: 0x22b573, kraftformBlack: 0x1d2126, chrome: 0x9
 // Knipex combination pliers behind the hammer: chromed head and its stamped boss, Knipex red and blue two-component
 // handles with a grey anti-slip patch; how long they are, nose to handle ends.
 const PLIERS = { knipexSteel: 0xcfd5db, knipexMark: 0xcfd5db, knipexRed: 0xd7262e, knipexBlue: 0x2d4fb8, knipexGrey: 0x5b6169,
-  length: .11 };
+  length: .121 };
 // The dark outline drawn round the tools in it, and its thickness in CSS pixels.
 const TOOL_OUTLINE = { colour: 0x1b2127, width: .6 };
+// The thin dark strokes on the furniture's and things' hard edges: their colour and how strongly they show (at one
+// screen pixel wide).
+const EDGE_STROKE = { colour: 0x1b2127, opacity: .4 };
 // The Zelda chest behind the toolbox: warm brown wood, dark iron straps, gold lock plate.
 const CHEST = { wood: 0x8a5a2e, iron: 0x2f3439, gold: 0xe0b53c, keyhole: 0x1d2126 };
 // Zelda clay pots round the chest, hidden with it behind the toolbox: terracotta, a darker band round the shoulder, dark
@@ -55,7 +58,7 @@ const DRAWER_JOLT = {
   duck: { tip: 14, upright: 170, rock: 4.5, sway: .45 },
 };
 // The 90s computer built below: beige-era shapes in the site's light greys, dark screen and power LED that light up.
-const RETRO_PC = { case: 0xd3d9de, caseShade: 0xb3bcc4, slot: 0x2b333b, screen: 0x1d2227, led: 0x2b333b, postIt: 0xf3d34a };
+const RETRO_PC = { case: 0xd3d9de, caseShade: 0xb3bcc4, slot: 0x2b333b, screen: 0x000000, led: 0x2b333b, postIt: 0xf3d34a };
 const LED_ON = 0xe0392f;
 // The computer's power LED once on: a vivid red that glows.
 const PC_LED_ON = { colour: 0xff2414, glow: 1.4 };
@@ -335,12 +338,16 @@ const FAIL = { boot: .55, tear: 1.05, end: 1.35 };
 // Smoke puffs rising from the computer case after the short circuit: how many, the gap between them, how long each lasts.
 const SMOKE = { puffs: 8, gap: .14, life: 1.3, colour: 0x5f676f };
 const CLOSE_BOX = { x: 232, y: 6, size: 18 };
-// The Matrix code rain a click on the pills puts on the screen, in seconds (time, fading in and out over fade): a grid
-// of columns x rows, each column falling at a speed between speed[0] and speed[1] rows a second with a trail of symbols.
+// A click on the pills: first the Matrix takes over whatever the screen shows, for intro seconds: it goes wrong now and
+// then, then more and more (the same bugs as the rain's, below), with up to lines thin green lines flashing across it
+// at once and its colours draining to green, and goes dark over its last dark seconds.
+// Then the code rain, in seconds (time, fading in and out over fade): a grid of columns x rows, each column falling
+// at a speed between speed[0] and speed[1] rows a second with a trail of symbols.
 // Its bugs: the rain is cut into stretches of every seconds; in odds of them it glitches for length seconds (a torn
 // band tall[0] to tall[1] px high, its slices slid up to reach / 2 px, or a roll of the whole picture), the
 // whole screen warped in waves up to wave px.
 const MATRIX = {
+  intro: 1.6, lines: 9, dark: .25,
   time: 3.5, fade: .35, columns: 18, rows: 14, trail: 9, speed: [12, 24],
   bugs: { every: .45, length: .18, odds: .9, reach: 90, tall: [24, 70], wave: 10 },
   black: "#020803", rain: "#22d34b", head: "#d8ffe0", glyphs: "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜ0123456789Z:.=*+<>",
@@ -349,8 +356,8 @@ const MATRIX = {
 // left on screen for hold seconds once typed: it flickers on about flicker of its frames, and tears apart and fades
 // away over its last out seconds.
 const MATRIX_MESSAGE = { text: "Wake up...", size: 32, rate: 14, blink: .45, hold: 2, flicker: .12, out: .5 };
-// The whole show: the rain, then the message typed and left a moment.
-const MATRIX_END = MATRIX.time + MATRIX_MESSAGE.text.length / MATRIX_MESSAGE.rate + MATRIX_MESSAGE.hold;
+// The whole show: the takeover, the rain, then the message typed and left a moment.
+const MATRIX_END = MATRIX.intro + MATRIX.time + MATRIX_MESSAGE.text.length / MATRIX_MESSAGE.rate + MATRIX_MESSAGE.hold;
 const GLYPHS = "01{}<>/\\#$%&*+=?!;:[]";
 function createScreenDisplay() {
   const canvas = document.createElement("canvas");
@@ -491,18 +498,32 @@ function createScreenDisplay() {
     glitch(frame + 101);
     if (frame % 4 === 0) { context.globalAlpha = .45; rect(SCREEN.flash, 0, 0, width, height); context.globalAlpha = 1; }
   };
-  // An old tube switching off, u from 0 to 1: the picture squashes into a bright line, then a dot, then black.
-  const collapse = (u) => {
-    rect(SCREEN.black, 0, 0, width, height);
+  // An old tube switching off, u from 0 to 1: the picture squashes into a bright line (of colour line, on dark), then a
+  // dot, then black.
+  const collapse = (u, line = SCREEN.flash, dark = SCREEN.black) => {
+    rect(dark, 0, 0, width, height);
     const lineHeight = u < .5 ? THREE.MathUtils.lerp(height, 3, u / .5) : 3;
     const lineWidth = u < .5 ? width : THREE.MathUtils.lerp(width, 3, (u - .5) / .5);
-    if (u < 1) rect(SCREEN.flash, (width - lineWidth) / 2, (height - lineHeight) / 2, lineWidth, lineHeight);
+    if (u < 1) rect(line, (width - lineWidth) / 2, (height - lineHeight) / 2, lineWidth, lineHeight);
   };
-  // A short circuit, seconds in: the desktop tears and flashes, then the picture collapses.
-  const crash = (seconds) => {
+  // A short circuit, seconds in: the desktop tears and flashes, then the picture collapses. If it hits during the
+  // Matrix show (show: how far into it), the show carries on instead, torn by its green bugs at their worst with green
+  // flashes, and collapses into a green line.
+  const crash = (seconds, show = null) => {
     blank = false;
-    if (seconds < CRASH.tear) tear(seconds, desktop);
-    else collapse(Math.min(1, (seconds - CRASH.tear) / (CRASH.end - CRASH.tear)));
+    const u = Math.min(1, (seconds - CRASH.tear) / (CRASH.end - CRASH.tear));
+    if (show === null) {
+      if (seconds < CRASH.tear) tear(seconds, desktop);
+      else collapse(u);
+    } else if (seconds < CRASH.tear) {
+      matrix(show + seconds);
+      const frame = Math.floor(seconds * 30);
+      greenBugs(frame, 1);
+      greenBugs(frame + 101, 1);
+      greenify(1);
+      greenLines(frame, MATRIX.lines);
+      if (frame % 4 === 0) { context.globalAlpha = .45; rect(MATRIX.head, 0, 0, width, height); context.globalAlpha = 1; }
+    } else collapse(u, MATRIX.head, MATRIX.black);
     texture.needsUpdate = true;
   };
   // The first boot after a short circuit, seconds in: it starts, stutters and tears, then gives up.
@@ -527,11 +548,110 @@ function createScreenDisplay() {
       top += band;
     }
   };
-  // The Matrix's falling green code, seconds in: columns of symbols raining at their own speeds, each led by a pale
-  // head and trailing off into the dark; the symbols keep changing. Fades in from and out to black.
+  // The whole picture rolled down by a jumping amount, what drops off the bottom coming back in at the top, with a
+  // bright green seam; frame picks the amount.
+  const roll = (frame) => {
+    const drop = Math.floor(height * (.15 + chance(frame + 350) * .5));
+    copyContext.drawImage(canvas, 0, 0);
+    context.drawImage(copy, 0, 0, width, height - drop, 0, drop, width, height - drop);
+    context.drawImage(copy, 0, height - drop, width, drop, 0, 0, width, drop);
+    rect(MATRIX.rain, 0, drop - 1, width, 2);
+  };
+  // Each thin row slid sideways along a wave up to wave px that ripples down the screen; frame picks where it is.
+  const warp = (frame, wave) => {
+    copyContext.drawImage(canvas, 0, 0);
+    rect(MATRIX.black, 0, 0, width, height);
+    const phase = chance(frame + 420) * Math.PI * 2;
+    for (let y = 0; y < height; y += 2) {
+      const shift = Math.sin(y * .06 + phase) * wave + Math.sin(y * .23 + phase * 3) * wave * .35;
+      context.drawImage(copy, 0, y, width, 2, shift, y, width, 2);
+    }
+  };
+  // Every colour in the picture turned towards the rain's green by amount (0 to 1), keeping its lightness.
+  const greenify = (amount) => {
+    context.globalCompositeOperation = "color";
+    context.globalAlpha = amount;
+    rect(MATRIX.rain, 0, 0, width, height);
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = "source-over";
+  };
+  // The Matrix's bugs at strength u (0 to 1), frame picking their pattern: a band of the picture slips sideways, from
+  // u .4 it also warps and from u .5 it may roll.
+  const greenBugs = (frame, u) => {
+    const { reach, tall, wave } = MATRIX.bugs;
+    const bandHeight = (tall[0] + chance(frame + 140) * (tall[1] - tall[0])) * (.5 + u);
+    const top = chance(frame + 210) * (height - bandHeight);
+    slip(frame, reach * (.3 + .7 * u), top, top + bandHeight);
+    if (u > .5 && chance(frame + 800) < .4) roll(frame);
+    if (u > .4) warp(frame, wave * u);
+  };
+  // count thin green lines flashing across the picture, frame picking where: most across the whole screen, some only
+  // part of it; a few pale like the rain's heads. 2 to 4 px, as the screen is shown small.
+  const greenLines = (frame, count) => {
+    for (let i = 0; i < count; i++) {
+      const n = frame * 13 + i * 5;
+      const whole = chance(n + 1200) < .6, from = whole ? 0 : chance(n + 1201) * width * .7;
+      context.globalAlpha = .5 + chance(n + 1202) * .5;
+      rect(chance(n + 1203) < .25 ? MATRIX.head : MATRIX.rain, from, Math.floor(chance(n + 1204) * height),
+        whole ? width : width * (.15 + chance(n + 1205) * .5), 2 + Math.floor(chance(n + 1206) * 3));
+    }
+    context.globalAlpha = 1;
+  };
+
+  // What the screen showed when the Matrix took over: its picture, or black if it was off (beforeBlank).
+  const before = document.createElement("canvas");
+  before.width = width;
+  before.height = height;
+  let beforeBlank = false;
+  const keepBefore = () => {
+    const beforeContext = before.getContext("2d");
+    beforeContext.fillStyle = MATRIX.black;
+    beforeContext.fillRect(0, 0, width, height);
+    if (!blank) beforeContext.drawImage(canvas, 0, 0);
+    beforeBlank = blank;
+  };
+  // The Matrix taking over, seconds in. The picture kept by keepBefore goes wrong now and then, then more and more
+  // often until it never stops: a band of it slips sideways, later it also rolls and warps; its colours drain to green;
+  // and it goes dark for the rain. A dark screen instead lets the rain break through in torn bands, a few now and then
+  // at first, then more and more, slid sideways less and less, until the rain fills it and carries on. Either way thin
+  // green lines, a few then many, flash across it.
+  const takeOver = (seconds) => {
+    const { intro, lines, dark, bugs } = MATRIX;
+    const u = Math.min(1, seconds / intro), frame = Math.floor(seconds * 24);
+    if (beforeBlank) {
+      drawRain(seconds);
+      copyContext.drawImage(canvas, 0, 0);
+      rect(MATRIX.black, 0, 0, width, height);
+      // The bands change a dozen times a second.
+      const pattern = Math.floor(seconds * 12);
+      for (let top = 0, n = 0; top < height; n++) {
+        const band = Math.min(height - top, 6 + Math.floor(chance(pattern * 37 + n) * 26));
+        if (chance(pattern * 53 + n + 1500) < .04 + .96 * u * u) {
+          const shift = (chance(pattern * 19 + n + 1600) - .5) * bugs.reach * (1 - u);
+          context.drawImage(copy, 0, top, width, band, shift, top, width, band);
+        }
+        top += band;
+      }
+    } else {
+      context.drawImage(before, 0, 0);
+      if (chance(frame + 700) < .15 + .85 * u * u) greenBugs(frame, u);
+      greenify(u * u);
+    }
+    greenLines(frame, Math.round(lines * u * u) + (chance(frame + 900) < .3 + u ? 1 : 0));
+    const fade = (seconds - (intro - dark)) / dark;
+    if (fade > 0 && !beforeBlank) { context.globalAlpha = Math.min(1, fade); rect(MATRIX.black, 0, 0, width, height); context.globalAlpha = 1; }
+    texture.needsUpdate = true;
+  };
+  // The Matrix show, seconds in: the takeover, the rain, then the message.
   const matrix = (seconds) => {
     blank = false;
-    if (seconds >= MATRIX.time) { message(seconds - MATRIX.time); return; }
+    if (seconds < MATRIX.intro) takeOver(seconds);
+    else if (seconds < MATRIX.intro + MATRIX.time) rain(seconds);
+    else message(seconds - MATRIX.intro - MATRIX.time);
+  };
+  // The Matrix's falling green code, seconds into the show: columns of symbols raining at their own speeds, each led
+  // by a pale head and trailing off into the dark; the symbols keep changing.
+  const drawRain = (seconds) => {
     const { columns, rows, trail, speed } = MATRIX;
     const cellWidth = width / columns, cellHeight = height / rows;
     rect(MATRIX.black, 0, 0, width, height);
@@ -553,6 +673,12 @@ function createScreenDisplay() {
       }
     }
     context.globalAlpha = 1;
+  };
+  // The rain on its own, seconds into the show (from MATRIX.intro): fades in from black, unless it broke through a
+  // dark screen and is already there, and out to black.
+  const rain = (show) => {
+    drawRain(show);
+    const seconds = show - MATRIX.intro;
     // Bugs in the Matrix: in most stretches of the rain, the picture glitches for a split second. The whole screen
     // warps in waves, and each time something else goes wrong too, in turn: a band of it tears sideways, or the whole
     // picture rolls down like a losing hold. All in the rain's green.
@@ -564,28 +690,12 @@ function createScreenDisplay() {
       const frame = Math.floor(seconds * 24);
       const kind = ["tear", "roll"][stretch % 2];
       if (kind === "tear") slip(frame, reach, top, top + bandHeight);
-      else {
-        // Rolled down by a jumping amount, what drops off the bottom coming back in at the top, with a bright seam.
-        const drop = Math.floor(height * (.15 + chance(frame + 350) * .5));
-        copyContext.drawImage(canvas, 0, 0);
-        context.drawImage(copy, 0, 0, width, height - drop, 0, drop, width, height - drop);
-        context.drawImage(copy, 0, height - drop, width, drop, 0, 0, width, drop);
-        rect(MATRIX.rain, 0, drop - 1, width, 2);
-      }
-      // The warp: each thin row slid sideways along a wave that ripples down the screen and shifts every frame.
-      copyContext.drawImage(canvas, 0, 0);
-      rect(MATRIX.black, 0, 0, width, height);
-      const phase = chance(frame + 420) * Math.PI * 2;
-      for (let y = 0; y < height; y += 2) {
-        const shift = Math.sin(y * .06 + phase) * wave + Math.sin(y * .23 + phase * 3) * wave * .35;
-        context.drawImage(copy, 0, y, width, 2, shift, y, width, 2);
-      }
+      else roll(frame);
+      warp(frame, wave);
       // Back to the rain's green: any colour the glitches made takes its hue, keeping its lightness.
-      context.globalCompositeOperation = "color";
-      rect(MATRIX.rain, 0, 0, width, height);
-      context.globalCompositeOperation = "source-over";
+      greenify(1);
     }
-    const fade = Math.max(0, 1 - seconds / MATRIX.fade, 1 - (MATRIX.time - seconds) / MATRIX.fade);
+    const fade = Math.max(0, beforeBlank ? 0 : 1 - seconds / MATRIX.fade, 1 - (MATRIX.time - seconds) / MATRIX.fade);
     if (fade > 0) { context.globalAlpha = Math.min(1, fade); rect(SCREEN.black, 0, 0, width, height); context.globalAlpha = 1; }
     texture.needsUpdate = true;
   };
@@ -637,7 +747,7 @@ function createScreenDisplay() {
     texture.needsUpdate = true;
   };
   clear();
-  return { texture, draw: show, clear, click, reset, crash, fail, matrix, point, width, height };
+  return { texture, draw: show, clear, click, reset, crash, fail, keepBefore, matrix, point, width, height };
 }
 
 // A VHS cassette standing on its long edge on y = 0, its top face (label and window) towards +z: .095 long, .052 tall,
@@ -754,13 +864,13 @@ function buildToolbox() {
   // The screwdriver lying on top of the pliers (placed below), along the groove between their handles, handle to the
   // left, blade to the right, on the face between two lobes of its handle.
   const screwdriver = buildScrewdriver();
-  screwdriver.position.set(-.09, .028, -.0205);
+  screwdriver.position.set(-.088, .0289, -.0205);
   screwdriver.rotation.set(0, Math.PI / 3, -Math.PI / 2, "ZXY");
   toolbox.add(screwdriver);
   // The pliers lying flat on the box floor on their guards, under the screwdriver, in the strip behind the hammer's
   // handle, handles to the left, nose to the right short of the hammer's head, the stamped boss up.
   const pliers = buildPliers();
-  pliers.position.set(.025, .006 + 72 * PLIERS.length / 1275, -.0205);
+  pliers.position.set(.029, .006 + 72 * PLIERS.length / 1275, -.0205);
   pliers.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 0, 1),
     new THREE.Vector3(0, 1, 0)));
   toolbox.add(pliers);
@@ -1030,9 +1140,9 @@ function buildPliers() {
   }
 
   // As a rigid body (see simulateDrops), mass 1: the steel head weighs about half, so the centre of mass sits just
-  // behind the guards. Inertia of a flat bar .11 by .033. Contact points: the head's corners, and round each guard
-  // and grip, on both faces. Steel and plastic on the floor: a dull knock. For knocks against the other pieces: the
-  // head and each handle as capsules.
+  // behind the guards. Inertia of a flat bar .11 by .033, grown with the square of the size. Contact points: the
+  // head's corners, and round each guard and grip, on both faces. Steel and plastic on the floor: a dull knock. For
+  // knocks against the other pieces: the head and each handle as capsules.
   const corner = .79;
   const points = [[206, 20, half * .55], [410, 87, half], [600, 87, half], [533, 0, half + 5]].flatMap(([x, y, z]) =>
     [[x, y, z], [x, -y, z], [x, y, -z], [x, -y, -z]].map(([px, py, pz]) => [(px - 205) * k, py * k, pz * k]));
@@ -1044,7 +1154,7 @@ function buildPliers() {
   const capsule = (x1, y1, x2, y2, radius) => ({ a: new THREE.Vector3((x1 - 205) * k, y1 * k, 0), b: new THREE.Vector3((x2 - 205) * k, y2 * k, 0), radius: radius * k });
   pliers.userData.body = {
     com: new THREE.Vector3((700 - 205) * k, 0, 0),
-    inertia: new THREE.Vector3(.0001, .001, .0011),
+    inertia: new THREE.Vector3(.0001, .001, .0011).multiplyScalar((PLIERS.length / .11) ** 2),
     points: points.map(([x, y, z]) => new THREE.Vector3(x, y, z)),
     bounce: .2,
     friction: .45,
@@ -1292,6 +1402,44 @@ function closestOnSegments(p1, q1, p2, q2) {
     s = clamp((b * t - c) / a);
   }
   return [p1.clone().addScaledVector(d1, s), p2.clone().addScaledVector(d2, t)];
+}
+
+// The edge strokes of a geometry, as line segments: like THREE.EdgesGeometry, every edge where its faces fold by more
+// than angle degrees and every open border, but not where it is shaded smoothly across the fold (the same normal on
+// both faces at both ends of the edge): those are the facets of a curved surface (a cylinder's sides, a torus, a
+// model's rounded parts), and stroking them only covers it in short stripes.
+function creaseLines(geometry, angle) {
+  const position = geometry.attributes.position, normal = geometry.attributes.normal, index = geometry.index;
+  const corner = (i) => (index ? index.getX(i) : i);
+  const key = (v) => `${Math.round(position.getX(v) * 1e6)},${Math.round(position.getY(v) * 1e6)},${Math.round(position.getZ(v) * 1e6)}`;
+  const sameNormal = (v, w) => Boolean(normal) && normal.getX(v) * normal.getX(w) + normal.getY(v) * normal.getY(w) + normal.getZ(v) * normal.getZ(w) > .9999;
+  const limit = Math.cos(THREE.MathUtils.degToRad(angle));
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const open = new Map(), lines = [];
+  const push = (v, w) => lines.push(position.getX(v), position.getY(v), position.getZ(v), position.getX(w), position.getY(w), position.getZ(w));
+  for (let i = 0; i < (index ? index.count : position.count); i += 3) {
+    const corners = [corner(i), corner(i + 1), corner(i + 2)];
+    a.fromBufferAttribute(position, corners[0]);
+    b.fromBufferAttribute(position, corners[1]);
+    c.fromBufferAttribute(position, corners[2]);
+    const face = new THREE.Triangle(a, b, c).getNormal(new THREE.Vector3());
+    if (face.lengthSq() === 0) continue;
+    for (let k = 0; k < 3; k++) {
+      const v = corners[k], w = corners[(k + 1) % 3], kv = key(v), kw = key(w);
+      if (kv === kw) continue;
+      const id = kv < kw ? `${kv}|${kw}` : `${kw}|${kv}`;
+      const other = open.get(id);
+      if (!other) { open.set(id, { v, w, kv, face }); continue; }
+      open.delete(id);
+      // The other face's corners at this edge's two ends.
+      const [ov, ow] = other.kv === kv ? [other.v, other.w] : [other.w, other.v];
+      if (other.face.dot(face) <= limit && !(sameNormal(v, ov) && sameNormal(w, ow))) push(v, w);
+    }
+  }
+  for (const { v, w } of open.values()) push(v, w);
+  const lineGeometry = new THREE.BufferGeometry();
+  lineGeometry.setAttribute("position", new THREE.Float32BufferAttribute(lines, 3));
+  return lineGeometry;
 }
 
 // Sets an object to its pose time seconds into a track from simulateDrops, between the kept poses.
@@ -2021,11 +2169,13 @@ function createDeskRoom() {
   // The room's frame on the page it is shown on, if any (see attach).
   let host = null;
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  // Drawn at twice the screen's pixels each way (the browser scales the picture down), so small things such as the
-  // tools on the floor come out smooth; at the screen's own pixels where the browser draws without a graphics card.
-  // Oversample: canvas pixels to a screen pixel.
-  const screenRatio = window.devicePixelRatio || 1;
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+  // The room is drawn into sampled, multisampled and at supersample times the screen's pixels each way, so small things
+  // such as the tools on the floor come out smooth; then each screen pixel's patch of it is averaged onto the canvas,
+  // which matches the screen's pixels one for one (see resize). Left to the browser, scaling a bigger canvas down to
+  // the screen samples it unevenly wherever the two don't line up (a canvas placed a fraction of a pixel off, a screen
+  // scaled to 125 %), and thin lines break into steps. Supersample is 2, or 1 where the browser draws without a
+  // graphics card, and on screens of 2x and more, fine enough already.
   const gl = renderer.getContext();
   let graphics = String(gl.getParameter(gl.RENDERER));
   if (graphics === "WebKit WebGL") {
@@ -2033,8 +2183,35 @@ function createDeskRoom() {
     if (unmasked) graphics = String(gl.getParameter(unmasked.UNMASKED_RENDERER_WEBGL));
   }
   const software = /swiftshader|llvmpipe|software|basic render/i.test(graphics);
-  renderer.setPixelRatio(software ? Math.min(screenRatio, 2) : 2);
-  const oversample = Math.max(1, renderer.getPixelRatio() / screenRatio);
+  let supersample = 1;
+  const sampled = new THREE.WebGLRenderTarget(1, 1, { samples: 4, colorSpace: THREE.SRGBColorSpace });
+  // The averaging: four taps between the sampled pixels of each screen pixel's patch (all at its middle when there is
+  // just one), its colour then encoded for the screen, which wants it premultiplied by its alpha (as it is stored).
+  const shrink = new THREE.ShaderMaterial({
+    uniforms: { map: { value: sampled.texture }, offset: { value: new THREE.Vector2() } },
+    vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+    fragmentShader: `uniform sampler2D map; uniform vec2 offset; varying vec2 vUv;
+      void main() {
+        vec4 colour = (texture2D(map, vUv - offset) + texture2D(map, vUv + offset)
+          + texture2D(map, vUv + vec2(offset.x, -offset.y)) + texture2D(map, vUv + vec2(-offset.x, offset.y))) * .25;
+        if (colour.a > 0.0) colour.rgb /= colour.a;
+        gl_FragColor = colour;
+        #include <colorspace_fragment>
+        gl_FragColor.rgb *= gl_FragColor.a;
+      }`,
+    blending: THREE.NoBlending, depthTest: false, depthWrite: false,
+  });
+  const flat = new THREE.Scene(), flatCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const shrinkQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), shrink);
+  shrinkQuad.frustumCulled = false;
+  flat.add(shrinkQuad);
+  // Draws the room into sampled, then averages it onto the canvas.
+  const draw = () => {
+    renderer.setRenderTarget(sampled);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    renderer.render(flat, flatCamera);
+  };
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -2084,9 +2261,12 @@ function createDeskRoom() {
   let last = 0;
 
 
-  // Thin dark strokes on the hard edges give an illustrated, technical-drawing look. A stroke is always one canvas pixel
-  // wide: when oversampled, it is drawn that much darker so it still reads as one screen pixel.
-  const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1b2127, transparent: true, opacity: Math.min(1, .32 * oversample) });
+  // Thin dark strokes on the hard edges give an illustrated, technical-drawing look. A stroke is always one pixel of the
+  // sampled picture wide: when supersampled, it is drawn that much darker (see resize) so it still reads as one screen
+  // pixel.
+  const edgeMaterial = new THREE.LineBasicMaterial({ color: EDGE_STROKE.colour, transparent: true, opacity: EDGE_STROKE.opacity });
+  // It and its copies, whose darkness resize keeps up to date.
+  const strokeMaterials = [edgeMaterial];
 
   // edgeAngle: how sharp a fold must be, in degrees, to get an edge stroke; either one angle, or angles by material
   // name with "*" for the rest.
@@ -2105,7 +2285,7 @@ function createDeskRoom() {
       child.material = Array.isArray(child.material) ? materials : materials[0];
       if (child.userData.noEdges) return;
       const angle = typeof edgeAngle === "number" ? edgeAngle : edgeAngle[source[0].name] ?? edgeAngle["*"];
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(child.geometry, angle), edgeMaterial);
+      const edges = new THREE.LineSegments(creaseLines(child.geometry, angle), edgeMaterial);
       edges.raycast = () => {};
       child.add(edges);
     });
@@ -2217,8 +2397,8 @@ function createDeskRoom() {
     // StarCraft's Terran emblem (terran.png), centred above the Vitality bee, its black ink glossy.
     sticker("terran.png", note * .75, ...at(0, 1.1), -6, null, 0, false, STICKERS.terran, true);
 
-    // Team Vitality's bee, from the team's logo (vita.png), on the left, a holo one.
-    sticker("vita.png", note * .65, ...at(.2, 2.25), 10, null, 0, true);
+    // Team Vitality's bee, from the team's logo (vita.webp), on the left, a holo one.
+    sticker("vita.webp", note * .65, ...at(.2, 2.25), 10, null, 0, true);
 
     // Counter-Strike's logo (cs.png, on a white surround), on the right.
     sticker("cs.png", note * .6, ...at(-.16, 3.2), -8, null, .0008);
@@ -3098,7 +3278,8 @@ function createDeskRoom() {
     if (!portals[0].visible) return;
     scene.updateMatrixWorld();
     camera.updateMatrixWorld();
-    renderer.getDrawingBufferSize(bufferSize);
+    // The pictures match the sampled one the room is drawn into, which the portals look them up by.
+    bufferSize.set(sampled.width, sampled.height);
     // The portals themselves stay out of the pictures, and the shadows drawn for the last frame are reused.
     for (const portal of portals) portal.visible = false;
     const shadows = renderer.shadowMap.autoUpdate;
@@ -3141,6 +3322,7 @@ function createDeskRoom() {
     // Its own clipped copy of the edge strokes, so cutting it never cuts the rest of the room's.
     const strokes = edgeMaterial.clone();
     strokes.clippingPlanes = [cut];
+    strokeMaterials.push(strokes);
     model.traverse((child) => {
       if (child.isLineSegments) child.material = strokes;
       else if (child.isMesh) Object.assign(child.material, { clippingPlanes: [cut], clipShadows: true });
@@ -3392,12 +3574,16 @@ function createDeskRoom() {
   };
   const smokeEnd = .25 + (SMOKE.puffs - 1) * SMOKE.gap + SMOKE.life;
   // fried: shorted out and not yet tried again, so the next boot fails once. failing: that failed boot is playing.
-  let crashStart = null, fried = false, failing = false;
+  // crashShow: how far into the Matrix show the short circuit hit, if it did.
+  let crashStart = null, fried = false, failing = false, crashShow = null;
   // The Matrix code rain set off by the pills: when it started, and whether the screen was off before it.
   let matrixStart = null, matrixWasOff = false;
   const screen = addPart(computer, (t) => {
     screenMaterial.color.lerpColors(screenOff, screenOn, t);
     screenMaterial.emissive.setScalar(t * .5);
+    // Off, plain black: as a black metal it gives back none of the room's light either, where a matt black still
+    // greys a little in it.
+    screenMaterial.metalness = 1 - t;
     // The power LED glows red while the computer is on, and stutters while it shorts out or fails to boot.
     const stutter = (crashStart !== null || failing) && screen.state.target === 1 ? (Math.sin(performance.now() * .09) > 0 ? 1 : .15) : 1;
     ledMaterial.color.lerpColors(ledOff, ledOn, t * stutter);
@@ -3407,14 +3593,19 @@ function createDeskRoom() {
   // Coffee in the case: the picture tears and collapses, the computer cuts out and smoke rises from it.
   const shortCircuit = () => {
     crashStart = performance.now();
+    crashShow = matrixStart === null ? null : (crashStart - matrixStart) / 1000;
     fried = true;
     matrixStart = null;
   };
-  // A click on the pills: the screen lights up, even with the computer off, and shows the code rain for a few seconds,
-  // then goes back to what it was. Not while the computer shorts out or fails to boot.
+  // A click on the pills: the screen lights up, even with the computer off, glitches as the Matrix takes over what it
+  // showed, shows the code rain and its message for a few seconds, then goes back to what it was. Not while the
+  // computer shorts out or fails to boot.
   function playMatrix() {
     if (crashStart !== null || failing) return;
-    if (matrixStart === null) matrixWasOff = screen.state.target === 0;
+    if (matrixStart === null) {
+      matrixWasOff = screen.state.target === 0;
+      display.keepBefore();
+    }
     matrixStart = performance.now();
     screen.state.target = 1;
   }
@@ -3435,7 +3626,7 @@ function createDeskRoom() {
   screen.busy = (now) => {
     if (crashStart !== null) {
       const seconds = (now - crashStart) / 1000;
-      if (seconds < CRASH.end && screen.state.target === 1) display.crash(seconds);
+      if (seconds < CRASH.end && screen.state.target === 1) display.crash(seconds, crashShow);
       else screen.state.target = 0;
       poseSmoke(seconds);
       if (seconds < smokeEnd) return true;
@@ -3713,8 +3904,11 @@ function createDeskRoom() {
   radius = box.getBoundingSphere(new THREE.Sphere()).radius;
   resize();
   // The shaders compile in the background where the browser can, so the first frame doesn't freeze the page; the room
-  // fades in once they are ready.
-  renderer.compileAsync(scene, camera).catch(() => {}).then(() => {
+  // fades in once they are ready. Compiled for drawing into sampled, as they will.
+  renderer.setRenderTarget(sampled);
+  const shadersReady = renderer.compileAsync(scene, camera);
+  renderer.setRenderTarget(null);
+  shadersReady.catch(() => {}).then(() => {
     compiled = true;
     host?.classList.add("has-room");
     wake();
@@ -3789,17 +3983,29 @@ function createDeskRoom() {
   });
 
   function resize() {
-    // The canvas overflows its frame (see .about-room-canvas) so things can fall or spill past the frame's edges;
-    // the camera still frames the room in the frame and renders the overflow around it.
+    // The canvas overflows its frame by a quarter of it on each side (see .about-room-canvas) so things can fall or
+    // spill past the frame's edges; the camera still frames the room in the frame and renders the overflow around it.
+    // Its edges are moved to the nearest screen pixels and its picture is exactly that many pixels, so the browser shows
+    // it as drawn. Sizes below in screen pixels.
     if (!host) return;
-    const frameWidth = host.clientWidth, frameHeight = host.clientHeight;
-    const width = canvas.clientWidth, height = canvas.clientHeight;
-    if (!width || !height || !frameWidth || !frameHeight) return;
+    const frame = host.getBoundingClientRect();
+    if (!frame.width || !frame.height) return;
+    const ratio = window.devicePixelRatio || 1;
+    const left = Math.round((frame.left - frame.width * .25) * ratio), top = Math.round((frame.top - frame.height * .25) * ratio);
+    const width = Math.round((frame.right + frame.width * .25) * ratio) - left;
+    const height = Math.round((frame.bottom + frame.height * .25) * ratio) - top;
+    Object.assign(canvas.style, {
+      left: `${left / ratio - frame.left}px`, top: `${top / ratio - frame.top}px`, width: `${width / ratio}px`, height: `${height / ratio}px`,
+    });
+    supersample = software || ratio >= 2 ? 1 : 2;
     renderer.setSize(width, height, false);
-    renderer.getDrawingBufferSize(outlineUniforms.outlineResolution.value);
-    outlineUniforms.outlineWidth.value = TOOL_OUTLINE.width * renderer.getPixelRatio();
-    camera.aspect = frameWidth / frameHeight;
-    camera.setViewOffset(frameWidth, frameHeight, canvas.offsetLeft, canvas.offsetTop, width, height);
+    sampled.setSize(width * supersample, height * supersample);
+    shrink.uniforms.offset.value.set((supersample - 1) / 2 / sampled.width, (supersample - 1) / 2 / sampled.height);
+    outlineUniforms.outlineResolution.value.set(sampled.width, sampled.height);
+    outlineUniforms.outlineWidth.value = TOOL_OUTLINE.width * ratio * supersample;
+    for (const material of strokeMaterials) material.opacity = Math.min(1, EDGE_STROKE.opacity * supersample);
+    camera.aspect = frame.width / frame.height;
+    camera.setViewOffset(frame.width * ratio, frame.height * ratio, left - frame.left * ratio, top - frame.top * ratio, width, height);
     // Keep the whole room in view whatever the frame's shape: fit its bounding sphere to the narrower field of view.
     const vertical = THREE.MathUtils.degToRad(camera.fov) / 2;
     const horizontal = Math.atan(Math.tan(vertical) * camera.aspect);
@@ -3810,8 +4016,10 @@ function createDeskRoom() {
     wake();
   }
 
+  // Kept fitted as the frame changes size, the page zooms (the screen's pixels change), or the fonts arriving move it.
   const observer = new ResizeObserver(resize);
-  observer.observe(canvas);
+  window.addEventListener("resize", resize);
+  document.fonts?.ready.then(resize);
 
   function tick(now) {
     frame = 0;
@@ -3824,7 +4032,7 @@ function createDeskRoom() {
       part.apply(part.state.value);
     }
     beforeRender?.();
-    renderer.render(scene, camera);
+    draw();
     if (moving) wake();
     else last = 0;
   }
@@ -3834,24 +4042,18 @@ function createDeskRoom() {
   }
 
   return {
-    // Read straight after drawing, while the canvas still holds the frame. Brought down to the screen's pixels, as the
-    // browser shows the oversampled canvas.
+    // Read straight after drawing, while the canvas still holds the frame (at the screen's pixels).
     picture(type, quality) {
       beforeRender?.();
-      renderer.render(scene, camera);
-      if (oversample === 1) return canvas.toDataURL(type, quality);
-      const shown = document.createElement("canvas");
-      shown.width = Math.round(canvas.width / oversample);
-      shown.height = Math.round(canvas.height / oversample);
-      const context = shown.getContext("2d");
-      context.imageSmoothingQuality = "high";
-      context.drawImage(canvas, 0, 0, shown.width, shown.height);
-      return shown.toDataURL(type, quality);
+      draw();
+      return canvas.toDataURL(type, quality);
     },
     // Shows the room in this frame, straight away if it is ready and otherwise once the shaders are in.
     attach(next) {
       host = next;
       host.append(canvas);
+      observer.disconnect();
+      observer.observe(host);
       attached = true;
       if (compiled) host.classList.add("has-room");
       resize();

@@ -718,8 +718,8 @@ function enableHeroAutoplay(frame) {
 
 const toyModules = {
   "source-light": () => import(new URL("three.js/source/source-light.js?v=65", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=51", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=51", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=52", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=52", document.baseURI).href),
 };
 const supportsMiniGames = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
@@ -837,7 +837,7 @@ function enableHeroDrag(frame) {
     track.append(frame.querySelector(".controller-viewer"));
     let disposed = false;
     frame.addEventListener("hero-dispose", () => { disposed = true; }, { once: true });
-    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=61", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=62", document.baseURI).href)
       .then(module => { if (!disposed && frame.isConnected) return module.enableController(frame); })
       .catch(error => {
         if (!disposed) { frame.querySelector(".controller-error").hidden = false; frame.classList.add("controller-unavailable"); }
@@ -1166,7 +1166,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   projectView.querySelectorAll(".toy-widget").forEach(enableToy);
   // Impact's tags shatter into cubes like its title.
   const impactPage = project.id === "impact" ? projectView.firstElementChild : null;
-  if (impactPage && supportsMiniGames()) import(new URL("three.js/impact/voxel-tags.js?v=5", document.baseURI).href)
+  if (impactPage && supportsMiniGames()) import(new URL("three.js/impact/voxel-tags.js?v=6", document.baseURI).href)
     .then(module => {
       if (!impactPage.isConnected || impactPage.classList.contains("page-outgoing")) return;
       impactPage.addEventListener("page-dispose", module.enableVoxelTags(impactPage), { once: true });
@@ -1222,7 +1222,7 @@ function renderAbout(navigationDirection = -1) {
   // the page has slid in, then kept: later visits show it as it was left, sliding in with the page.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=323", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=332", document.baseURI).href)
     .then(module => {
       const show = () => {
         if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;

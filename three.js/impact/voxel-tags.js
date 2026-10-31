@@ -1,4 +1,4 @@
-import * as THREE from "../vendor/three.module.js";
+import * as THREE from "../vendor/r180/three.module.js";
 import { stepSpring, applySpray } from "./spring.js?v=8";
 import { createResumeLock } from "../game-resume-lock.js";
 

@@ -1,4 +1,4 @@
-import * as THREE from "../../vendor/three.module.js";
+import * as THREE from "../../vendor/r180/three.module.js";
 
 // Proportions reconstructed from controller/1.webp and the four prototype photos.
 // Interior is an explanatory model, not a dimensionally exact CAD reconstruction.

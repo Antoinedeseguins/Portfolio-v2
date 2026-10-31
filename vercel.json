@@ -12,5 +12,15 @@
     { "source": "/Source", "destination": "/index.html" },
     { "source": "/ARUP", "destination": "/index.html" },
     { "source": "/About-me", "destination": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/three.js/vendor/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/three.js/about/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, stale-while-revalidate=2592000" }]
+    }
   ]
 }

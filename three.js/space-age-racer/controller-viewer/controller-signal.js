@@ -1,4 +1,4 @@
-import * as THREE from "../../vendor/three.module.js";
+import * as THREE from "../../vendor/r180/three.module.js";
 
 export function createControllerSignal(model) {
   const group = new THREE.Group();
