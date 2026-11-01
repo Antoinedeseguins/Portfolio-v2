@@ -1069,6 +1069,16 @@ function formatProjectText(value) {
   return escapeText(value).replace(/\*\*([^*]+)\*\*/g, '<strong class="project-text-bold">$1</strong>');
 }
 
+// A project's identity card: its key facts by name in content.json ("facts"), shown in this order with these labels,
+// each only if given.
+const projectFactLabels = { role: "Role", duration: "Duration", team: "Team", engine: "Engine", platforms: "Platforms", tools: "Tools" };
+
+function renderProjectFacts(facts = {}) {
+  const shown = Object.entries(projectFactLabels).filter(([key]) => facts[key]);
+  if (!shown.length) return "";
+  return `<div class="project-facts"><dl aria-label="Project facts">${shown.map(([key, label]) => `<div><dt>${label}</dt><dd>${escapeText(facts[key])}</dd></div>`).join("")}</dl></div>`;
+}
+
 function projectPageMarkup(project, imageIndex) {
   const tags = project.tags || [];
   return `
@@ -1097,7 +1107,7 @@ function projectPageMarkup(project, imageIndex) {
         </div>` : `<h1 class="project-title">${escapeText(project.title)}</h1>`}
         <div class="copy-rule" aria-hidden="true"></div>
         ${project.context ? `<p class="project-subtitle">${escapeText(project.context)}</p>` : ""}
-        ${tags.length ? `<div class="project-meta" aria-label="Project skills">${tags.map(renderProjectTag).join("")}</div>` : ""}
+        ${renderProjectFacts(project.facts)}
         ${(project.sections || []).filter((section) => section.title || section.content).map((section) => `
           <section class="project-paragraph">
             ${section.title ? `<h2 class="project-subtitle"><span class="section-dot" aria-hidden="true"></span>${escapeText(section.title)}</h2>` : ""}
@@ -1222,7 +1232,7 @@ function renderAbout(navigationDirection = -1) {
   // the page has slid in, then kept: later visits show it as it was left, sliding in with the page.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=332", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=337", document.baseURI).href)
     .then(module => {
       const show = () => {
         if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;
@@ -1560,12 +1570,15 @@ async function initializePortfolio() {
     }
     if (!content || typeof content.title !== "string" || typeof content.context !== "string"
       || !Array.isArray(content.tags) || !Array.isArray(content.sections)
-      || !content.sections.every(section => typeof section.title === "string" && typeof section.content === "string")) {
+      || !content.sections.every(section => typeof section.title === "string" && typeof section.content === "string")
+      || (content.facts !== undefined && (typeof content.facts !== "object" || content.facts === null
+        || !Object.entries(content.facts).every(([key, value]) => key in projectFactLabels && typeof value === "string")))) {
       throw new Error(`Contenu JSON invalide ou langue absente : ${folder}/${language}`);
     }
     project.title = content.title;
     project.tags = content.tags;
     project.context = content.context;
+    project.facts = content.facts;
     project.sections = content.sections;
     project.titleToy = content.titleToy;
     project.titleCube = content.titleCube;

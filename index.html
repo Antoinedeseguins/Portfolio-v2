@@ -44,15 +44,19 @@
 		<!-- The home page's desk toy (only on screens wide enough to show it) is a chain of modules, each found only once
 		     the one before has arrived: fetch them all now, alongside the page. Ahead of the stylesheets, which would hold
 		     this script back. The ?v must stay the one in JS/main.js's import, or the toy is fetched twice. The picture
-		     shown in its place until it is ready comes first. -->
+		     shown in its place until it is ready comes first. Only when the page opens on the home page, the one the toy
+		     is on: a project's address (its path or #id, see projectFromUrl in JS/main.js) opens that project instead. -->
 		<script>
-			if (matchMedia("(min-width: 1181px)").matches) {
-				document.head.append(Object.assign(document.createElement("link"), {
-					rel: "preload", as: "image", href: "three.js/about/desk-room-poster-1x.webp",
-					imageSrcset: "three.js/about/desk-room-poster-1x.webp 1x, three.js/about/desk-room-poster-2x.webp 2x",
-				}));
-				for (const path of ["three.js/about/desk-room.js?v=332", "three.js/vendor/r180/three.module.js", "three.js/vendor/r180/three.core.js", "three.js/vendor/r180/GLTFLoader.js", "three.js/vendor/r180/BufferGeometryUtils.js"]) {
-					document.head.append(Object.assign(document.createElement("link"), { rel: "modulepreload", href: path }));
+			{
+				const openingPage = (location.hash.slice(1) || location.pathname.replace(/\/$/, "").split("/").pop()).toLowerCase();
+				if (["", "index.html", "about-me", "about", "aboutme"].includes(openingPage) && matchMedia("(min-width: 1181px)").matches) {
+					document.head.append(Object.assign(document.createElement("link"), {
+						rel: "preload", as: "image", href: "three.js/about/desk-room-poster-1x.webp",
+						imageSrcset: "three.js/about/desk-room-poster-1x.webp 1x, three.js/about/desk-room-poster-2x.webp 2x",
+					}));
+					for (const path of ["three.js/about/desk-room.js?v=337", "three.js/vendor/r180/three.module.js", "three.js/vendor/r180/three.core.js", "three.js/vendor/r180/GLTFLoader.js", "three.js/vendor/r180/BufferGeometryUtils.js"]) {
+						document.head.append(Object.assign(document.createElement("link"), { rel: "modulepreload", href: path }));
+					}
 				}
 			}
 		</script>
@@ -61,8 +65,8 @@
 		<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,800;1,350;1,500&display=swap" rel="stylesheet" />
 		<!-- The name and the handwritten hello stay hidden until their fonts arrive instead of flashing a fallback. -->
 		<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&family=Caveat:wght@400&display=block" rel="stylesheet" />
-		<link rel="stylesheet" href="CSS/styles.css?v=20261027-room-poster" />
-		<script src="JS/main.js?v=20261027-room-poster" defer></script>
+		<link rel="stylesheet" href="CSS/styles.css?v=20261101-flamering" />
+		<script src="JS/main.js?v=20261101-noicons" defer></script>
 	</head>
 	<body class="is-about-page">
 		<main class="portfolio">

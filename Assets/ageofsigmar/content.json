@@ -7,6 +7,11 @@
             "Test Planning"
         ],
         "context": "Gasket Games · Focus Entertainment",
+        "facts": {
+            "role": "QA Analyst",
+            "duration": "2 months",
+            "platforms": "PC · PS4 · Xbox One"
+        },
         "sections": [
             {
                 "title": "THE GAME",

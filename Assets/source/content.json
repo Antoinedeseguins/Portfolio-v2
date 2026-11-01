@@ -8,6 +8,12 @@
             "Documentation"
         ],
         "context": "Student Project · ICAN Design School",
+        "facts": {
+            "role": "",
+            "duration": "",
+            "team": "",
+            "engine": ""
+        },
         "sections": [
             {
                 "title": "THE GAME",

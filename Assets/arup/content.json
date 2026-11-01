@@ -7,6 +7,12 @@
             "Gameplay Mechanics"
         ],
         "context": "Game Jam Project",
+        "facts": {
+            "role": "",
+            "duration": "",
+            "team": "",
+            "engine": ""
+        },
         "sections": [
             {
                 "title": "THE GAME",

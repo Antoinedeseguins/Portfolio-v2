@@ -147,8 +147,8 @@ const TARS_STRIDE = { time: 2.6, steps: 4, legs: .3, arms: .025, bob: .006 };
 // longest (scene units).
 const TARS_READOUT = { every: .22, shortest: .005, longest: .021 };
 // The rubber duck of rubber-duck debugging: yellow body and head, orange beak, black eyes. A click squeezes it: it
-// squashes and hops (times in seconds). Its outline: colour and thickness in desk units.
-const DUCK = { body: 0xf3d34a, beak: 0xe8833a, eye: 0x1d2126, outline: 0x2b333b, line: .0012, squeeze: .14, hop: .36 };
+// squashes and hops (times in seconds). Its outline: colour and thickness in CSS pixels.
+const DUCK = { body: 0xf3d34a, beak: 0xe8833a, eye: 0x1d2126, outline: 0x2b333b, line: .6, squeeze: .14, hop: .36 };
 // Matrix's red and blue pills in a blister pack: silver foil card, clear bubbles (opacity), one pill of each.
 const BLISTER = { foil: 0xc9d0d6, bubble: 0xeef4f8, opacity: .3, red: 0xd0302a, blue: 0x2f6fd0 };
 // Mario's ? block: golden body, white question mark with a brown drop shadow, brown rivets in the corners.
@@ -156,11 +156,10 @@ const QUESTION_BLOCK = { body: 0xf0ad2e, mark: 0xf7f4ea, shadow: 0x8a5420, rivet
 // Portal's Companion Cube: dark core, light corner bumpers and edge handles, pale face plates with pink hearts.
 const COMPANION_CUBE = { core: 0x5e6771, bumper: 0xd3d9de, handle: 0xc9d0d6, plate: 0xe5e8eb, heart: 0xe8749e };
 // WoW's hearthstone: grey stone close to the wardrobe's slate, a little lighter, on a plinth matching the desk; its
-// outline's colour and how much bigger than the stone it is; its rune's teal blue (picked from the game's icon) and
-// glow, its thin darker rim (width as a share of the picture), and the rune picture's middle and width in the stone's
-// own units.
+// outline's colour and thickness in CSS pixels; its rune's teal blue (picked from the game's icon) and glow, its thin
+// darker rim (width as a share of the picture), and the rune picture's middle and width in the stone's own units.
 const HEARTHSTONE = {
-  stone: 0x9ea7b0, plinth: 0x3a4148, outline: 0x5d666f, hull: 1.025,
+  stone: 0x9ea7b0, plinth: 0x3a4148, outline: 0x5d666f, line: .5,
   rune: 0x2fa6cc, glow: .5, runeRim: 0x14566b, runeRimWidth: .016, runeCentre: [0, 0], runeSize: 2,
 };
 // The cube's trip through a pair of portals, in seconds: both open, it drops into the first, shoots out of the second
@@ -2215,8 +2214,9 @@ function createDeskRoom() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  // The tools' outline thickness in the canvas's pixels and the canvas's size in them, kept up to date by resize.
-  const outlineUniforms = { outlineWidth: { value: TOOL_OUTLINE.width }, outlineResolution: { value: new THREE.Vector2(1, 1) } };
+  // The silhouette outlines' size of the sampled picture, and each one's thickness uniform with its width in CSS
+  // pixels, turned into the sampled picture's pixels by resize.
+  const outlineResolution = { value: new THREE.Vector2(1, 1) }, outlineWidths = [];
   // Lets single objects be cut by a plane (the Companion Cube passing through its portals).
   renderer.localClippingEnabled = true;
 
@@ -2915,20 +2915,25 @@ function createDeskRoom() {
   const knipexBoss = toolbox.getObjectByName("knipexBoss");
   knipexBoss.material[1].map = knipexStamp();
   knipexBoss.material[1].needsUpdate = true;
-  // The tools' silhouettes drawn a touch darker, as for the duck: a copy of each part turned inside out, whose back
-  // shows only round the edges, pushed out on screen by TOOL_OUTLINE.width pixels along the part's surface: the line
-  // keeps its thickness on a thin blade as round a hammer's head, at any size of the room. It follows the normals
-  // averaged where faces meet at a crease, so it doesn't split open at the corners.
-  const toolOutline = new THREE.MeshBasicMaterial({ color: TOOL_OUTLINE.colour, side: THREE.BackSide });
-  toolOutline.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, outlineUniforms);
-    shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute vec3 outlineNormal;\nuniform float outlineWidth;\nuniform vec2 outlineResolution;")
-      .replace("#include <project_vertex>", `#include <project_vertex>
-        vec2 outlineDirection = (projectionMatrix * vec4(normalMatrix * outlineNormal, 0.0)).xy * outlineResolution;
-        if (dot(outlineDirection, outlineDirection) > 1e-12) {
-          gl_Position.xy += normalize(outlineDirection) * outlineWidth * 2.0 / outlineResolution * gl_Position.w;
-        }`);
+  // Silhouette outlines, for the tools and for round things the edge strokes leave bare (the duck, the hearthstone): a
+  // copy of each part turned inside out, whose back shows only round the edges, pushed out on screen by width CSS pixels
+  // along the part's surface: the line keeps its thickness on a thin blade as round a hammer's head, at any size of the
+  // room. It follows the normals averaged where faces meet at a crease, so it doesn't split open at the corners.
+  const silhouetteMaterial = (colour, width) => {
+    const material = new THREE.MeshBasicMaterial({ color: colour, side: THREE.BackSide });
+    const uniforms = { outlineWidth: { value: width }, outlineResolution };
+    outlineWidths.push({ uniform: uniforms.outlineWidth, width });
+    material.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, uniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace("#include <common>", "#include <common>\nattribute vec3 outlineNormal;\nuniform float outlineWidth;\nuniform vec2 outlineResolution;")
+        .replace("#include <project_vertex>", `#include <project_vertex>
+          vec2 outlineDirection = (projectionMatrix * vec4(normalMatrix * outlineNormal, 0.0)).xy * outlineResolution;
+          if (dot(outlineDirection, outlineDirection) > 1e-12) {
+            gl_Position.xy += normalize(outlineDirection) * outlineWidth * 2.0 / outlineResolution * gl_Position.w;
+          }`);
+    };
+    return material;
   };
   const creaseNormals = (geometry) => {
     if (geometry.attributes.outlineNormal) return;
@@ -2949,14 +2954,19 @@ function createDeskRoom() {
     });
     geometry.setAttribute("outlineNormal", new THREE.BufferAttribute(averaged, 3));
   };
-  const toolParts = [];
-  for (const tool of loose) tool.traverse((child) => { if (child.isMesh && !child.userData.noOutline) toolParts.push(child); });
-  toolParts.forEach((mesh) => {
-    creaseNormals(mesh.geometry);
-    const hull = new THREE.Mesh(mesh.geometry, toolOutline);
-    hull.raycast = () => {};
-    mesh.add(hull);
-  });
+  // Outlines every part of object (but those marked noOutline) with material, from silhouetteMaterial.
+  const addSilhouette = (object, material) => {
+    const parts = [];
+    object.traverse((child) => { if (child.isMesh && !child.userData.noOutline) parts.push(child); });
+    for (const mesh of parts) {
+      creaseNormals(mesh.geometry);
+      const hull = new THREE.Mesh(mesh.geometry, material);
+      hull.raycast = () => {};
+      mesh.add(hull);
+    }
+  };
+  const toolOutline = silhouetteMaterial(TOOL_OUTLINE.colour, TOOL_OUTLINE.width);
+  for (const tool of loose) addSilhouette(tool, toolOutline);
   // Right at the front edge of the shelf, just behind the closed doors: ready to fall.
   toolbox.position.set(.2, .116, -.105);
   toolbox.rotation.set(0, .18, 0, "YXZ");
@@ -3065,16 +3075,10 @@ function createDeskRoom() {
   // bigger than life so it reads. A click squeezes it (it claims the click, so the drawer stays put).
   const duck = buildRubberDuck();
   recolour(duck, DUCK);
-  // Its round shapes give the edge strokes nothing to draw, so each gets a dark outline round its silhouette instead:
-  // a slightly bigger copy turned inside out, whose back shows only round the edges.
-  const outlineMaterial = new THREE.MeshBasicMaterial({ color: DUCK.outline, side: THREE.BackSide });
-  for (const mesh of duck.children.filter((child) => child.isMesh && !child.userData.noEdges)) {
-    mesh.geometry.computeBoundingSphere();
-    const hull = new THREE.Mesh(mesh.geometry, outlineMaterial);
-    hull.scale.setScalar(1 + DUCK.line / mesh.geometry.boundingSphere.radius);
-    hull.raycast = () => {};
-    mesh.add(hull);
-  }
+  // Its round shapes give the edge strokes nothing to draw, so its body, head and beak get a dark outline round their
+  // silhouette instead (see addSilhouette); not its little eyes, dark already.
+  for (const child of duck.children) if (child.userData.noEdges) child.userData.noOutline = true;
+  addSilhouette(duck, silhouetteMaterial(DUCK.outline, DUCK.line));
   const duckSize = 1.3;
   const duckSpot = new THREE.Vector3(-.045, middleDrawer.userData.floor, -.161);
   duck.position.copy(duckSpot);
@@ -3409,13 +3413,9 @@ function createDeskRoom() {
   // its narrow end up and its face out, about .09 tall. Strokes only on its sharper folds (its bevels), so its face
   // stays clean. It lives in the room, like the Companion Cube, so the camera fit ignores it.
   const hearthstone = buildHearthstone();
-  // Its silhouette gets a thin outline all round (a slightly bigger copy turned inside out, like the duck's), in the
-  // faint shade of the edge strokes.
+  // The stone's silhouette gets a thin outline all round (see addSilhouette), in the faint shade of the edge strokes.
   recolour(hearthstone, HEARTHSTONE, 24);
-  const stoneHull = new THREE.Mesh(hearthstone.children[0].geometry, new THREE.MeshBasicMaterial({ color: HEARTHSTONE.outline, side: THREE.BackSide }));
-  stoneHull.scale.setScalar(HEARTHSTONE.hull);
-  stoneHull.raycast = () => {};
-  hearthstone.add(stoneHull);
+  addSilhouette(hearthstone.children[0], silhouetteMaterial(HEARTHSTONE.outline, HEARTHSTONE.line));
   // Its rune (the user's white spiral on transparent, hearthstone.png), glowing blue, laid on the face's facets: a copy
   // of the stone just in front of it whose picture is projected straight on from the front. Faces turned away get none.
   const runeGeometry = hearthstone.children[0].geometry.clone();
@@ -4001,8 +4001,8 @@ function createDeskRoom() {
     renderer.setSize(width, height, false);
     sampled.setSize(width * supersample, height * supersample);
     shrink.uniforms.offset.value.set((supersample - 1) / 2 / sampled.width, (supersample - 1) / 2 / sampled.height);
-    outlineUniforms.outlineResolution.value.set(sampled.width, sampled.height);
-    outlineUniforms.outlineWidth.value = TOOL_OUTLINE.width * ratio * supersample;
+    outlineResolution.value.set(sampled.width, sampled.height);
+    for (const { uniform, width } of outlineWidths) uniform.value = width * ratio * supersample;
     for (const material of strokeMaterials) material.opacity = Math.min(1, EDGE_STROKE.opacity * supersample);
     camera.aspect = frame.width / frame.height;
     camera.setViewOffset(frame.width * ratio, frame.height * ratio, left - frame.left * ratio, top - frame.top * ratio, width, height);

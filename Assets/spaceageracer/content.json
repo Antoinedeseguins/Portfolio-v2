@@ -8,6 +8,12 @@
             "Custom Controller"
         ],
         "context": "Personal Project",
+        "facts": {
+            "role": "",
+            "duration": "",
+            "team": "",
+            "engine": ""
+        },
         "sections": [
             {
                 "title": "THE GAME",

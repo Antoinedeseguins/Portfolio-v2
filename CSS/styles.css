@@ -569,12 +569,15 @@ img.hero-image { object-fit: cover; }
 .project-copy > .project-meta { margin-top: calc(14.4 * var(--u)); }
 .project-copy > .copy-rule { margin-top: calc(10 * var(--u)); }
 .project-copy > .project-description { margin-top: calc(20 * var(--u)); }
-.project-copy > .project-paragraph { margin-top: calc(32 * var(--u)); }
-.project-copy > .project-paragraph + .project-paragraph { margin-top: calc(38 * var(--u)); }
+.project-copy > .project-paragraph { margin-top: calc(24 * var(--u)); }
+.project-copy > .project-paragraph + .project-paragraph { margin-top: calc(30 * var(--u)); }
+/* Under the identity card, a touch less visible gap than between two sections (where the line spacing of the text above
+   adds about 5 to the margin). */
+.project-copy > .project-facts + .project-paragraph { margin-top: calc(26 * var(--u)); }
 .project-paragraph > .copy-rule { margin-top: calc(6 * var(--u)); }
 .project-layout .project-paragraph > .project-subtitle { display: flex; align-items: center; gap: calc(9 * var(--u)); }
 .project-layout .project-paragraph > .project-subtitle .section-dot { flex: 0 0 calc(8 * var(--u)); margin-right: 0; }
-.project-layout .project-paragraph > .project-subtitle::after { content: ""; flex: 1; min-width: calc(16 * var(--u)); height: calc(9 * var(--u)); margin-left: calc(5 * var(--u)); border-left: 1px solid var(--line); background: linear-gradient(var(--line), var(--line)) left center / 100% 1px no-repeat; }
+.project-layout .project-paragraph > .project-subtitle::after { content: ""; flex: 1; min-width: calc(16 * var(--u)); height: calc(9 * var(--u)); margin-left: calc(5 * var(--u)); background: linear-gradient(var(--line), var(--line)) left center / 100% 1px no-repeat; }
 .project-layout .project-paragraph > .project-subtitle + .copy-rule { display: none; }
 .project-paragraph > .project-description { width: calc(100% - 17 * var(--u)); margin-top: calc(6 * var(--u)); margin-left: calc(17 * var(--u)); text-align: left; }
 .project-copy > .project-meta { margin-top: calc(14.4 * var(--u)); }
@@ -583,13 +586,25 @@ img.hero-image { object-fit: cover; }
 /* Section markers: flat dots in each project's colour, without the bead shading. */
 .project-layout .project-paragraph > .project-subtitle .section-dot { --dot: #9fb3c6; flex-basis: calc(7 * var(--u)); width: calc(7 * var(--u)); height: calc(7 * var(--u)); border: 0; background: var(--dot); box-shadow: none; }
 .project-layout[data-project-id="source"] .project-paragraph > .project-subtitle .section-dot { --dot: #80b5f0; background: var(--dot); box-shadow: none; }
-.project-layout[data-project-id="aeon"] .project-paragraph > .project-subtitle .section-dot { --dot: #e75835; background: var(--dot); box-shadow: none; }
+/* Aeon's markers: small light circles outlined in a flame gradient, orange at the top to red at the bottom, like the
+   fist's fire (the gradient fills the border box, a light disc covers the inside). */
+.project-layout[data-project-id="aeon"] .project-paragraph > .project-subtitle .section-dot { flex-basis: calc(8 * var(--u)); width: calc(8 * var(--u)); height: calc(8 * var(--u)); border: 1px solid transparent; background: linear-gradient(#f8ece8, #f8ece8) padding-box, linear-gradient(#f9a03f, #d42a2a) border-box; }
 .project-layout[data-project-id="impact"] .project-paragraph > .project-subtitle .section-dot { --dot: #f50091; }
 .project-layout[data-project-id="spaceage"] .project-paragraph > .project-subtitle .section-dot { --dot: #6fb0e8; background: var(--dot); box-shadow: none; }
 .project-layout[data-project-id="arup"] .project-paragraph > .project-subtitle .section-dot { --dot: #49a868; }
-/* Tags: flat tinted chips, no outline or shadow; a deeper tint and darker text so they read clearly. */
+/* Tags: flat chips, no outline or shadow, in a faint tint and the identity card's lettering, a size smaller. */
 .project-copy > .project-meta { gap: calc(6 * var(--u)); }
-.project-copy > .project-meta span, .is-qa-project .project-copy > .project-meta span { padding: calc(6 * var(--u)) calc(10 * var(--u)); border: 0; border-radius: calc(3 * var(--u)); background: #52647024; color: #384852; box-shadow: none; font-size: calc(10 * var(--u)); font-weight: 500; letter-spacing: .03em; }
+.project-copy > .project-meta span, .is-qa-project .project-copy > .project-meta span { padding: calc(5.5 * var(--u)) calc(8 * var(--u)); border: 0; border-radius: calc(3 * var(--u)); background: #5264700f; color: #2f3a40; box-shadow: none; font-size: calc(11 * var(--u)); font-weight: 600; letter-spacing: 0; }
+/* Identity card: the project's key facts in labelled columns in a thinly outlined, lightly tinted card between the
+   context and the tags, split by fine rules, the card ending where the facts do. Each column has its rule in the middle
+   of the gap on its left; the list cuts off the ones that would start a line, so the first column and lines the facts
+   wrap onto start bare and flush left. */
+.project-facts { width: fit-content; max-width: 100%; margin: calc(22 * var(--u)) 0 0; padding: calc(9 * var(--u)) calc(16 * var(--u)); border: 1px solid #d5dde2; border-radius: calc(4 * var(--u)); background: #5264700f; }
+.project-facts dl { display: flex; flex-wrap: wrap; gap: calc(10 * var(--u)) calc(32 * var(--u)); overflow: hidden; margin: 0; }
+.project-facts dl > div { position: relative; }
+.project-facts dl > div::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(-16 * var(--u) - .5px); width: 1px; background: #52647030; }
+.project-facts dt { color: #8a959c; font-size: calc(9.5 * var(--u)); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.project-facts dd { margin: calc(4 * var(--u)) 0 0; color: #2f3a40; font-size: calc(13.5 * var(--u)); font-weight: 600; }
 /* Home: a slanted photo panel on the left, identity and pitch on the right. */
 .about-layout { position: relative; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: clamp(28 * var(--u), 3.5 * var(--vw), 64 * var(--u)); min-height: calc(100dvh - 70 * var(--u) - var(--dock-height) - 54 * var(--u)); padding: calc(40 * var(--u)) 0; }
 .about-photo { --slant: 0deg; position: relative; justify-self: center; width: min(100%, 500 * var(--u)); height: clamp(340 * var(--u), 60 * var(--vh), 640 * var(--u)); margin: 0; }
@@ -598,7 +613,8 @@ img.hero-image { object-fit: cover; }
 .about-photo:hover .about-photo-image { filter: grayscale(.15); }
 /* A desk diorama fills the free space right of the pitch, sharing the copy's grid cell. */
 .about-room { position: relative; justify-self: end; width: calc(100% - 420 * var(--u)); height: clamp(300 * var(--u), 52 * var(--vh), 540 * var(--u)); }
-/* The canvas overflows the frame by a quarter on every side, so things can spill past it (the layout only sees the frame). */
+/* The canvas overflows the frame by a quarter on every side, so things can spill past it (the layout only sees the frame).
+   The room's script then nudges it onto whole screen pixels (see resize in desk-room.js). */
 .about-room-canvas { position: absolute; top: -25%; left: -25%; display: block; width: 150%; height: 150%; opacity: 0; pointer-events: none; }
 .about-room.has-room .about-room-canvas { opacity: 1; }
 /* A picture of the room at rest holds its place until the room is ready, then gives way to it at once. Square, over the
