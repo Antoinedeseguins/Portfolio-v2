@@ -8,10 +8,10 @@
         ],
         "context": "Game Jam Project",
         "facts": {
-            "role": "",
-            "duration": "",
-            "team": "",
-            "engine": ""
+            "role": "Game Designer",
+            "duration": "3 days",
+            "team": "4 students",
+            "engine": "Unity"
         },
         "sections": [
             {
@@ -19,11 +19,11 @@
                 "content": "**ARUP** is a party game where players must jump over an increasingly fast cube and be the last one standing. Each player gets one key on a shared keyboard, making things even more chaotic."
             },
             {
-                "title": "THE GAME",
+                "title": "MY ROLE",
                 "content": "**ARUP** is a party game where players must jump over an increasingly fast cube and be the last one standing. Each player gets one key on a shared keyboard, making things even more chaotic."
             },
             {
-                "title": "THE GAME",
+                "title": "DESIGN CHALLENGES",
                 "content": "**ARUP** is a party game where players must jump over an increasingly fast cube and be the last one standing. Each player gets one key on a shared keyboard, making things even more chaotic."
             }
         ]

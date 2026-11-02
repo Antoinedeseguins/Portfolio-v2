@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Draws Impact's magnetic cube at rest where it sits on the site in the reference 1920 × 927 window and prints the
+     picture of its frame (a PNG data URL, see-through around the cube) into #picture. Run through
+     tools/impact-cube-poster.sh, which saves it at 1x and at the cube's own high density. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Impact cube poster</title>
+		<style>
+			body { margin: 0; }
+			/* The page the cube draws over, and its frame at the exact spot and size it has on the site (the frame of
+			   152 × 114 scaled to .9 by the title row), fractions included, so the cube falls on the same pixels. */
+			.surface { position: absolute; inset: 0; }
+			.frame { position: absolute; left: 1225.85px; top: 110.8875px; width: 136.8px; height: 102.6px; }
+			canvas { position: absolute; display: block; }
+			#picture { display: none; }
+		</style>
+	</head>
+	<body>
+		<div class="surface"><div class="frame"></div><canvas></canvas></div>
+		<pre id="picture"></pre>
+		<script type="module">
+			import { createMagneticCube } from "../three.js/impact/magnetic-cube.js";
+
+			const surface = document.querySelector(".surface");
+			const frame = document.querySelector(".frame");
+			const cube = createMagneticCube(document.querySelector("canvas"), { anchor: frame, surface });
+			// Leaves the cube a few frames to settle and fade its outline in.
+			await new Promise((resolve) => setTimeout(resolve, 1500));
+			const full = cube.snapshot();
+			// The whole screen pixels the frame touches, the box the site's stylesheet lays the picture over.
+			const ratio = full.width / surface.getBoundingClientRect().width;
+			const box = frame.getBoundingClientRect();
+			const left = Math.floor(box.left), top = Math.floor(box.top);
+			const width = Math.ceil(box.right) - left, height = Math.ceil(box.bottom) - top;
+			const picture = document.createElement("canvas");
+			picture.width = Math.round(width * ratio);
+			picture.height = Math.round(height * ratio);
+			picture.getContext("2d").drawImage(full, left * ratio, top * ratio, width * ratio, height * ratio, 0, 0, picture.width, picture.height);
+			document.getElementById("picture").textContent = picture.toDataURL("image/png");
+		</script>
+	</body>
+</html>

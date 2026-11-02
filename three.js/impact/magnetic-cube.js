@@ -3,10 +3,21 @@ import { stepSpring, applySpray } from "./spring.js?v=8";
 import { sampleText } from "./text-shape.js?v=5";
 import { createResumeLock } from "../game-resume-lock.js";
 
-export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFamily = "Raleway", fontWeight = "700", anchor = null, surface = null } = {}) {
-  const input = anchor || canvas;
+// Impact's cube is built once per visit and kept, like the home page's desk room: each Impact page borrows it (attach),
+// so it slides in already drawn rather than starting once the slide is over, and hands it back when it goes (detach).
+let keptCube = null;
+export const keptCubeBuilt = () => keptCube !== null;
+export function getKeptCube() {
+  keptCube ??= createMagneticCube(document.createElement("canvas"), { framed: true });
+  return keptCube;
+}
+
+// framed: drawn over a page around a frame (smaller pieces); a toy made without its frame waits for attach to draw.
+export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFamily = "Raleway", fontWeight = "700", anchor = null, surface = null, framed = Boolean(anchor && surface) } = {}) {
+  let input = anchor || canvas;
+  let attached = Boolean(anchor);
   const lockResume = createResumeLock();
-  const interactionSurface = surface || input;
+  let interactionSurface = surface || input;
   const interactionTarget = (event) => {
     if (!surface) return input;
     const selector = text
@@ -41,7 +52,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
   const group = new THREE.Group();
   scene.add(group);
   const gridSize = 4;
-  const cubeSize = textShape ? textShape.size : anchor && surface ? 0.43 : 0.5;
+  const cubeSize = textShape ? textShape.size : framed ? 0.43 : 0.5;
   const center = (gridSize - 1) / 2;
   const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
   const material = textShape
@@ -102,6 +113,8 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
   const inverseGroup = new THREE.Matrix4();
   const pointer = new THREE.Vector2();
   const events = new AbortController();
+  // The listeners on the frame and the page it is drawn over, renewed on each attach.
+  let attachment = null;
   let disposed = false;
   let paused = false;
   let visible = true;
@@ -120,33 +133,38 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     input.classList.remove("is-spraying");
     if (pointerId !== null && interactionSurface.hasPointerCapture(pointerId)) interactionSurface.releasePointerCapture(pointerId);
   };
-  interactionSurface.addEventListener("pointerdown", (event) => {
-    if (disposed || paused || sprayPointer !== null || !event.isPrimary || event.button !== 0) return;
-    if (!interactionTarget(event)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    updatePointer(event);
-    sprayPointer = event.pointerId;
-    lockResume(true);
-    interactionSurface.setPointerCapture(event.pointerId);
-    input.classList.add("is-spraying");
-  }, { signal: events.signal });
-  interactionSurface.addEventListener("pointermove", (event) => {
-    if (event.pointerId === sprayPointer) updatePointer(event);
-  }, { signal: events.signal });
-  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    interactionSurface.addEventListener(type, (event) => {
-      if (event.pointerId === sprayPointer) stopSpray();
-    }, { signal: events.signal });
-  }
-  input.addEventListener("blur", stopSpray, { signal: events.signal });
-  interactionSurface.addEventListener("focusout", () => {
-    if (keyboardSpray) stopSpray();
-  }, { signal: events.signal });
+  const listenToFrame = () => {
+    attachment = new AbortController();
+    const { signal } = attachment;
+    interactionSurface.addEventListener("pointerdown", (event) => {
+      if (disposed || paused || sprayPointer !== null || !event.isPrimary || event.button !== 0) return;
+      if (!interactionTarget(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      updatePointer(event);
+      sprayPointer = event.pointerId;
+      lockResume(true);
+      interactionSurface.setPointerCapture(event.pointerId);
+      input.classList.add("is-spraying");
+    }, { signal });
+    interactionSurface.addEventListener("pointermove", (event) => {
+      if (event.pointerId === sprayPointer) updatePointer(event);
+    }, { signal });
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+      interactionSurface.addEventListener(type, (event) => {
+        if (event.pointerId === sprayPointer) stopSpray();
+      }, { signal });
+    }
+    input.addEventListener("blur", stopSpray, { signal });
+    interactionSurface.addEventListener("focusout", () => {
+      if (keyboardSpray) stopSpray();
+    }, { signal });
+    // Once its page has slid in, it starts moving.
+    input.addEventListener("hero-ready", () => { resize(); updateLoop(); }, { signal });
+  };
   window.addEventListener("blur", stopSpray, { signal: events.signal });
 
   const render = (time) => {
-    if (surface?.classList.contains("page-entering")) resize(false);
     const dt = Math.min(lastTime === null ? 0 : (time - lastTime) / 1000, 1 / 30);
     lastTime = time;
     const steps = Math.max(1, Math.ceil(dt * 120));
@@ -167,19 +185,24 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     updateInstances();
     renderer.render(scene, camera);
   };
+  // While its page slides in, the cube is drawn once where the page will come to rest and simply slides with it: drawing
+  // every frame would cost the slide its smoothness.
+  const sliding = () => Boolean(surface?.classList.contains("page-entering"));
   const updateLoop = () => {
     lastTime = null;
     if (document.hidden || !visible) stopSpray();
-    renderer.setAnimationLoop(!disposed && !paused && visible && !document.hidden ? render : null);
+    renderer.setAnimationLoop(!disposed && !paused && attached && visible && !document.hidden && !sliding() ? render : null);
   };
   const resize = (renderNow = true) => {
-    if (disposed || paused) return;
+    if (disposed || paused || !attached) return;
     if (surface) {
       const rect = surface.getBoundingClientRect();
-      canvas.style.left = `${-rect.left}px`;
-      canvas.style.top = `${-rect.top}px`;
+      // How far a sliding page still is from where it comes to rest.
+      const [slideX = 0, slideY = 0] = sliding() ? (getComputedStyle(surface).translate.match(/-?[\d.]+(?:e-?\d+)?/g) || []).map(Number) : [];
+      canvas.style.left = `${slideX - rect.left}px`;
+      canvas.style.top = `${slideY - rect.top}px`;
       canvas.style.width = `${document.documentElement.clientWidth}px`;
-      canvas.style.height = `${Math.max(window.innerHeight, rect.bottom)}px`;
+      canvas.style.height = `${Math.max(window.innerHeight, rect.bottom - slideY)}px`;
     }
     const { width, height } = canvas.getBoundingClientRect();
     const anchorRect = input.getBoundingClientRect();
@@ -203,16 +226,52 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
     if (renderNow !== false) renderer.render(scene, camera);
   };
   const resizeObserver = new ResizeObserver(resize);
-  resizeObserver.observe(input);
-  if (surface) resizeObserver.observe(surface);
   const intersectionObserver = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; updateLoop(); });
-  intersectionObserver.observe(input);
+  const watchFrame = () => {
+    resizeObserver.observe(input);
+    if (surface) resizeObserver.observe(surface);
+    intersectionObserver.observe(input);
+  };
   window.addEventListener("resize", resize, { signal: events.signal });
-  input.addEventListener("hero-ready", resize, { signal: events.signal });
   document.addEventListener("visibilitychange", updateLoop, { signal: events.signal });
-  resize();
+  if (attached) {
+    listenToFrame();
+    watchFrame();
+    resize();
+  }
+  else {
+    // Not shown yet: draws once on a pixel so the shaders are ready for its first page.
+    renderer.setSize(1, 1, false);
+    renderer.render(scene, camera);
+  }
   updateLoop();
+  // Stops drawing and lets go of its frame and page (unless a newer one already holds it).
+  const detach = (from = input) => {
+    if (!attached || from !== input) return;
+    stopSpray();
+    attached = false;
+    attachment?.abort();
+    resizeObserver.disconnect();
+    intersectionObserver.disconnect();
+    updateLoop();
+  };
   return {
+    canvas,
+    // Draws around this frame, over this page (appended to it), straight away.
+    attach(nextAnchor, nextSurface) {
+      if (disposed) return;
+      detach();
+      anchor = input = nextAnchor;
+      surface = nextSurface;
+      interactionSurface = nextSurface || nextAnchor;
+      nextSurface?.append(canvas);
+      attached = true;
+      listenToFrame();
+      watchFrame();
+      resize();
+      updateLoop();
+    },
+    detach,
     snapshot({ hideTitle = false } = {}) {
       const titleVisible = instances?.visible;
       if (hideTitle && instances) instances.visible = false;
@@ -230,6 +289,7 @@ export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFa
       stopSpray();
       renderer.setAnimationLoop(null);
       events.abort();
+      attachment?.abort();
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
       geometry.dispose();

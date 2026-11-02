@@ -9,10 +9,10 @@
         ],
         "context": "Student Project · ICAN Design School",
         "facts": {
-            "role": "",
-            "duration": "",
-            "team": "",
-            "engine": ""
+            "role": "Game Designer",
+            "duration": "6 months",
+            "team": "4 students",
+            "engine": "Unity"
         },
         "sections": [
             {
@@ -20,11 +20,11 @@
                 "content": "**Source** is a 2D exploration and puzzle game where the player is the only source of light in a dark labyrinth. Players must navigate the maze, using their light to reveal hidden paths and protect themselves from creatures lurking in the shadows."
             },
             {
-                "title": "THE GAME",
+                "title": "MY ROLE",
                 "content": "**Source** is a 2D exploration and puzzle game where the player is the only source of light in a dark labyrinth. Players must navigate the maze, using their light to reveal hidden paths and protect themselves from creatures lurking in the shadows."
             },
             {
-                "title": "THE GAME",
+                "title": "DESIGN CHALLENGES",
                 "content": "**Source** is a 2D exploration and puzzle game where the player is the only source of light in a dark labyrinth. Players must navigate the maze, using their light to reveal hidden paths and protect themselves from creatures lurking in the shadows."
             }
         ],

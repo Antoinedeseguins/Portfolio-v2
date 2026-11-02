@@ -718,8 +718,8 @@ function enableHeroAutoplay(frame) {
 
 const toyModules = {
   "source-light": () => import(new URL("three.js/source/source-light.js?v=65", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=52", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=52", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=53", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=53", document.baseURI).href),
 };
 const supportsMiniGames = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
@@ -747,13 +747,66 @@ function paintSourcePlaceholders(root) {
   });
 }
 
-// Prepare Impact's font and renderer while the visitor browses the portfolio.
+// Prepare Impact's font and renderer while the visitor browses the portfolio, and build its kept cube once the site is
+// quiet, so a first visit to Impact already slides it in drawn.
 if (supportsMiniGames()) {
   void toyModules["voxel-title"]().catch(() => {});
   void document.fonts.load('700 128px "Raleway"', "Impact").catch(() => {});
+  const whenIdle = window.requestIdleCallback || ((callback) => window.setTimeout(callback, 1));
+  window.addEventListener("load", () => window.setTimeout(() => whenIdle(() => {
+    toyModules["magnetic-cube"]().then((module) => module.getKeptCube()).catch(() => {});
+  }, { timeout: 4000 }), 2000), { once: true });
+}
+
+// Impact's cube is built once per visit and kept (see getKeptCube in magnetic-cube.js): a page borrows it as soon as it
+// is made, so it slides in already drawn, its picture holding its place only until it is built (then once the page has
+// slid in, as other toys). A page sliding out keeps a still copy of it.
+function enableKeptCube(frame) {
+  if (!supportsMiniGames()) return;
+  const placeholder = frame.querySelector("canvas");
+  const surface = frame.closest(".project-layout");
+  if (!placeholder || !surface) return;
+  let cube = null;
+  let still = null;
+  let gone = false;
+  const show = (module) => {
+    if (gone || cube || !frame.isConnected || frame.closest(".page-outgoing, .page-drag-preview")) return;
+    cube = module.getKeptCube();
+    cube.canvas.className = "hero-image toy-canvas toy-surface-canvas";
+    cube.canvas.dataset.ready = "true";
+    cube.canvas.setAttribute("aria-hidden", "true");
+    surface.classList.add("toy-stage");
+    cube.attach(frame, surface);
+    frame.tabIndex = -1;
+    frame.setAttribute("role", "button");
+    frame.setAttribute("aria-label", placeholder.getAttribute("aria-label"));
+    placeholder.tabIndex = -1;
+    placeholder.setAttribute("aria-hidden", "true");
+    placeholder.dataset.ready = "true";
+  };
+  let showAfterSlide = null;
+  frame.addEventListener("hero-dispose", (event) => {
+    gone = true;
+    if (showAfterSlide) frame.removeEventListener("hero-ready", showAfterSlide);
+    if (event.detail?.preserveVisual && cube && cube.canvas.parentElement === surface && !still) {
+      still = cube.snapshot();
+      still.className = cube.canvas.className;
+      still.style.cssText = cube.canvas.style.cssText;
+      still.dataset.ready = "true";
+      still.setAttribute("aria-hidden", "true");
+      cube.canvas.replaceWith(still);
+    }
+    if (!event.detail?.preserveVisual) still?.remove();
+    cube?.detach(frame);
+  });
+  toyModules["magnetic-cube"]().then((module) => {
+    if (module.keptCubeBuilt() || !frame.closest(".page-entering")) show(module);
+    else frame.addEventListener("hero-ready", showAfterSlide = () => show(module), { once: true });
+  }).catch((error) => console.error("Interactive scene unavailable", error));
 }
 
 function enableToy(frame) {
+  if (frame.dataset.toy === "magnetic-cube") return enableKeptCube(frame);
   if (!supportsMiniGames()) return;
   let disposed = false;
   let frozen = false;

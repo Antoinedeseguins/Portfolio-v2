@@ -170,7 +170,15 @@ img.hero-image { object-fit: cover; }
 .toy-widget[data-toy="magnetic-cube"], .toy-widget[data-toy="magnetic-cube"] .toy-canvas { cursor: pointer; }
 .toy-widget[data-toy="voxel-title"], .toy-widget[data-toy="voxel-title"] .toy-canvas { cursor: pointer; }
 .toy-widget[data-toy="source-light"], .toy-widget[data-toy="source-light"] .toy-canvas { cursor: pointer; }
-.toy-widget[data-toy="magnetic-cube"] .toy-canvas:not([data-ready="true"]) { background: url("../three.js/impact/cube.svg?v=6") center / contain no-repeat; }
+/* Until Impact's cube is ready, a picture of it at rest holds its place, drawn by the cube itself (remade with
+   tools/impact-cube-poster.sh). It covers the whole screen pixels around the frame in the reference window, so there it
+   lands on the cube's very pixels: 138 × 104 starting .85 and .8875 left of and above the frame, divided by the
+   frame's .9 scale. On standard screens it is drawn unsmoothed: the frame sits between pixels, and smoothing blurred
+   the picture against the crisp cube that replaces it. */
+.toy-widget[data-toy="magnetic-cube"] .toy-canvas:not([data-ready="true"]) { background: image-set(url("../three.js/impact/cube-poster-1x.png?v=1") 1x, url("../three.js/impact/cube-poster-1.75x.png?v=1") 1.75x) calc(-.9444 * var(--u)) calc(-.9861 * var(--u)) / calc(153.3333 * var(--u)) calc(115.5556 * var(--u)) no-repeat; }
+@media (max-resolution: 1dppx) {
+  .toy-widget[data-toy="magnetic-cube"] .toy-canvas:not([data-ready="true"]), .page-drag-preview .toy-widget .toy-canvas:not([data-placeholder="true"]) { image-rendering: pixelated; }
+}
 .toy-widget[data-toy="source-light"] .toy-canvas:not([data-ready="true"], [data-placeholder="true"]), .page-drag-preview [data-toy="source-light"] .toy-canvas:not([data-placeholder="true"]) {
   background-image: url("../three.js/source/source-avatar.svg?v=2");
   background-position: center;
@@ -403,7 +411,7 @@ img.hero-image { object-fit: cover; }
 @media (prefers-reduced-motion: reduce) { .arup-title-text, .arup-title-logos { transition: none; } }
 .beam-title-highlight { position: absolute; inset: 0; font: inherit; line-height: inherit; letter-spacing: inherit; white-space: inherit; pointer-events: none; opacity: 0; }
 .page-drag-preview .voxel-title .toy-widget .toy-canvas { background: none; }
-.page-drag-preview .toy-widget .toy-canvas:not([data-placeholder="true"]) { background: url("../three.js/impact/cube.svg?v=6") center / contain no-repeat; }
+.page-drag-preview .toy-widget .toy-canvas:not([data-placeholder="true"]) { background: image-set(url("../three.js/impact/cube-poster-1x.png?v=1") 1x, url("../three.js/impact/cube-poster-1.75x.png?v=1") 1.75x) calc(-.9444 * var(--u)) calc(-.9861 * var(--u)) / calc(153.3333 * var(--u)) calc(115.5556 * var(--u)) no-repeat; }
 @media (max-width: 600px) { .toy-widget { flex-basis: 112px; width: 112px; height: 94px; } }
 .hero-frame { cursor: grab; user-select: none; }
 .hero-frame.is-dragging, .hero-frame.is-settling { cursor: grabbing; }
@@ -549,13 +557,6 @@ img.hero-image { object-fit: cover; }
 .project-copy > .project-subtitle { margin-top: calc(8 * var(--u)); font-weight: 700; }
 .project-paragraph > .project-subtitle { color: #444849; font-size: calc(12 * var(--u)); font-style: normal; font-weight: 600; letter-spacing: .12em; }
 .section-dot { display: inline-block; width: calc(8 * var(--u)); height: calc(8 * var(--u)); margin-right: calc(9 * var(--u)); border: 1px solid #a4b6c8; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #eef4fa 0%, #d5e0ea 28%, #c5d3e0 55%, #adbed0 100%); box-shadow: 0 1px calc(2 * var(--u)) #26384a26, inset 0 -1px 1px #667e9633; vertical-align: 1px; }
-.project-layout[data-project-id="source"] .section-dot { border-color: #a7d6f5; background: radial-gradient(circle, #fff 0%, #e4faff 25%, #80b5f0 100%); box-shadow: 0 0 calc(4 * var(--u)) #b9e1ff, 0 0 calc(8 * var(--u)) #7aafff80; }
-.project-layout[data-project-id="aeon"] .section-dot { border-color: #b84c35; background: radial-gradient(circle at 30% 25%, #ffd0a3 0%, #f89159 28%, #e75835 65%, #be382b 100%); box-shadow: 0 1px calc(2 * var(--u)) #853c2926, inset 0 -1px 1px #853c2933; }
-.project-layout[data-project-id="impact"] .section-dot { border: 0; border-radius: 50%; background: #f50091; box-shadow: none; }
-.project-layout[data-project-id="spaceage"] .section-dot { border-color: #80add7; background: radial-gradient(circle at 30% 25%, #eef9ff 0%, #c1e4ff 28%, #8cc8fa 65%, #65a5dd 100%); box-shadow: 0 1px calc(2 * var(--u)) #4778a326, inset 0 -1px 1px #4778a333; }
-.project-layout[data-project-id="arup"] .section-dot { border: 1px solid #171b1b40; background: #49a868; box-shadow: none; }
-.project-layout[data-project-id="arup"] .project-paragraph:nth-child(2 of .project-paragraph) .section-dot { background: #df493e; }
-.project-layout[data-project-id="arup"] .project-paragraph:nth-child(3 of .project-paragraph) .section-dot { background: #ffe680; }
 .project-description { white-space: pre-line; }
 .project-description { max-width: 52ch; margin: calc(25.2 * var(--u)) 0 0; color: var(--body-copy); font-size: calc(13.5 * var(--u)); line-height: 1.8; }
 .project-copy > .project-description,
@@ -583,15 +584,30 @@ img.hero-image { object-fit: cover; }
 .project-copy > .project-meta { margin-top: calc(14.4 * var(--u)); }
 /* Same header language as the home page: small-caps context. */
 .project-copy > .project-subtitle { margin-top: calc(16 * var(--u)); color: #748396; font-size: calc(14 * var(--u)); font-style: normal; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; }
-/* Section markers: flat dots in each project's colour, without the bead shading. */
-.project-layout .project-paragraph > .project-subtitle .section-dot { --dot: #9fb3c6; flex-basis: calc(7 * var(--u)); width: calc(7 * var(--u)); height: calc(7 * var(--u)); border: 0; background: var(--dot); box-shadow: none; }
-.project-layout[data-project-id="source"] .project-paragraph > .project-subtitle .section-dot { --dot: #80b5f0; background: var(--dot); box-shadow: none; }
-/* Aeon's markers: small light circles outlined in a flame gradient, orange at the top to red at the bottom, like the
-   fist's fire (the gradient fills the border box, a light disc covers the inside). */
-.project-layout[data-project-id="aeon"] .project-paragraph > .project-subtitle .section-dot { flex-basis: calc(8 * var(--u)); width: calc(8 * var(--u)); height: calc(8 * var(--u)); border: 1px solid transparent; background: linear-gradient(#f8ece8, #f8ece8) padding-box, linear-gradient(#f9a03f, #d42a2a) border-box; }
-.project-layout[data-project-id="impact"] .project-paragraph > .project-subtitle .section-dot { --dot: #f50091; }
-.project-layout[data-project-id="spaceage"] .project-paragraph > .project-subtitle .section-dot { --dot: #6fb0e8; background: var(--dot); box-shadow: none; }
-.project-layout[data-project-id="arup"] .project-paragraph > .project-subtitle .section-dot { --dot: #49a868; }
+/* Section markers: small white circles outlined --ring-width thick in a gradient from --ring-top to --ring-bottom (the
+   gradient fills the circle, a soft-edged white disc covers the inside: a real border can't be 1.5px, it's drawn 1px).
+   By default a plain grey a few shades darker than the identity card's border; a project can set its own two colours.
+   The size is a whole number of pixels: a fractional one is rounded differently across and down depending on where the
+   circle falls, which made some of them ovals. */
+.project-layout .project-paragraph > .project-subtitle .section-dot { --ring-top: #a3aeb8; --ring-bottom: #a3aeb8; --ring-width: 1.5px; --ring-size: round(calc(8 * var(--u)), 1px); flex-basis: var(--ring-size); width: var(--ring-size); height: var(--ring-size); border: 0; background: radial-gradient(circle closest-side, #fff calc(100% - var(--ring-width) - .25px), #fff0 calc(100% - var(--ring-width) + .25px)), linear-gradient(var(--ring-top), var(--ring-bottom)); box-shadow: none; }
+/* Aeon Must Die!: a flame, orange at the top to red at the bottom, like its fist's fire. */
+.project-layout[data-project-id="aeon"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #f9a03f; --ring-bottom: #d42a2a; }
+/* Age of Sigmar: Storm Ground: the deep teal green of its logo's plate, lighter at the top. */
+.project-layout[data-project-id="age"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #74b99f; --ring-bottom: #1a5e4a; }
+/* Necromunda: Underhive Wars: a very light brown, from the rust tones of its logo, paler at the top. */
+.project-layout[data-project-id="necromunda"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #dccab9; --ring-bottom: #a98c74; }
+/* Impact: its pink, very light at the top to a deep magenta at the bottom. */
+.project-layout[data-project-id="impact"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #ffb0d9; --ring-bottom: #e6007f; }
+/* Source: the blue of its glowing orb, light sky blue at the top to a deep blue at the bottom. */
+.project-layout[data-project-id="source"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #a9d6ff; --ring-bottom: #3d7fd9; }
+/* Space Age Racer: the sky blue its dots used to have, light at the top to a deeper blue at the bottom. */
+.project-layout[data-project-id="spaceage"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #9ccaf0; --ring-bottom: #3a7fc4; }
+/* Proteo: the red of its ball, a soft red at the top to a deep crimson at the bottom. */
+.project-layout[data-project-id="proteo"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #fb7a82; --ring-bottom: #b3143a; }
+/* Arup: no gradient, one flat colour per section taken from its title's letters: yellow (P), red (U), green (A). */
+.project-layout[data-project-id="arup"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #ecc70a; --ring-bottom: #ecc70a; }
+.project-layout[data-project-id="arup"] .project-paragraph:nth-child(2 of .project-paragraph) > .project-subtitle .section-dot { --ring-top: #e61e19; --ring-bottom: #e61e19; }
+.project-layout[data-project-id="arup"] .project-paragraph:nth-child(3 of .project-paragraph) > .project-subtitle .section-dot { --ring-top: #0bcf44; --ring-bottom: #0bcf44; }
 /* Tags: flat chips, no outline or shadow, in a faint tint and the identity card's lettering, a size smaller. */
 .project-copy > .project-meta { gap: calc(6 * var(--u)); }
 .project-copy > .project-meta span, .is-qa-project .project-copy > .project-meta span { padding: calc(5.5 * var(--u)) calc(8 * var(--u)); border: 0; border-radius: calc(3 * var(--u)); background: #5264700f; color: #2f3a40; box-shadow: none; font-size: calc(11 * var(--u)); font-weight: 600; letter-spacing: 0; }
@@ -603,8 +619,11 @@ img.hero-image { object-fit: cover; }
 .project-facts dl { display: flex; flex-wrap: wrap; gap: calc(10 * var(--u)) calc(32 * var(--u)); overflow: hidden; margin: 0; }
 .project-facts dl > div { position: relative; }
 .project-facts dl > div::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(-16 * var(--u) - .5px); width: 1px; background: #52647030; }
-.project-facts dt { color: #8a959c; font-size: calc(9.5 * var(--u)); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
-.project-facts dd { margin: calc(4 * var(--u)) 0 0; color: #2f3a40; font-size: calc(13.5 * var(--u)); font-weight: 600; }
+/* Label and value lines are a whole number of reference pixels tall, so the value sits on the same sub-pixel phase as its
+   label: with the font's own line height (11.5 for the label) the value fell half a pixel off and its text jumped while
+   the page slid. */
+.project-facts dt { color: #8a959c; font-size: calc(9.5 * var(--u)); font-weight: 600; line-height: calc(12 * var(--u)); letter-spacing: .14em; text-transform: uppercase; }
+.project-facts dd { margin: calc(4 * var(--u)) 0 0; color: #2f3a40; font-size: calc(13.5 * var(--u)); font-weight: 600; line-height: calc(17 * var(--u)); }
 /* Home: a slanted photo panel on the left, identity and pitch on the right. */
 .about-layout { position: relative; display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: clamp(28 * var(--u), 3.5 * var(--vw), 64 * var(--u)); min-height: calc(100dvh - 70 * var(--u) - var(--dock-height) - 54 * var(--u)); padding: calc(40 * var(--u)) 0; }
 .about-photo { --slant: 0deg; position: relative; justify-self: center; width: min(100%, 500 * var(--u)); height: clamp(340 * var(--u), 60 * var(--vh), 640 * var(--u)); margin: 0; }

@@ -9,10 +9,10 @@
         ],
         "context": "Personal Project",
         "facts": {
-            "role": "",
-            "duration": "",
-            "team": "",
-            "engine": ""
+            "role": "Game Designer",
+            "duration": "12 months",
+            "team": "Solo",
+            "engine": "Unity"
         },
         "sections": [
             {
@@ -20,11 +20,11 @@
                 "content": "**Space Age Racer** is a futuristic racing game inspired by the iconic podracers from Star Wars. The game is designed around a custom-built **Arduino controller** and explores the concept of a homemade arcade setup to create an immersive experience."
             },
             {
-                "title": "THE GAME",
+                "title": "THE CONTROLLER",
                 "content": "Space Age Racer is a futuristic **racing game** inspired by the iconic podracers from Star Wars. The game is designed around a custom-built Arduino controller and explores the concept of a **homemade arcade** setup to create an immersive experience."
             },
             {
-                "title": "THE GAME",
+                "title": "DESIGN CHALLENGES",
                 "content": "Space Age Racer is a futuristic **racing game** inspired by the iconic podracers from Star Wars. The game is designed around a custom-built Arduino controller and explores the concept of a **homemade arcade** setup to create an immersive experience."
             }
         ]
