@@ -19,11 +19,6 @@ export function enableRunner(title) {
   const page = row.closest(".project-layout");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const lockResume = createResumeLock();
-  const setHeroPaused = active => {
-    lockResume(active);
-    page.dataset.runnerPlaying = String(active);
-    page.dispatchEvent(new Event("hero-autoplay-change"));
-  };
   const logos = title.querySelector(".arup-title-logos");
   const logoLetters = [...logos.querySelectorAll("img")];
   let letterMasks = [];
@@ -148,7 +143,7 @@ export function enableRunner(title) {
     nextBonus = 10;
     entering = false; entryTime = 0; logos.style.removeProperty("--entry-offset");
     running = false; stopFrame(); row.classList.remove("is-running", "is-crashed", "is-entering"); ground.classList.remove("is-running"); resetLetters();
-    setHeroPaused(false);
+    lockResume(false);
     control.setAttribute("aria-label", "Play ARUP");control.setAttribute("aria-pressed", "false");
     logos.style.removeProperty("--jump"); clear(); title.setAttribute("aria-pressed", "false");
     row.classList.toggle("is-returning", returning);
@@ -279,7 +274,7 @@ export function enableRunner(title) {
         best = Math.max(best, Math.floor(distance));
         try { localStorage.setItem("arup-runner-best", String(best)); } catch {}
         hud.hidden = true;
-        setHeroPaused(false);
+        lockResume(false);
         resetTimer = setTimeout(() => { resetTimer = null; if (available()) stop(); }, 650);
         return;
       }
@@ -313,7 +308,7 @@ export function enableRunner(title) {
     if (entering) transformLetters(entryTime);
     logos.style.setProperty("--entry-offset", `${entering ? -dropDistance : 0}px`);
     running = true; row.classList.add("is-running"); ground.classList.add("is-running"); row.classList.remove("is-crashed");
-    setHeroPaused(true);
+    lockResume(true);
     title.setAttribute("aria-pressed", "true"); control.setAttribute("aria-label", "Jump ARUP");control.setAttribute("aria-pressed", "true");
     logos.style.setProperty("--jump", "0em");
     stopFrame(); frame = requestAnimationFrame(tick);
@@ -352,7 +347,6 @@ export function enableRunner(title) {
 
     frozen = true; clearTimeout(resetTimer); resetTimer = null; stopFrame(); observer.disconnect();
     lockResume(false);
-    delete page.dataset.runnerPlaying;
     if (!event.detail?.preserveVisual) { disposed = true; events.abort(); }
   }, { signal: events.signal });
 }

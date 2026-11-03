@@ -9,7 +9,7 @@
         ],
         "context": "Personal Project",
         "facts": {
-            "role": "Game Designer",
+            "role": "Game Designer & Developer",
             "duration": "12 months",
             "team": "Solo",
             "engine": "Unity"
@@ -17,15 +17,15 @@
         "sections": [
             {
                 "title": "THE GAME",
-                "content": "**Space Age Racer** is a futuristic racing game inspired by the iconic podracers from Star Wars. The game is designed around a custom-built **Arduino controller** and explores the concept of a homemade arcade setup to create an immersive experience."
+                "content": "**Space Age Racer** is an arcade racing game inspired by the podracers from Star Wars. You pilot a pod with two levers, one for each engine. I made it for fun, to race with my friends while learning more about Unity and Arduino."
             },
             {
                 "title": "THE CONTROLLER",
-                "content": "Space Age Racer is a futuristic **racing game** inspired by the iconic podracers from Star Wars. The game is designed around a custom-built Arduino controller and explores the concept of a **homemade arcade** setup to create an immersive experience."
+                "content": "The idea was a homemade arcade game, played on [a controller](media:-2) I built out of wood. Each lever is linked to a **potentiometer**, with a boost button on the right handle. An **Arduino** sends it all to the game."
             },
             {
                 "title": "DESIGN CHALLENGES",
-                "content": "Space Age Racer is a futuristic **racing game** inspired by the iconic podracers from Star Wars. The game is designed around a custom-built Arduino controller and explores the concept of a **homemade arcade** setup to create an immersive experience."
+                "content": "I developed **the whole game in Unity**. The real challenge was making the levers feel natural to drive, which meant reworking almost everything, again and again. I also built several prototype tracks to test different ideas, with my friends as playtesters. Little by little, racing started to feel fun."
             }
         ]
     }

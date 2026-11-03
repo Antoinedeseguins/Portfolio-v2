@@ -62,14 +62,30 @@ const RETRO_PC = { case: 0xd3d9de, caseShade: 0xb3bcc4, slot: 0x2b333b, screen: 
 const LED_ON = 0xe0392f;
 // The computer's power LED once on: a vivid red that glows.
 const PC_LED_ON = { colour: 0xff2414, glow: 1.4 };
+// While the computer is off, its power LED breathes amber like a machine on standby: from full down to low and back
+// every period seconds, glowing at most glow, redrawn rate times a second (the room isn't drawn every frame for it).
+const PC_LED_STANDBY = { colour: 0xffa31a, period: 3, low: .12, glow: 1.1, rate: 6 };
 // The boot sequence and desktop on the CRT.
 const SCREEN = {
   black: "#0d1013", flash: "#e8f2ff", boot: "#10161d", bar: "#f2f6fa", barTrack: "#26313c",
   glyphs: "#f2f6fa", fringeRed: "#e0392f", fringeCyan: "#3fd0e0", desktop: "#2f7f86", icon: "#f2f4f6", iconLabel: "#cfe6e8",
   taskbar: "#c9d0d6", start: "#4caf6a", cursor: "#ffffff", page: "#ffffff", close: "#e05a4f",
 };
+// Switched off, the tube's dark glass shows its depth: a little lighter in the middle (centre) than at its edges, shown
+// at glow (the screen's light once on is .5).
+const SCREEN_GLASS = { centre: "#3a4046", glow: .2 };
+// Now and then a draft catches the half of the post-it that overhangs the monitor's edge: stuck down along a vertical
+// line on the frame, it swings out like a little door and flutters back flat. First after first seconds, then every
+// every[0] to every[1] seconds. lift: how far its free edge comes off at most, as a fraction of its width; it swings
+// out most rise seconds in, wavering flutter times a second, and lies flat again after length seconds.
+const POST_IT_DRAFT = { first: 10, every: [30, 60], lift: .12, rise: .35, flutter: 3.5, length: 2.5 };
 // The coffee mug on the desk: white, in the site's light grey, full of coffee.
 const MUG = { mug: 0xeef1f3, coffee: 0x4a2e22 };
+// A little steam over the hot coffee: a soft plume (at most opacity) drawn over the room, light (colour) over dark
+// things and darker (shade) over light ones and the page, so it shows on both. Its wisps rise at speed (the coffee's
+// half widths a second) and sway, in a column wide times the coffee's width across and high times it tall, kept moving
+// rate times a second.
+const COFFEE_STEAM = { colour: 0xcfd6dc, shade: 0x8e99a3, opacity: .3, speed: .9, wide: 1, high: 2.6, rate: 30 };
 // Wayfarer sunglasses on the desk: glossy black frame and arms (frame gloss = roughness), the classic dark green lenses
 // with a sheen (shine = roughness), silver rivets.
 const SUNGLASSES = { frame: 0x121416, lens: 0x26302a, rivet: 0xd5dade, gloss: .4, shine: .2 };
@@ -223,8 +239,10 @@ function buildRetroComputer() {
   const screen = part(new THREE.BoxGeometry(.29, .225, .004), "screen", 0, .24, .041);
   screen.name = "screen";
   // A yellow sticky note on the right of the monitor frame, overhanging its edge a little. It stands just clear of
-  // the frame and the glass so neither shows through it.
-  const postIt = part(new THREE.BoxGeometry(.06, .06, .002), "postIt", .172, .31, .0445);
+  // the frame and the glass so neither shows through it. Cut into upright strips so a draft can bend it (see
+  // POST_IT_DRAFT).
+  const postIt = part(new THREE.BoxGeometry(.06, .06, .002, 8, 1, 1), "postIt", .172, .31, .0445);
+  postIt.name = "postIt";
   postIt.rotation.z = THREE.MathUtils.degToRad(-7);
   postIt.userData.monitor = true;
 
@@ -460,12 +478,17 @@ function createScreenDisplay() {
     }
     texture.needsUpdate = true;
   };
-  // A switched-off tube shows nothing, not a dimmed copy of the last picture: plain white, tinted by the
-  // material to the same dark glass as before.
+  // A switched-off tube shows nothing, not a dimmed copy of the last picture: only its dark glass (see SCREEN_GLASS),
+  // a little lighter in the middle than at the edges.
   let blank = false;
   const clear = () => {
     if (blank) return;
-    rect("#ffffff", 0, 0, width, height);
+    const depth = context.createRadialGradient(width / 2, height * .45, 0, width / 2, height * .45, width * .7);
+    depth.addColorStop(0, SCREEN_GLASS.centre);
+    depth.addColorStop(.6, "#16191b");
+    depth.addColorStop(1, "#000000");
+    context.fillStyle = depth;
+    context.fillRect(0, 0, width, height);
     texture.needsUpdate = blank = true;
   };
   const show = (seconds) => { blank = false; draw(seconds); };
@@ -2183,17 +2206,67 @@ function createDeskRoom() {
   }
   const software = /swiftshader|llvmpipe|software|basic render/i.test(graphics);
   let supersample = 1;
-  const sampled = new THREE.WebGLRenderTarget(1, 1, { samples: 4, colorSpace: THREE.SRGBColorSpace });
+  // Its depths are kept too (depthTexture), so the steam over the coffee can hide behind what stands in front of it.
+  const sampled = new THREE.WebGLRenderTarget(1, 1, { samples: 4, colorSpace: THREE.SRGBColorSpace, depthTexture: new THREE.DepthTexture(1, 1) });
   // The averaging: four taps between the sampled pixels of each screen pixel's patch (all at its middle when there is
   // just one), its colour then encoded for the screen, which wants it premultiplied by its alpha (as it is stored).
+  // Over the hot coffee a little steam is drawn on top (see COFFEE_STEAM), in a column rising from it (steamColumn: the
+  // middle of its foot, then its half width and its height, as fractions of the canvas), worked out in CSS pixels
+  // (steamSize: the canvas's CSS size); steamOn is 0 while the coffee isn't hot. Only where nothing in the room stands
+  // nearer than the coffee (steamDepth: its depth, against the room's in depths): an open door hides it.
   const shrink = new THREE.ShaderMaterial({
-    uniforms: { map: { value: sampled.texture }, offset: { value: new THREE.Vector2() } },
+    uniforms: {
+      map: { value: sampled.texture }, depths: { value: sampled.depthTexture }, offset: { value: new THREE.Vector2() },
+      steamOn: { value: 0 }, steamTime: { value: 0 }, steamColumn: { value: new THREE.Vector4() }, steamSize: { value: new THREE.Vector2(1, 1) },
+      steamDepth: { value: 1 }, steamAge: { value: 0 }, steamFoot: { value: 0 },
+      steamColour: { value: new THREE.Color(COFFEE_STEAM.colour) }, steamShade: { value: new THREE.Color(COFFEE_STEAM.shade) },
+      steamOpacity: { value: COFFEE_STEAM.opacity }, steamSpeed: { value: COFFEE_STEAM.speed },
+    },
     vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
-    fragmentShader: `uniform sampler2D map; uniform vec2 offset; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D map, depths; uniform vec2 offset;
+      uniform float steamOn, steamTime, steamOpacity, steamSpeed, steamDepth, steamAge, steamFoot;
+      uniform vec4 steamColumn; uniform vec2 steamSize; uniform vec3 steamColour, steamShade;
+      varying vec2 vUv;
+      // Smooth noise, and several of its octaves added up for soft, uneven shapes.
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      float fbm(vec2 p) {
+        float total = 0.0, weight = .5;
+        for (int i = 0; i < 4; i++) { total += weight * noise(p); p *= 2.03; weight *= .5; }
+        return total;
+      }
+      // How much steam covers this pixel: a soft plume rising from the coffee, its wisps drifting up and swaying more and
+      // more as they rise, the plume widening, growing in from the mug's rim (steamFoot, up the column) and fading out
+      // towards the top. When it first
+      // shows (steamAge: seconds since), it comes up out of the coffee rather than being there at once.
+      float steam() {
+        vec2 p = (vUv - steamColumn.xy) * steamSize;
+        float wide = steamColumn.z * steamSize.x, high = steamColumn.w * steamSize.y;
+        if (p.y < 0.0 || p.y > high || abs(p.x) > wide * 2.5) return 0.0;
+        vec2 q = p / wide;
+        float rise = p.y / high, drift = steamTime * steamSpeed, front = steamAge * steamSpeed * 1.5;
+        q.x += (fbm(vec2(q.x, q.y - drift) * .8 + vec2(3.1, 0.0)) - .5) * 1.6 * rise;
+        float body = 1.0 - smoothstep(.35 + .8 * rise, .8 + 1.4 * rise, abs(q.x));
+        float wisps = smoothstep(.42, .78, fbm(vec2(q.x * 1.3, q.y - drift) * 1.4));
+        return wisps * body * smoothstep(steamFoot, steamFoot + .15, rise) * (1.0 - smoothstep(.45, 1.0, rise))
+          * (1.0 - smoothstep(front - .6, front, q.y));
+      }
       void main() {
         vec4 colour = (texture2D(map, vUv - offset) + texture2D(map, vUv + offset)
           + texture2D(map, vUv + vec2(offset.x, -offset.y)) + texture2D(map, vUv + vec2(-offset.x, offset.y))) * .25;
         if (colour.a > 0.0) colour.rgb /= colour.a;
+        float smoke = steamOn > 0.0 && texture2D(depths, vUv).r > steamDepth ? steam() * steamOpacity : 0.0;
+        if (smoke > 0.0) {
+          // Light over dark things, darker over light ones and over the page (light, where the room leaves it showing).
+          float behind = mix(.9, dot(colour.rgb, vec3(.2126, .7152, .0722)), colour.a);
+          vec3 tint = mix(steamColour, steamShade, smoothstep(.2, .5, behind));
+          float alpha = smoke + colour.a * (1.0 - smoke);
+          colour = vec4((tint * smoke + colour.rgb * colour.a * (1.0 - smoke)) / alpha, alpha);
+        }
         gl_FragColor = colour;
         #include <colorspace_fragment>
         gl_FragColor.rgb *= gl_FragColor.a;
@@ -2204,12 +2277,34 @@ function createDeskRoom() {
   const shrinkQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), shrink);
   shrinkQuad.frustumCulled = false;
   flat.add(shrinkQuad);
+  // The steam over the coffee (see COFFEE_STEAM), set up once the mug is built: whether it shows, and its column. The
+  // column is worked out again on the first drawing after the canvas changes size (steamCanvas: its CSS size), once
+  // the mug stands where it is drawn (its holders are only posed then).
+  let coffeeHot = () => false;
+  let placeSteam = () => {};
+  const steamCanvas = new THREE.Vector2();
+  let steamPlaced = false;
+  // Averages the room as last drawn onto the canvas, with the steam over the coffee as it is now (steamFrom: when it
+  // first showed, as the room replaced the picture shown until it was ready, which has none).
+  let steamFrom = 0;
+  const average = () => {
+    const now = performance.now(), hot = coffeeHot();
+    if (hot && !steamFrom) steamFrom = now;
+    shrink.uniforms.steamTime.value = now / 1000;
+    shrink.uniforms.steamAge.value = (now - steamFrom) / 1000;
+    shrink.uniforms.steamOn.value = hot ? 1 : 0;
+    renderer.render(flat, flatCamera);
+  };
   // Draws the room into sampled, then averages it onto the canvas.
   const draw = () => {
     renderer.setRenderTarget(sampled);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
-    renderer.render(flat, flatCamera);
+    if (!steamPlaced) {
+      placeSteam(steamCanvas.x, steamCanvas.y);
+      steamPlaced = true;
+    }
+    average();
   };
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -3588,7 +3683,10 @@ function createDeskRoom() {
     const stutter = (crashStart !== null || failing) && screen.state.target === 1 ? (Math.sin(performance.now() * .09) > 0 ? 1 : .15) : 1;
     ledMaterial.color.lerpColors(ledOff, ledOn, t * stutter);
     ledMaterial.emissive.copy(ledOn).multiplyScalar(t * stutter * PC_LED_ON.glow);
-    if (t < .02 && !screen.state.target) display.clear();
+    if (t < .02 && !screen.state.target) {
+      display.clear();
+      screenMaterial.emissive.setScalar(SCREEN_GLASS.glow);
+    }
   });
   // Coffee in the case: the picture tears and collapses, the computer cuts out and smoke rises from it.
   const shortCircuit = () => {
@@ -3650,6 +3748,113 @@ function createDeskRoom() {
     }
     display.draw(seconds);
     return seconds < BOOT.end;
+  };
+  // The power LED's standby breathing (see PC_LED_STANDBY), over its switched-off look, while the computer is off and
+  // still. A timer wakes the room for it; visitors who ask for reduced motion get a steady glow instead.
+  const ledStandby = new THREE.Color(PC_LED_STANDBY.colour);
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let standbyTimer = 0, standbyFrom = 0;
+  const stopStandby = () => {
+    window.clearInterval(standbyTimer);
+    standbyTimer = 0;
+  };
+  parts.push({
+    object: computer, state: spring(), apply() {},
+    busy(now) {
+      if (screen.state.target || screen.state.value > .02 || crashStart !== null || matrixStart !== null || failing) return stopStandby(), false;
+      if (!reducedMotion.matches && !standbyTimer) {
+        standbyFrom = now;
+        standbyTimer = window.setInterval(wake, 1000 / PC_LED_STANDBY.rate);
+      }
+      // Each spell of standby starts at full glow, as the LED is in the picture shown until the room is ready.
+      const breath = reducedMotion.matches ? 1 : (1 + Math.cos((now - standbyFrom) / 1000 / PC_LED_STANDBY.period * Math.PI * 2)) / 2;
+      const level = THREE.MathUtils.lerp(PC_LED_STANDBY.low, 1, breath);
+      ledMaterial.color.lerpColors(ledOff, ledStandby, level);
+      ledMaterial.emissive.copy(ledStandby).multiplyScalar(level * PC_LED_STANDBY.glow);
+      return false;
+    },
+  });
+  // The draft on the post-it (see POST_IT_DRAFT), not for visitors who ask for reduced motion. Its paper and its edge
+  // strokes bend alike, from where they lie flat.
+  const postIt = computer.getObjectByName("postIt");
+  const postItStrokes = postIt.children.find((child) => child.isLineSegments);
+  const postItFlat = [postIt.geometry, postItStrokes.geometry].map((geometry) => geometry.attributes.position.clone());
+  const postItSize = new THREE.Box3().setFromBufferAttribute(postItFlat[0]).getSize(new THREE.Vector3());
+  // Swings its right edge out by lift (a fraction of its width), curling from the monitor's edge (x .17 in the
+  // computer's space, where the frame ends): the left part stays stuck on the frame.
+  const postItHinge = .17 - postIt.position.x;
+  const bendPostIt = (lift) => {
+    [postIt.geometry, postItStrokes.geometry].forEach((geometry, k) => {
+      const position = geometry.attributes.position, flat = postItFlat[k];
+      for (let i = 0; i < position.count; i++) {
+        const free = Math.max(0, (flat.getX(i) - postItHinge) / (postItSize.x / 2 - postItHinge));
+        position.setZ(i, flat.getZ(i) + lift * postItSize.x * free ** 1.5);
+      }
+      position.needsUpdate = true;
+    });
+    postIt.geometry.computeVertexNormals();
+  };
+  let draftTimer = 0, draftStart = null, drafts = 0;
+  const stopDraft = () => {
+    window.clearTimeout(draftTimer);
+    draftTimer = 0;
+  };
+  // Not while the tab is hidden or the visitor's pointer is on the room: it tries again a little later.
+  const blowDraft = () => {
+    draftTimer = 0;
+    if (document.hidden || document.documentElement.classList.contains("is-pointing-room")) {
+      draftTimer = window.setTimeout(blowDraft, 4000);
+      return;
+    }
+    draftStart = performance.now();
+    wake();
+  };
+  parts.push({
+    object: postIt, state: spring(), apply() {},
+    busy(now) {
+      if (reducedMotion.matches) return false;
+      if (draftStart === null) {
+        if (!draftTimer) {
+          const [soonest, latest] = POST_IT_DRAFT.every;
+          draftTimer = window.setTimeout(blowDraft, (drafts ? soonest + Math.random() * (latest - soonest) : POST_IT_DRAFT.first) * 1000);
+        }
+        return false;
+      }
+      const t = (now - draftStart) / 1000, { rise, flutter } = POST_IT_DRAFT;
+      if (t >= POST_IT_DRAFT.length) {
+        bendPostIt(0);
+        draftStart = null;
+        drafts++;
+        return false;
+      }
+      bendPostIt(POST_IT_DRAFT.lift * t / rise * Math.exp(1 - t / rise) * (1 + .2 * Math.sin(t * flutter * Math.PI * 2)));
+      return true;
+    },
+  });
+  // The steam over the coffee (see COFFEE_STEAM): while the mug stands full, not for visitors who ask for reduced
+  // motion. Its column rises from the middle of the coffee's surface, worked out from where it lies on the canvas
+  // (canvasWidth and canvasHeight: its CSS size).
+  coffeeHot = () => coffee.visible && mugPart.state.value < .02 && !reducedMotion.matches;
+  placeSteam = (canvasWidth, canvasHeight) => {
+    const onCanvas = (point) => { point.project(camera); return new THREE.Vector2((point.x + 1) / 2, (point.y + 1) / 2); };
+    const centre = coffee.getWorldPosition(new THREE.Vector3());
+    const across = new THREE.Box3().setFromObject(coffee).getSize(new THREE.Vector3()).x;
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const middle = onCanvas(centre.clone());
+    const side = onCanvas(centre.clone().addScaledVector(right, across * COFFEE_STEAM.wide / 2));
+    const top = onCanvas(centre.clone().setY(centre.y + across * COFFEE_STEAM.high));
+    shrink.uniforms.steamColumn.value.set(middle.x, middle.y, Math.abs(side.x - middle.x), Math.max(0, top.y - middle.y));
+    shrink.uniforms.steamSize.value.set(canvasWidth, canvasHeight);
+    // The depth buffer's value at the coffee (from -1 to 1 as projected, stored from 0 to 1).
+    shrink.uniforms.steamDepth.value = centre.clone().project(camera).z * .5 + .5;
+    // How far up the column the mug's top shows (the back of its rim, the highest of its corners as seen): the steam
+    // only shows from there, so none of it drifts over the coffee inside the mug.
+    const mugBox = new THREE.Box3().setFromObject(mug);
+    let rimY = -Infinity;
+    for (const x of [mugBox.min.x, mugBox.max.x]) for (const z of [mugBox.min.z, mugBox.max.z]) {
+      rimY = Math.max(rimY, onCanvas(new THREE.Vector3(x, mugBox.max.y, z)).y);
+    }
+    shrink.uniforms.steamFoot.value = THREE.MathUtils.clamp((rimY - middle.y) / Math.max(1e-6, top.y - middle.y), 0, .8);
   };
 
   for (const drawer of drawers) {
@@ -4013,6 +4218,9 @@ function createDeskRoom() {
     camera.position.set(Math.sin(VIEW_AZIMUTH) * Math.cos(VIEW_ELEVATION) * distance, Math.sin(VIEW_ELEVATION) * distance, Math.cos(VIEW_AZIMUTH) * Math.cos(VIEW_ELEVATION) * distance);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+    steamCanvas.set(width / ratio, height / ratio);
+    steamPlaced = false;
     wake();
   }
 
@@ -4035,10 +4243,24 @@ function createDeskRoom() {
     draw();
     if (moving) wake();
     else last = 0;
+    if (!steamFrame && coffeeHot()) steamFrame = requestAnimationFrame(keepSteam);
   }
 
   function wake() {
     if (!frame && attached && compiled) frame = requestAnimationFrame(tick);
+  }
+
+  // Between drawings of the room, the steam over the coffee keeps moving: the room as last drawn is averaged onto the
+  // canvas again, COFFEE_STEAM.rate times a second, far cheaper than drawing it.
+  let steamFrame = 0, steamLast = 0;
+  function keepSteam(now) {
+    steamFrame = 0;
+    if (!attached || !compiled || !coffeeHot()) return;
+    if (!frame && now - steamLast >= 1000 / COFFEE_STEAM.rate - 1) {
+      steamLast = now;
+      average();
+    }
+    steamFrame = requestAnimationFrame(keepSteam);
   }
 
   return {
@@ -4066,6 +4288,10 @@ function createDeskRoom() {
       cancelAnimationFrame(frame);
       frame = 0;
       last = 0;
+      cancelAnimationFrame(steamFrame);
+      steamFrame = 0;
+      stopStandby();
+      stopDraft();
       pointing(false);
       document.documentElement.classList.remove("is-on-room-screen");
       canvas.remove();

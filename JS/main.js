@@ -105,6 +105,9 @@ let pageDrag = null;
 let mediaDragActive = false;
 let pendingHeroDirection = null;
 let pendingHeroIndex = null;
+// Once the visitor takes control of the media (thumbnail, arrows, swipe...), the 7 s slideshow stops until the next
+// project. A video that ends still moves on to the next media.
+let mediaAutoplayStopped = false;
 
 function imagePath(project, imageName) {
   return `Assets/${project.folder}/${imageName}`;
@@ -151,7 +154,7 @@ function renderHeroMarkup(project, imageIndex) {
     <div class="hero-frame controller-frame">
       <div class="controller-viewer">
         <img class="controller-poster" src="Assets/spaceageracer/img/viewer-poster.webp" alt="Space Age Racer dual-lever controller" />
-        <canvas class="controller-canvas" tabindex="0" aria-label="3D controller: drag to rotate, arrow keys to orbit, plus and minus to zoom"></canvas>
+        <canvas class="controller-canvas" aria-label="3D controller: drag to rotate, scroll to zoom"></canvas>
         <div class="controller-overlay">
           <svg class="controller-detail-connector" aria-hidden="true" style="display:none"><path/></svg>
           <div class="controller-hotspots" role="group" aria-label="Explore controller components">
@@ -546,7 +549,37 @@ let finishActivePageTransition = null;
 let pageSettledAt = -Infinity;
 let pendingPagePreview = null;
 
+// The home page's arrival animation, on the first load only. index.html's head script puts has-intro on <html> before
+// the first paint, which keeps the page hidden (see the "Arrival animation" CSS) until playIntro starts it: once the page
+// is rendered and its fonts and desk picture are ready, so nothing pops in mid-way. The desk room is built only once it
+// is over, so its set-up can't stall it. Leaving the page cuts it short: everything jumps to its place.
+const pageRoot = document.documentElement;
+let resolveIntro;
+const introDone = new Promise(resolve => { resolveIntro = resolve; });
+if (!pageRoot.classList.contains("has-intro")) resolveIntro();
+
+function endIntro() {
+  pageRoot.classList.remove("has-intro", "intro-play");
+  resolveIntro();
+}
+
+async function playIntro(page) {
+  // Laying the page out starts its font downloads.
+  void page.offsetWidth;
+  await Promise.race([
+    Promise.all([document.fonts.ready, page.querySelector(".about-room-poster")?.decode().catch(() => {})]),
+    new Promise(resolve => window.setTimeout(resolve, 800)),
+  ]);
+  if (!pageRoot.classList.contains("has-intro") || !page.isConnected) return endIntro();
+  pageRoot.classList.add("intro-play");
+  await Promise.allSettled(document.getAnimations()
+    .filter(animation => animation.animationName?.startsWith("intro-"))
+    .map(animation => animation.finished));
+  endIntro();
+}
+
 function replaceProjectView(markup, navigationDirection, animateTransition) {
+  if (projectView.firstElementChild) endIntro();
   finishActivePageTransition?.();
   if (pageDrag) {
     const pointerId = pageDrag.pointerId;
@@ -661,14 +694,16 @@ function enableHeroAutoplay(frame) {
   let timer = null;
   let disposed = false;
   let interactionPaused = false;
+  // A mini-game being played pauses the slideshow; it picks up again once the game ends (three.js/game-resume-lock.js).
+  const gamePlaying = () => document.documentElement.hasAttribute("data-game-playing");
   const clearTimer = () => {
     window.clearTimeout(timer);
     timer = null;
   };
   const advance = () => {
     clearTimer();
-    if (disposed || interactionPaused || !frame.isConnected || document.hidden || !project.images.length) return;
-    if (video && !video.ended && !video.error) return;
+    if (disposed || interactionPaused || gamePlaying() || !frame.isConnected || document.hidden || !project.images.length) return;
+    if (video ? !video.ended && !video.error : mediaAutoplayStopped) return;
     if (mediaDragActive || pageDrag || projectView.querySelector(".page-outgoing")) {
       timer = window.setTimeout(advance, 250);
       return;
@@ -681,10 +716,10 @@ function enableHeroAutoplay(frame) {
   };
   const schedule = () => {
     clearTimer();
-    if (disposed || interactionPaused || document.hidden) return;
+    if (disposed || interactionPaused || gamePlaying() || document.hidden) return;
     if (video) {
       if (video.ended) advance();
-    } else if (project.images.length > 1) {
+    } else if (project.images.length > 1 && !mediaAutoplayStopped) {
       timer = window.setTimeout(advance, 7000);
     }
   };
@@ -703,6 +738,7 @@ function enableHeroAutoplay(frame) {
   }
 
   document.addEventListener("visibilitychange", schedule);
+  document.addEventListener("game-playing-change", schedule);
   frame.addEventListener("pointerdown", clearTimer);
   frame.addEventListener("pointerup", schedule);
   frame.addEventListener("pointercancel", schedule);
@@ -712,14 +748,15 @@ function enableHeroAutoplay(frame) {
     disposed = true;
     clearTimer();
     document.removeEventListener("visibilitychange", schedule);
+    document.removeEventListener("game-playing-change", schedule);
   });
   schedule();
 }
 
 const toyModules = {
   "source-light": () => import(new URL("three.js/source/source-light.js?v=65", document.baseURI).href),
-  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=53", document.baseURI).href),
-  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=53", document.baseURI).href),
+  "magnetic-cube": () => import(new URL("three.js/impact/magnetic-cube.js?v=54", document.baseURI).href),
+  "voxel-title": () => import(new URL("three.js/impact/magnetic-cube.js?v=54", document.baseURI).href),
 };
 const supportsMiniGames = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
@@ -890,7 +927,7 @@ function enableHeroDrag(frame) {
     track.append(frame.querySelector(".controller-viewer"));
     let disposed = false;
     frame.addEventListener("hero-dispose", () => { disposed = true; }, { once: true });
-    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=62", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/controller-viewer/controller-viewer.js?v=71", document.baseURI).href)
       .then(module => { if (!disposed && frame.isConnected) return module.enableController(frame); })
       .catch(error => {
         if (!disposed) { frame.querySelector(".controller-error").hidden = false; frame.classList.add("controller-unavailable"); }
@@ -992,6 +1029,8 @@ function enableHeroDrag(frame) {
       cleanup();
       return;
     }
+    // A swipe is taking control even when it falls short and the picture springs back.
+    if (!automatic) mediaAutoplayStopped = true;
     const threshold = Math.max(40, Math.min(100, releasedDrag.width * .12));
     const advance = forcedDirection !== null || (!cancelled && Math.abs(releasedDrag.deltaX) >= threshold);
     const direction = forcedDirection ?? (releasedDrag.deltaX < 0 ? 1 : -1);
@@ -1118,8 +1157,12 @@ function escapeText(value) {
   })[character]);
 }
 
+// **words** in bold, and [words](media:N) as a link that shows the project's media N (its thumbnail's data-image) in the
+// hero frame.
 function formatProjectText(value) {
-  return escapeText(value).replace(/\*\*([^*]+)\*\*/g, '<strong class="project-text-bold">$1</strong>');
+  return escapeText(value)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong class="project-text-bold">$1</strong>')
+    .replace(/\[([^\]]+)\]\(media:(-?\d+)\)/g, '<button class="project-text-link" type="button" data-show-media="$2">$1</button>');
 }
 
 // A project's identity card: its key facts by name in content.json ("facts"), shown in this order with these labels,
@@ -1198,7 +1241,7 @@ function aboutPageMarkup() {
         </div>
       </div>
       <div class="about-room" aria-hidden="true">
-        <img class="about-room-poster" src="three.js/about/desk-room-poster-1x.webp" srcset="three.js/about/desk-room-poster-1x.webp 1x, three.js/about/desk-room-poster-2x.webp 2x" alt="" />
+        <img class="about-room-poster" src="three.js/about/desk-room-poster-1x.webp?v=2" srcset="three.js/about/desk-room-poster-1x.webp?v=2 1x, three.js/about/desk-room-poster-2x.webp?v=2 2x" alt="" />
       </div>
     </div>
   `;
@@ -1214,6 +1257,7 @@ projectView.addEventListener("click", (event) => {
 function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScrollLeft = 0, animateTransition = true, navigationDirection = 1) {
   activeProjectId = project.id;
   activeImageIndex = imageIndex;
+  mediaAutoplayStopped = false;
   pageArrows.hidden = false;
   previousProjectButton.disabled = false;
   nextProjectButton.disabled = false;
@@ -1229,7 +1273,7 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   projectView.querySelectorAll(".toy-widget").forEach(enableToy);
   // Impact's tags shatter into cubes like its title.
   const impactPage = project.id === "impact" ? projectView.firstElementChild : null;
-  if (impactPage && supportsMiniGames()) import(new URL("three.js/impact/voxel-tags.js?v=6", document.baseURI).href)
+  if (impactPage && supportsMiniGames()) import(new URL("three.js/impact/voxel-tags.js?v=7", document.baseURI).href)
     .then(module => {
       if (!impactPage.isConnected || impactPage.classList.contains("page-outgoing")) return;
       impactPage.addEventListener("page-dispose", module.enableVoxelTags(impactPage), { once: true });
@@ -1240,17 +1284,17 @@ function renderProject(project, imageIndex = project.video ? -1 : 0, galleryScro
   if (proteoPlay && supportsMiniGames()) import(new URL("three.js/proteo/proteo-shapes.js?v=34", document.baseURI).href)
     .then(module => { if (proteoPlay.isConnected && !proteoPlay.closest(".page-outgoing")) module.enableShapes(proteoPlay); })
     .catch(error => console.error("Proteo interaction could not be loaded", error));
-  if (arupTitle && supportsMiniGames()) import(new URL("three.js/ARUP/arup-runner.js?v=65", document.baseURI).href)
+  if (arupTitle && supportsMiniGames()) import(new URL("three.js/ARUP/arup-runner.js?v=66", document.baseURI).href)
     .then(module => { if (arupTitle.isConnected && !arupTitle.closest(".page-outgoing")) module.enableRunner(arupTitle); })
     .catch(error => console.error("ARUP interaction could not be loaded", error));
   const racerPlay = projectView.querySelector(".space-racer-play");
   if (racerPlay && supportsMiniGames())
-    import(new URL("three.js/space-age-racer/mini-game/space-racer.js?v=72", document.baseURI).href)
+    import(new URL("three.js/space-age-racer/mini-game/space-racer.js?v=73", document.baseURI).href)
       .then(module => { if (racerPlay.isConnected && !racerPlay.closest(".page-outgoing")) module.enableRacer(racerPlay); })
       .catch(error => console.error("Racer interaction could not be loaded", error));
   const necroPlay = projectView.querySelector(".necro-play");
   if (necroPlay && window.matchMedia("(hover: hover) and (pointer: fine)").matches)
-    import(new URL("three.js/necromunda/shooting-gallery.js?v=14", document.baseURI).href)
+    import(new URL("three.js/necromunda/shooting-gallery.js?v=16", document.baseURI).href)
       .then(async module => {
         await document.fonts.ready;
         if (necroPlay.isConnected && !necroPlay.closest(".page-outgoing")) module.enableGallery(necroPlay);
@@ -1282,10 +1326,11 @@ function renderAbout(navigationDirection = -1) {
   const aboutMarkup = aboutPageMarkup();
   replaceProjectView(aboutMarkup, navigationDirection, true);
   // A small desk diorama sits right of the pitch; it stays drawn while the page slides out. It is built the first time
-  // the page has slid in, then kept: later visits show it as it was left, sliding in with the page.
+  // the page has slid in (or its arrival animation has played), then kept: later visits show it as it was left,
+  // sliding in with the page.
   const aboutPage = projectView.firstElementChild;
   const aboutRoom = aboutPage?.querySelector(".about-room");
-  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=337", document.baseURI).href)
+  if (aboutRoom && getComputedStyle(aboutRoom).display !== "none") import(new URL("three.js/about/desk-room.js?v=365", document.baseURI).href)
     .then(module => {
       const show = () => {
         if (!aboutPage.isConnected || aboutPage.classList.contains("page-outgoing")) return;
@@ -1297,7 +1342,7 @@ function renderAbout(navigationDirection = -1) {
         });
       };
       if (module.deskRoomBuilt()) show();
-      else whenPageSettled(aboutPage, show);
+      else whenPageSettled(aboutPage, () => introDone.then(show));
     })
     .catch(error => console.error("About room could not be loaded", error));
   projectView.setAttribute("aria-busy", "false");
@@ -1555,7 +1600,28 @@ function selectMediaImage(project, imageIndex, resetNavigation = true, preparedI
   syncMediaGallery(imageIndex);
 }
 
+// Browsing the thumbnails is taking control too: the slideshow stops (it would otherwise scroll the thumbnails away
+// under the visitor's hand). Using the video's own controls is not, and playing a mini-game only pauses it.
+projectView.addEventListener("pointerdown", (event) => {
+  if (event.target instanceof Element && event.target.closest(".gallery-shell")) mediaAutoplayStopped = true;
+}, true);
+projectView.addEventListener("wheel", (event) => {
+  if (event.target instanceof Element && event.target.closest(".gallery")) mediaAutoplayStopped = true;
+}, { capture: true, passive: true });
+
 projectView.addEventListener("click", (event) => {
+  // A link in the text to one of the media does what its thumbnail does: the copy nearest the middle of the strip, as
+  // the strip repeats its thumbnails.
+  const mediaLink = event.target.closest("[data-show-media]");
+  if (mediaLink) {
+    const gallery = mediaLink.closest(".project-layout")?.querySelector(".gallery");
+    if (!gallery) return;
+    const bounds = gallery.getBoundingClientRect();
+    const offMiddle = (thumbnail) => { const rect = thumbnail.getBoundingClientRect(); return Math.abs(rect.left + rect.width / 2 - bounds.left - bounds.width / 2); };
+    [...gallery.querySelectorAll(`.gallery-thumb[data-image="${mediaLink.dataset.showMedia}"]`)]
+      .sort((a, b) => offMiddle(a) - offMiddle(b))[0]?.click();
+    return;
+  }
   const mediaButton = event.target.closest("[data-media-direction]");
   if (mediaButton) {
     mediaButton.closest(".hero-frame").dispatchEvent(new CustomEvent("hero-navigate", {
@@ -1578,6 +1644,7 @@ projectView.addEventListener("click", (event) => {
   if (!project) return;
   const imageIndex = Number(button.dataset.image);
   const currentIndex = activeImageIndex;
+  mediaAutoplayStopped = true;
   if (imageIndex === currentIndex) return;
   const gallery = button.closest(".gallery");
   const bounds = gallery.getBoundingClientRect();
@@ -1638,8 +1705,13 @@ async function initializePortfolio() {
   }));
   renderProjectRail();
   const initialProject = projectFromUrl();
-  if (initialProject) renderProject(initialProject);
-  else renderAbout();
+  if (initialProject) {
+    renderProject(initialProject);
+    endIntro();
+  } else {
+    renderAbout();
+    playIntro(projectView.firstElementChild);
+  }
 }
 
 initializePortfolio().catch((error) => console.error("Impossible de charger les contenus JSON", error));

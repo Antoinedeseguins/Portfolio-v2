@@ -10,7 +10,8 @@ const PX = 25, STEP = 3, DEPTH = 30;
 export function enableVoxelTags(layout) {
   const meta = layout.querySelector(".project-copy > .project-meta");
   if (!meta || !meta.children.length) return () => {};
-  const lockResume = createResumeLock();
+  // A toy rather than a game: playing with it doesn't pause the media slideshow.
+  const lockResume = createResumeLock({ pausesSlideshow: false });
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const canvas = document.createElement("canvas");
   canvas.className = "voxel-tags-canvas";

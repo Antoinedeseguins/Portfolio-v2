@@ -45,16 +45,25 @@
 		     the one before has arrived: fetch them all now, alongside the page. Ahead of the stylesheets, which would hold
 		     this script back. The ?v must stay the one in JS/main.js's import, or the toy is fetched twice. The picture
 		     shown in its place until it is ready comes first. Only when the page opens on the home page, the one the toy
-		     is on: a project's address (its path or #id, see projectFromUrl in JS/main.js) opens that project instead. -->
+		     is on: a project's address (its path or #id, see projectFromUrl in JS/main.js) opens that project instead.
+		     Opening on the home page also plays its arrival animation (unless the visitor asks for reduced motion):
+		     has-intro keeps the page hidden from the first paint until JS/main.js starts it (playIntro), or shows it as it
+		     is if that hasn't happened within 4 s. -->
 		<script>
 			{
 				const openingPage = (location.hash.slice(1) || location.pathname.replace(/\/$/, "").split("/").pop()).toLowerCase();
-				if (["", "index.html", "about-me", "about", "aboutme"].includes(openingPage) && matchMedia("(min-width: 1181px)").matches) {
+				const opensOnHome = ["", "index.html", "about-me", "about", "aboutme"].includes(openingPage);
+				if (opensOnHome && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+					const root = document.documentElement;
+					root.classList.add("has-intro");
+					setTimeout(() => { if (!root.classList.contains("intro-play")) root.classList.remove("has-intro"); }, 4000);
+				}
+				if (opensOnHome && matchMedia("(min-width: 1181px)").matches) {
 					document.head.append(Object.assign(document.createElement("link"), {
-						rel: "preload", as: "image", href: "three.js/about/desk-room-poster-1x.webp",
-						imageSrcset: "three.js/about/desk-room-poster-1x.webp 1x, three.js/about/desk-room-poster-2x.webp 2x",
+						rel: "preload", as: "image", href: "three.js/about/desk-room-poster-1x.webp?v=2",
+						imageSrcset: "three.js/about/desk-room-poster-1x.webp?v=2 1x, three.js/about/desk-room-poster-2x.webp?v=2 2x",
 					}));
-					for (const path of ["three.js/about/desk-room.js?v=337", "three.js/vendor/r180/three.module.js", "three.js/vendor/r180/three.core.js", "three.js/vendor/r180/GLTFLoader.js", "three.js/vendor/r180/BufferGeometryUtils.js"]) {
+					for (const path of ["three.js/about/desk-room.js?v=365", "three.js/vendor/r180/three.module.js", "three.js/vendor/r180/three.core.js", "three.js/vendor/r180/GLTFLoader.js", "three.js/vendor/r180/BufferGeometryUtils.js"]) {
 						document.head.append(Object.assign(document.createElement("link"), { rel: "modulepreload", href: path }));
 					}
 				}
@@ -65,8 +74,8 @@
 		<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,800;1,350;1,500&display=swap" rel="stylesheet" />
 		<!-- The name and the handwritten hello stay hidden until their fonts arrive instead of flashing a fallback. -->
 		<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&family=Caveat:wght@400&display=block" rel="stylesheet" />
-		<link rel="stylesheet" href="CSS/styles.css?v=20261102-ringarup" />
-		<script src="JS/main.js?v=20261101-keptcube" defer></script>
+		<link rel="stylesheet" href="CSS/styles.css?v=20261103-medialink5" />
+		<script src="JS/main.js?v=20261103-medialink2" defer></script>
 	</head>
 	<body class="is-about-page">
 		<main class="portfolio">

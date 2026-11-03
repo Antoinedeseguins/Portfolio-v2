@@ -139,10 +139,12 @@ button:focus-visible, a:focus-visible { outline: calc(3 * var(--u)) solid var(--
   background: var(--surface);
   box-shadow: 0 calc(18 * var(--u)) calc(50 * var(--u)) rgba(28, 35, 33, .08);
 }
+/* The frame's fine edge is a dark see-through line, like the gallery thumbnails': it vanishes on dark pictures (a light
+   grey one showed as a pale rim, broken into specks in the rounded corners) and still outlines light ones. */
 .hero-frame::after {
   position: absolute;
   inset: 0;
-  border: 1px solid color-mix(in srgb, var(--muted) 40%, var(--surface));
+  border: 1px solid rgba(23, 27, 27, .15);
   border-radius: inherit;
   content: "";
   pointer-events: none;
@@ -153,6 +155,11 @@ button:focus-visible, a:focus-visible { outline: calc(3 * var(--u)) solid var(--
    to a hardware overlay, which places it a fraction of a pixel away from the normal rendering: the
    picture moved inside its frame whenever the video started or paused (on every page change). */
 video.hero-image { object-fit: cover; border: 0; filter: brightness(1.001); }
+/* The Space Age and ARUP video files have two black pixel columns down their sides (ARUP: the right one, at the start
+   and end). They are drawn 0.3% bigger than the frame so the columns fall outside it, and so are their posters wherever
+   they stand in for them (slide preview, fallback), so the hand-over to the video doesn't move the picture. */
+video.hero-image:is([src$="/spaceage.mp4"], [src$="/ARUP.mp4"]),
+:is(.hero-preview, .hero-video-fallback):is([src$="/spaceage1.webp"], [src$="/arup1-back.webp"]) { scale: 1.003; }
 .hero-track { position: absolute; inset: 0; }
 img.hero-image { object-fit: cover; }
 .hero-video-fallback { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
@@ -562,7 +569,10 @@ img.hero-image { object-fit: cover; }
 .project-copy > .project-description,
 .project-copy > .project-paragraph > .project-description { max-width: none; font-size: calc(var(--pitch-font-size, calc(13.5 * var(--u))) * .95); }
 .project-description .project-text-bold { font-weight: 800; }
-.project-meta { display: flex; flex-wrap: wrap; gap: calc(7.2 * var(--u)); margin-top: calc(24.3 * var(--u)); }
+/* A link in the text to one of the project's media (see formatProjectText in JS/main.js): words of the text, only
+   underlined with dots, that turn the home pitch's accent blue on hover. */
+.project-description .project-text-link { padding: 0; border: 0; background: none; color: inherit; font-weight: inherit; text-decoration: underline dotted color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: .22em; cursor: pointer; transition: color .2s ease, text-decoration-color .2s ease; }
+.project-description .project-text-link:hover { color: #3269aa; text-decoration-color: #3269aa; }.project-meta { display: flex; flex-wrap: wrap; gap: calc(7.2 * var(--u)); margin-top: calc(24.3 * var(--u)); }
 .project-meta span { padding: calc(7.2 * var(--u)) calc(9 * var(--u)); border: 1px solid #cdd7e1; border-radius: calc(3 * var(--u)); background: #e9eef3; color: #4d6075; box-shadow: 0 calc(2 * var(--u)) calc(4 * var(--u)) #26384a0d; font-size: calc(9 * var(--u)); letter-spacing: .04em; }
 .is-qa-project .project-meta span { border-color: #cbd8dc; background: #e7eef1; color: #506774; }
 .copy-rule { width: 100%; height: 1px; margin-top: calc(27.9 * var(--u)); background: var(--line); }
@@ -594,8 +604,9 @@ img.hero-image { object-fit: cover; }
 .project-layout[data-project-id="aeon"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #f9a03f; --ring-bottom: #d42a2a; }
 /* Age of Sigmar: Storm Ground: the deep teal green of its logo's plate, lighter at the top. */
 .project-layout[data-project-id="age"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #74b99f; --ring-bottom: #1a5e4a; }
-/* Necromunda: Underhive Wars: a very light brown, from the rust tones of its logo, paler at the top. */
-.project-layout[data-project-id="necromunda"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #dccab9; --ring-bottom: #a98c74; }
+/* Necromunda: Underhive Wars: the steel of the rifle beside its title, its highlight at the top to its dark body at
+   the bottom. */
+.project-layout[data-project-id="necromunda"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #788582; --ring-bottom: #343e40; }
 /* Impact: its pink, very light at the top to a deep magenta at the bottom. */
 .project-layout[data-project-id="impact"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #ffb0d9; --ring-bottom: #e6007f; }
 /* Source: the blue of its glowing orb, light sky blue at the top to a deep blue at the bottom. */
@@ -822,3 +833,36 @@ img.hero-image { object-fit: cover; }
   .about-tagline { margin-top: 46px; }
   .about-actions { margin-top: 26px; }
 }
+
+/* Arrival animation of the home page, on the first load only (index.html's head script, playIntro in JS/main.js),
+   hidden until it starts. The pitch comes first: the top line drawn, the hello written, the name and title rising from
+   behind a line, the buttons popping in; then the photo and the desk slide in from their sides while the dock rises from
+   the bottom of the screen in one piece. --intro-pace stretches every duration and delay at once. Each keyframe gives
+   only the starting state when it can, so an element ends on its own resting values. */
+html.has-intro:not(.intro-play) :is(.topline, .project-view, .page-arrows, .project-dock) { visibility: hidden; }
+:root { --intro-pace: 1.35; --intro-ease: cubic-bezier(.2, .7, .2, 1); --intro-swing: cubic-bezier(.65, 0, .35, 1); --intro-bounce: cubic-bezier(.34, 1.5, .64, 1); }
+@keyframes intro-fade { from { opacity: 0; } }
+@keyframes intro-draw { from { scale: 0 1; } }
+@keyframes intro-rise { from { opacity: 0; translate: 0 calc(14 * var(--u)); } }
+@keyframes intro-lower { from { opacity: 0; translate: 0 calc(-8 * var(--u)); } }
+@keyframes intro-from-left { from { opacity: 0; translate: calc(-48 * var(--u)) 0; } }
+@keyframes intro-from-right { from { opacity: 0; translate: calc(48 * var(--u)) 0; } }
+@keyframes intro-pop { from { opacity: 0; scale: .88; } }
+@keyframes intro-dock-rise { from { translate: 0 100%; } }
+/* Written from left to right, like a pen stroke. */
+@keyframes intro-write { from { clip-path: inset(-40% 100% -40% -10%); } to { clip-path: inset(-40% -10% -40% -10%); } }
+/* Rises from behind a line at its own bottom edge. */
+@keyframes intro-mask-rise { from { translate: 0 100%; clip-path: inset(-20% -5% 100% -5%); } to { translate: 0 0; clip-path: inset(-20% -5% -20% -5%); } }
+html.intro-play .topline::after { animation: intro-draw calc(800ms * var(--intro-pace)) var(--intro-swing) both; }
+html.intro-play :is(.wordmark, .topline-actions) { animation: intro-lower calc(500ms * var(--intro-pace)) var(--intro-ease) calc(150ms * var(--intro-pace)) both; }
+html.intro-play .about-hello { animation: intro-write calc(550ms * var(--intro-pace)) cubic-bezier(.45, 0, .35, 1) calc(150ms * var(--intro-pace)) both; }
+html.intro-play .about-title { animation: intro-mask-rise calc(750ms * var(--intro-pace)) var(--intro-ease) calc(300ms * var(--intro-pace)) both; }
+html.intro-play .about-roles { animation: intro-mask-rise calc(650ms * var(--intro-pace)) var(--intro-ease) calc(420ms * var(--intro-pace)) both; }
+html.intro-play :is(.about-tagline, .about-bio) { animation: intro-rise calc(600ms * var(--intro-pace)) var(--intro-ease) calc(520ms * var(--intro-pace)) both; }
+html.intro-play .about-discover { animation: intro-pop calc(450ms * var(--intro-pace)) var(--intro-bounce) calc(600ms * var(--intro-pace)) both; }
+html.intro-play .about-contacts > :nth-child(1) { animation: intro-pop calc(450ms * var(--intro-pace)) var(--intro-bounce) calc(660ms * var(--intro-pace)) both; }
+html.intro-play .about-contacts > :nth-child(2) { animation: intro-pop calc(450ms * var(--intro-pace)) var(--intro-bounce) calc(720ms * var(--intro-pace)) both; }
+html.intro-play .about-photo { animation: intro-from-left calc(800ms * var(--intro-pace)) var(--intro-ease) calc(850ms * var(--intro-pace)) both; }
+html.intro-play .about-room { animation: intro-from-right calc(800ms * var(--intro-pace)) var(--intro-ease) calc(910ms * var(--intro-pace)) both; }
+html.intro-play .project-dock { animation: intro-dock-rise calc(800ms * var(--intro-pace)) var(--intro-ease) calc(850ms * var(--intro-pace)) both; }
+html.intro-play .page-arrows { animation: intro-fade calc(500ms * var(--intro-pace)) ease calc(800ms * var(--intro-pace)) both; }

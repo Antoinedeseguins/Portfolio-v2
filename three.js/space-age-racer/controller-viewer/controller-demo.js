@@ -10,7 +10,8 @@ export function createControllerDemo() {
       if (reducedMotion) { this.cancel(); }
       elapsed += dt;
       const boostPhase = elapsed % 2.6;
-      const press = selected === "boost" && boostPhase < .5 ? Math.sin(Math.PI * boostPhase / .5) ** 2 : 0;
+      // The Arduino shows every input at once, so the boost button is pressed for it too.
+      const press = (selected === "boost" || selected === "arduino") && boostPhase < .5 ? Math.sin(Math.PI * boostPhase / .5) ** 2 : 0;
       const led = selected === "arduino" ? .15 + .35 * Math.sin(elapsed * Math.PI / 1.4) ** 2 : 0;
       return { press, led };
     },

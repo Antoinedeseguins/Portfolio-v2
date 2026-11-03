@@ -11,8 +11,10 @@ trap 'rm -rf "$profile"' EXIT
 
 for scale in 1 2; do
   out="$root/three.js/about/desk-room-poster-${scale}x.webp"
-  # Run from the temp folder, where Chrome drops its debug.log.
+  # Run from the temp folder, where Chrome drops its debug.log. Reduced motion holds the computer's standby LED still at
+  # full glow, where its breathing starts on the page.
   (cd "$profile" && "$chrome" --headless=new --use-angle=d3d11 --enable-gpu --hide-scrollbars --window-size=900,900 \
+    --force-prefers-reduced-motion \
     --force-device-scale-factor="$scale" --user-data-dir="$profile/chrome" --virtual-time-budget=20000 --dump-dom "$url" 2>/dev/null) \
     | sed -n 's/.*<pre id="picture">data:image\/webp;base64,\([^<]*\)<\/pre>.*/\1/p' | base64 -d > "$out"
   [ -s "$out" ] || { echo "No picture at ${scale}x: is Live Server running on port 5500?" >&2; exit 1; }

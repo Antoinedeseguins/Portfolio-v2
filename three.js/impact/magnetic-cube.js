@@ -16,7 +16,8 @@ export function getKeptCube() {
 export function createMagneticCube(canvas, { color = 0x1769f5, text = "", fontFamily = "Raleway", fontWeight = "700", anchor = null, surface = null, framed = Boolean(anchor && surface) } = {}) {
   let input = anchor || canvas;
   let attached = Boolean(anchor);
-  const lockResume = createResumeLock();
+  // A toy rather than a game: playing with it doesn't pause the media slideshow.
+  const lockResume = createResumeLock({ pausesSlideshow: false });
   let interactionSurface = surface || input;
   const interactionTarget = (event) => {
     if (!surface) return input;

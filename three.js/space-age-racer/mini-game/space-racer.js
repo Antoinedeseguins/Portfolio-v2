@@ -72,8 +72,6 @@ export function enableRacer(play) {
   const notify = () => {
     lockResume(running);
     zone.classList.toggle("is-playing", running);
-    if (running) page.dataset.racerPlaying = "true"; else delete page.dataset.racerPlaying;
-    page.dispatchEvent(new Event("hero-autoplay-change"));
   };
   const draw = (preview = false, targetContext = context, targetWidth = width, targetHeight = height, view = {}) => {
     const context = targetContext, width = targetWidth, height = targetHeight;

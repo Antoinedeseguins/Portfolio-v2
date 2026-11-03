@@ -78,8 +78,6 @@ export function enableGallery(button) {
     document.documentElement.classList.remove("necro-aiming");
     button.hidden = false; button.disabled = false; button.setAttribute("aria-pressed", "false");
     title.replaceChildren(...original); letters = []; enemies = []; shots = [];
-    page.dataset.galleryPlaying = "false";
-    page.dispatchEvent(new Event("hero-autoplay-change"));
   };
   const defeat = async () => {
     resetRifle();
@@ -248,7 +246,8 @@ export function enableGallery(button) {
     for (const word of title.textContent.split(/(\s+)/)) {
       if (!word.trim()) { fragment.append(document.createTextNode(word)); continue; }
       const group = document.createElement("span"); group.className = "necro-word";
-      for (const character of word) { const element = document.createElement("span"); element.textContent = character; group.append(element); letters.push({ element, rect: null }); }
+      // Enemies rise from the title's letters and digits; punctuation (the colon) stays out of the fight.
+      for (const character of word) { const element = document.createElement("span"); element.textContent = character; group.append(element); if (/[\p{L}\p{N}]/u.test(character)) letters.push({ element, rect: null }); }
       fragment.append(group);
     }
     title.replaceChildren(fragment);
@@ -261,7 +260,6 @@ export function enableGallery(button) {
     resize(); addEnemy(); addEnemy(); addEnemy();
     updateMouse(event);
     button.disabled = true; button.setAttribute("aria-pressed", "true");
-    page.dataset.galleryPlaying = "true"; page.dispatchEvent(new Event("hero-autoplay-change"));
     frame = requestAnimationFrame(tick);
   };
   button.addEventListener("click", event => { event.stopPropagation(); start(event); }, options);

@@ -1,9 +1,8 @@
 import * as THREE from "../../vendor/r180/three.module.js";
 import { createController } from "./controller-model.js?v=15";
 import { createControllerStudio } from "./controller-studio.js";
-import { createControllerSignal } from "./controller-signal.js";
-import { createControllerDemo } from "./controller-demo.js?v=2";
-import { createBoostBurst } from "./controller-boost.js?v=2";
+import { createControllerSignal } from "./controller-signal.js?v=2";
+import { createControllerDemo } from "./controller-demo.js?v=3";
 import { attachControllerAnnotations } from "./controller-annotations.js?v=23";
 
 export async function enableController(frame) {
@@ -81,9 +80,19 @@ export async function enableController(frame) {
   let opened = false, removal = 0, boosted = false, drag = null;
   let hoveredPart = null, selectedPart = null;
   let disposed = false, visible = true, raf = null, previousTime = null;
+  // Left alone, the controller sways slowly so it reads as 3D at a glance: from the visitor's view round by `reach`
+  // and back (from the default view, seen from the left at azimuth -.5, to the same angle on the right). It eases to a
+  // stop where it is while the pointer is over the controller itself or one of its points (the empty background around
+  // it doesn't count) and sets off again 4 s after the pointer has left them. Once the visitor takes control (grabs,
+  // turns or clicks it, a point or a button, zooms) it stays where they leave it. The keyboard is the site's alone (it
+  // changes project): the controller has no keys.
+  const sway = { reach: 1, period: 16, delay: 4000 };
+  let swayPhase = 0, swaySpeed = 0, swayOffset = 0, swayStopped = false, pointerLeftAt = -Infinity, swayTimer = null;
+  let onController = false, onPoint = false, canvasPointer = null;
   const signal = createControllerSignal(model);
   const demo = createControllerDemo();
-  const burst = createBoostBurst(scene, model);
+  // The wires pulses run along when the boost or the Arduino is selected: the Arduino shows all three inputs arriving.
+  const wiresOf = { boost: 2, arduino: model.signalPaths.map((_, index) => index) };
   const angles = [0, 0], desired = [0, 0];
   const annotations = attachControllerAnnotations(frame, model, camera, {
     toggleOpen: () => setOpen(!opened),
@@ -91,7 +100,7 @@ export async function enableController(frame) {
     select: part => {
       demo.select(part);
       if (part === "sensors" || part === "sensorsRight") signal.play(part === "sensors" ? 0 : 1);
-      else if (part === "boost" && opened && removal > .85) signal.play(2);
+      else if (part in wiresOf && opened && removal > .85) signal.play(wiresOf[part]);
       else signal.stop();
       selectedPart = { lever0: "left", lever1: "right", boost: "boost", sensors: "potentiometers", sensorsRight: "potentiometerRight", arduino: "arduino" }[part] || null;
       selectPart(part);
@@ -103,13 +112,13 @@ export async function enableController(frame) {
     reset: () => {
       demo.cancel();
       if (drag) release({ pointerId: drag.id }, true);
-      azimuth = -.5; elevation = .25; distance = 11.2;
+      azimuth = -.5; elevation = .25; distance = 11.2; swayPhase = 0; swayOffset = 0;
       setLever(0, 0); setLever(1, 0); boost(false); setOpen(false); selectPart("levers");
     },
   }, events, descriptions);
   function updateCamera() {
-    const radius = distance * distanceScale;
-    camera.position.set(target.x + radius * Math.sin(azimuth) * Math.cos(elevation), target.y + radius * Math.sin(elevation), target.z + radius * Math.cos(azimuth) * Math.cos(elevation));
+    const radius = distance * distanceScale, angle = azimuth + swayOffset;
+    camera.position.set(target.x + radius * Math.sin(angle) * Math.cos(elevation), target.y + radius * Math.sin(elevation), target.z + radius * Math.cos(angle) * Math.cos(elevation));
     camera.lookAt(target); camera.updateMatrixWorld();
   }
   function setOpen(value) {
@@ -126,8 +135,6 @@ export async function enableController(frame) {
     wake();
   }
   function boost(value) {
-    // A fresh press kicks the controller; holding the button does not repeat it.
-    if (value && !boosted && !reduced.matches) burst.trigger();
     boosted = value;
     wake();
   }
@@ -161,8 +168,7 @@ export async function enableController(frame) {
     const factor = reduced.matches ? 1 : 1 - Math.exp(-dt * 9);
     const hoverTarget = hoveredPart === "body" ? (opened && removal > .85 ? "arduino" : "cover") : hoveredPart;
     const demonstration = demo.update(dt, reduced.matches);
-    const bursting = burst.update(dt);
-    if (selectedPart === "boost" && opened && removal > .85 && !signal.active && !reduced.matches) signal.play(2);
+    if (selectedPart in wiresOf && opened && removal > .85 && !signal.active && !reduced.matches) signal.play(wiresOf[selectedPart]);
     const arrivalFlash = signal.update(dt, opened && removal > .85, reduced.matches);
     let highlightMoving = false;
     for (const [id, group] of Object.entries(highlights)) {
@@ -208,8 +214,14 @@ export async function enableController(frame) {
       updateGauge(model.rotationArrows[i], angle, gaugeTurn[i], gaugeFade[i]);
     }
     model.boost.position.x = -.94 + .025 * (boosted ? 1 : demonstration.press);
+    // Swaying under a pointer that stays still counts as hovering.
+    if (swaySpeed > 0 && canvasPointer && !drag) hoverAt(canvasPointer);
+    const swayWanted = !reduced.matches && !swayStopped && !drag && !onController && !onPoint && time - pointerLeftAt >= sway.delay;
+    swaySpeed = swayWanted ? Math.min(1, swaySpeed + dt / 1.2) : Math.max(0, swaySpeed - dt / .35);
+    swayPhase += dt * swaySpeed * swaySpeed * (3 - 2 * swaySpeed);
+    swayOffset = sway.reach * (1 - Math.cos(2 * Math.PI * swayPhase / sway.period)) / 2;
     draw();
-    if (bursting || gaugeMoving || demo.active || signal.active || removal !== destination || highlightMoving || angles.some((angle, i) => Math.abs(desired[i] - angle) > .001)) raf = requestAnimationFrame(tick);
+    if (swayWanted || swaySpeed > 0 || gaugeMoving || demo.active || signal.active || removal !== destination || highlightMoving || angles.some((angle, i) => Math.abs(desired[i] - angle) > .001)) raf ??= requestAnimationFrame(tick);
     else previousTime = null;
   }
   function wake() { if (!disposed && visible && !document.hidden && raf === null) { previousTime = null; raf = requestAnimationFrame(tick); } }
@@ -238,7 +250,7 @@ export async function enableController(frame) {
   }
   canvas.addEventListener("pointerdown", event => {
     if (event.button !== 0 || !event.isPrimary || drag) return;
-    event.preventDefault(); event.stopPropagation(); canvas.focus({ preventScroll: true });
+    event.preventDefault(); event.stopPropagation();
     const part = ray(event)?.object.userData.part;
     const index = part === "lever0" ? 0 : part === "lever1" ? 1 : null;
     if (index !== null) angles[index] = desired[index] = model.levers[index].rotation.x;
@@ -263,29 +275,48 @@ export async function enableController(frame) {
     if (id === hoveredPart) return;
     hoveredPart = id; wake();
   }
+  function pointerLeft() {
+    pointerLeftAt = performance.now();
+    clearTimeout(swayTimer);
+    swayTimer = setTimeout(wake, sway.delay + 20);
+    wake();
+  }
+  function stopSway() {
+    swayStopped = true;
+    clearTimeout(swayTimer);
+    wake();
+  }
+  function setOnController(value) {
+    if (value === onController) return;
+    onController = value;
+    if (value) wake(); else pointerLeft();
+  }
+  function hoverAt(position) {
+    const hit = ray(position);
+    hoverCanvas(hit?.object.userData.part);
+    setOnController(Boolean(hit));
+  }
   canvas.addEventListener("pointermove", event => {
-    if (drag || event.pointerType === "touch") return;
-    hoverCanvas(ray(event)?.object.userData.part);
+    if (event.pointerType === "touch") return;
+    canvasPointer = { clientX: event.clientX, clientY: event.clientY };
+    if (!drag) hoverAt(event);
   }, events);
-  canvas.addEventListener("pointerleave", () => { if (!drag) hoverCanvas(null); }, events);
+  canvas.addEventListener("pointerleave", () => {
+    canvasPointer = null;
+    if (!drag) { hoverCanvas(null); setOnController(false); }
+  }, events);
+  for (const point of frame.querySelectorAll("[data-hotspot]")) {
+    point.addEventListener("pointerenter", () => { onPoint = true; wake(); }, events);
+    point.addEventListener("pointerleave", () => { onPoint = false; pointerLeft(); }, events);
+  }
+  viewer.addEventListener("pointerdown", () => { swaySpeed = 0; stopSway(); }, { ...events, capture: true });
+  viewer.addEventListener("wheel", stopSway, { ...events, capture: true, passive: true });
   canvas.addEventListener("pointerup", e => release(e), events);
   canvas.addEventListener("pointercancel", e => release(e, true), events);
   canvas.addEventListener("lostpointercapture", e => release(e, true), events);
   canvas.addEventListener("wheel", event => {
     event.preventDefault(); distance = THREE.MathUtils.clamp(distance + event.deltaY * .009, 8.5, 19); wake();
   }, { ...events, passive: false });
-  canvas.addEventListener("keydown", event => {
-    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "+", "=", "-", "Escape"].includes(event.key)) return;
-    event.preventDefault();
-    if (event.key === "ArrowLeft") azimuth -= .12;
-    if (event.key === "ArrowRight") azimuth += .12;
-    if (event.key === "ArrowUp") elevation = Math.min(1.1, elevation + .1);
-    if (event.key === "ArrowDown") elevation = Math.max(-.12, elevation - .1);
-    if (["+", "="].includes(event.key)) distance = Math.max(8.5, distance - .7);
-    if (event.key === "-") distance = Math.min(19, distance + .7);
-    if (event.key === "Escape") { if (drag) release({ pointerId: drag.id }, true); boost(false); }
-    wake();
-  }, events);
   function resize() {
     if (disposed) return;
     const rect = viewer.getBoundingClientRect();
@@ -309,13 +340,12 @@ export async function enableController(frame) {
     if (disposed) return;
     disposed = true;
     if (drag) release({ pointerId: drag.id }, true);
-    abort.abort(); observer.disconnect(); intersection.disconnect(); cancelAnimationFrame(raf);
+    abort.abort(); observer.disconnect(); intersection.disconnect(); cancelAnimationFrame(raf); clearTimeout(swayTimer);
     const geometries = new Set();
     scene.traverse(object => { if (object.geometry) geometries.add(object.geometry); });
     geometries.forEach(g => g.dispose()); Object.values(model.materials).forEach(m => { m.map?.dispose(); m.dispose(); });
     studio.dispose();
     signal.dispose();
-    burst.dispose();
     hoverMaterials.forEach(material => material.dispose()); coverMaterials.forEach(material => material.dispose()); renderer.dispose();
   }, { once: true });
   resize(); frame.classList.add("controller-ready"); wake();
