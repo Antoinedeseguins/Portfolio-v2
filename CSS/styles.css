@@ -157,9 +157,11 @@ button:focus-visible, a:focus-visible { outline: calc(3 * var(--u)) solid var(--
 video.hero-image { object-fit: cover; border: 0; filter: brightness(1.001); }
 /* The Space Age and ARUP video files have two black pixel columns down their sides (ARUP: the right one, at the start
    and end). They are drawn 0.3% bigger than the frame so the columns fall outside it, and so are their posters wherever
-   they stand in for them (slide preview, fallback), so the hand-over to the video doesn't move the picture. */
+   they stand in for them (slide preview, fallback), so the hand-over to the video doesn't move the picture. The clip
+   trims the enlarged picture back to its own box: without it, a preview waiting beside the frame spilled ~1.3px into
+   it (a thin dark line down the next media's edge, e.g. the left of the controller viewer). */
 video.hero-image:is([src$="/spaceage.mp4"], [src$="/ARUP.mp4"]),
-:is(.hero-preview, .hero-video-fallback):is([src$="/spaceage1.webp"], [src$="/arup1-back.webp"]) { scale: 1.003; }
+:is(.hero-preview, .hero-video-fallback):is([src$="/spaceage1.webp"], [src$="/arup1-back.webp"]) { scale: 1.003; clip-path: inset(calc(50% - 50% / 1.003)); }
 .hero-track { position: absolute; inset: 0; }
 img.hero-image { object-fit: cover; }
 .hero-video-fallback { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
@@ -554,6 +556,11 @@ img.hero-image { object-fit: cover; }
 .gallery-thumb::after { position: absolute; z-index: 1; inset: 0; border: 1px solid color-mix(in srgb, var(--accent) 65%, transparent); border-radius: calc(3 * var(--u)); content: ""; opacity: 0; pointer-events: none; transition: opacity 80ms ease; }
 .gallery-thumb:hover, .gallery-thumb[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
 .gallery-thumb:hover::after, .gallery-thumb[aria-pressed="true"]::after { opacity: 1; }
+/* The thumbnail a hovered text link leads to (see highlightLinkedThumbnails in JS/main.js): a thicker accent frame
+   with a soft inner glow, kept inside the thumbnail as the strip clips anything outside it. */
+.gallery-thumb.is-link-target { border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
+.gallery-thumb.is-link-target::after { border-width: 2px; box-shadow: inset 0 0 calc(12 * var(--u)) color-mix(in srgb, var(--accent) 45%, transparent); opacity: 1; transition: opacity 160ms ease; }
+.gallery-thumb.is-link-target img { filter: brightness(1.08); }
 .project-copy { position: relative; isolation: isolate; max-width: calc(520 * var(--u)); padding: 0; }
 .project-copy::before { content: ""; position: absolute; z-index: -1; inset: calc(-48 * var(--u)) calc(-36 * var(--u)); background: radial-gradient(ellipse at center, #ffffffc2 0%, #ffffffa3 42%, #ffffff47 65%, #ffffff00 80%); opacity: .7; filter: blur(calc(16 * var(--u))); pointer-events: none; }
 .project-title, .about-title { --title-size: clamp(34 * var(--u), 4 * var(--vw), 64 * var(--u)); margin: 0; font-family: "Raleway", sans-serif; font-size: calc(var(--title-size) * .45); font-weight: 700; line-height: 1.02; overflow-wrap: anywhere; }
@@ -568,11 +575,14 @@ img.hero-image { object-fit: cover; }
 .project-description { max-width: 52ch; margin: calc(25.2 * var(--u)) 0 0; color: var(--body-copy); font-size: calc(13.5 * var(--u)); line-height: 1.8; }
 .project-copy > .project-description,
 .project-copy > .project-paragraph > .project-description { max-width: none; font-size: calc(var(--pitch-font-size, calc(13.5 * var(--u))) * .95); }
+/* The browser avoids leaving a lone word on a paragraph's last line (Chrome, Edge, Safari; Firefox ignores it). */
+.project-copy > .project-paragraph > .project-description { text-wrap: pretty; }
 .project-description .project-text-bold { font-weight: 800; }
-/* A link in the text to one of the project's media (see formatProjectText in JS/main.js): words of the text, only
-   underlined with dots, that turn the home pitch's accent blue on hover. */
-.project-description .project-text-link { padding: 0; border: 0; background: none; color: inherit; font-weight: inherit; text-decoration: underline dotted color-mix(in srgb, currentColor 55%, transparent); text-underline-offset: .22em; cursor: pointer; transition: color .2s ease, text-decoration-color .2s ease; }
-.project-description .project-text-link:hover { color: #3269aa; text-decoration-color: #3269aa; }.project-meta { display: flex; flex-wrap: wrap; gap: calc(7.2 * var(--u)); margin-top: calc(24.3 * var(--u)); }
+/* A link in the text to one of the project's media (see formatProjectText in JS/main.js): words of the text in bold
+   and the home pitch's accent blue, no underline; on hover a darker blue, an underline, a magnifier cursor ("see
+   something") and the linked thumbnail lighting up in the strip. */
+.project-description .project-text-link { padding: 0; border: 0; background: none; color: #3269aa; font-weight: 800; text-decoration: underline solid transparent; text-underline-offset: .22em; cursor: zoom-in; transition: color .2s ease, text-decoration-color .2s ease; }
+.project-description .project-text-link:hover { color: #234f86; text-decoration-color: #234f86; }.project-meta { display: flex; flex-wrap: wrap; gap: calc(7.2 * var(--u)); margin-top: calc(24.3 * var(--u)); }
 .project-meta span { padding: calc(7.2 * var(--u)) calc(9 * var(--u)); border: 1px solid #cdd7e1; border-radius: calc(3 * var(--u)); background: #e9eef3; color: #4d6075; box-shadow: 0 calc(2 * var(--u)) calc(4 * var(--u)) #26384a0d; font-size: calc(9 * var(--u)); letter-spacing: .04em; }
 .is-qa-project .project-meta span { border-color: #cbd8dc; background: #e7eef1; color: #506774; }
 .copy-rule { width: 100%; height: 1px; margin-top: calc(27.9 * var(--u)); background: var(--line); }
@@ -604,9 +614,9 @@ img.hero-image { object-fit: cover; }
 .project-layout[data-project-id="aeon"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #f9a03f; --ring-bottom: #d42a2a; }
 /* Age of Sigmar: Storm Ground: the deep teal green of its logo's plate, lighter at the top. */
 .project-layout[data-project-id="age"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #74b99f; --ring-bottom: #1a5e4a; }
-/* Necromunda: Underhive Wars: the steel of the rifle beside its title, its highlight at the top to its dark body at
-   the bottom. */
-.project-layout[data-project-id="necromunda"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #788582; --ring-bottom: #343e40; }
+/* Necromunda: Underhive Wars: the steel of the rifle beside its title, a bright polished highlight at the top to its
+   darker body at the bottom. */
+.project-layout[data-project-id="necromunda"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #a9b4b1; --ring-bottom: #4c5759; }
 /* Impact: its pink, very light at the top to a deep magenta at the bottom. */
 .project-layout[data-project-id="impact"] .project-paragraph > .project-subtitle .section-dot { --ring-top: #ffb0d9; --ring-bottom: #e6007f; }
 /* Source: the blue of its glowing orb, light sky blue at the top to a deep blue at the bottom. */

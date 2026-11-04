@@ -13,7 +13,7 @@
   },
   "boost": {
     "title": "Boost button",
-    "description": "A push button in the right grip. The Arduino reads each press and how long it is held to drive the in-game boost."
+    "description": "A push button on the right handle. The Arduino reads each press and how long it is held to drive the in-game boost."
   },
   "arduino": {
     "title": "Arduino Uno",

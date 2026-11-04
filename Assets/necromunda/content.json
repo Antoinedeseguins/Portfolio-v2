@@ -15,15 +15,15 @@
         "sections": [
             {
                 "title": "THE GAME",
-                "content": "**Necromunda: Underhive Wars** is a turn-based tactical RPG set in the dystopian universe of Warhammer 40,000. Lead and customize rival gangs through brutal tactical battles, using strategic positioning, environmental hazards, and unique abilities to dominate the Underhive."
+                "content": "**Necromunda: Underhive Wars** is a turn-based tactical RPG set in the dystopian universe of Warhammer 40,000. You lead your gang into fights where positioning and the environment matter as much as abilities. Battles can also be played online."
             },
             {
                 "title": "MY ROLE",
-                "content": "**Necromunda: Underhive Wars** is a turn-based tactical RPG set in the dystopian universe of Warhammer 40,000. Lead and customize rival gangs through brutal tactical battles, using strategic positioning, environmental hazards, and unique abilities to dominate the Underhive."
+                "content": "Necromunda was my **first professional project**, and I stayed through both DLCs. Day to day, I tested every platform, with regular regression passes. I was also in charge of the team's **daily report to the studio**. After launch, I dug through community bug reports and even helped some players get back in the game."
             },
             {
                 "title": "TESTING SCOPE",
-                "content": "**Necromunda: Underhive Wars** is a turn-based tactical RPG set in the dystopian universe of Warhammer 40,000. Lead and customize rival gangs through brutal tactical battles, using strategic positioning, environmental hazards, and unique abilities to dominate the Underhive."
+                "content": "With so much gear, consumables and skills, the possible builds felt endless. **Online multiplayer** took a big share of the work, with plenty of matches alongside the dev team. Each release also had to pass **PlayStation and Xbox certification**."
             }
         ]
     }

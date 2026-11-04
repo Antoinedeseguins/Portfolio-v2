@@ -15,15 +15,15 @@
         "sections": [
             {
                 "title": "THE GAME",
-                "content": "**Aeon Must Die!** is a sci-fi beat 'em up combining fast-paced tactical combat, risk-reward mechanics, and a distinctive anime-inspired art style. Set in a futuristic universe, the game tells a story of betrayal, revenge, and the struggle for free will."
+                "content": "**Aeon Must Die!** is a sci-fi beat 'em up with an anime-inspired look. You play a betrayed emperor out for revenge, in fast fights where taking risks pays off. Expect flashy combos, neon lights and a lot of enemies to punch."
             },
             {
                 "title": "MY ROLE",
-                "content": "**Aeon Must Die!** is a sci-fi beat 'em up combining fast-paced tactical combat, risk-reward mechanics, and a distinctive **anime-inspired** art style. Set in a futuristic universe, the game tells a story of betrayal, revenge, and the struggle for free will."
+                "content": "I was part of the **QA team** at Focus Entertainment during the final months of the project. I helped get the game ready for release: running test plans and TRC/XR checks, **reporting bugs in Jira**, then checking their fixes."
             },
             {
                 "title": "TESTING SCOPE",
-                "content": "**Aeon Must Die!** is a sci-fi beat 'em up combining fast-paced tactical combat, risk-reward mechanics, and a distinctive **anime-inspired** art style. Set in a futuristic universe, the game tells a story of betrayal, revenge, and the struggle for free will."
+                "content": "Most of my time went into **platform compliance**: checking the game against PlayStation and Xbox requirements until it passed certification. I also **played through the game** from start to finish, logging bugs and sharing feedback along the way."
             }
         ]
     }

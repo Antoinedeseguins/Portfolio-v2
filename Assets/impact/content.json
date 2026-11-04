@@ -17,15 +17,15 @@
         "sections": [
             {
                 "title": "THE GAME",
-                "content": "**Impact** is a first-person shooter built around the ability to reshape and manipulate the environment. Combining fast-paced action with environmental puzzles, players must overcome evolving challenges while uncovering the mysteries behind their journey."
+                "content": "**Impact** is a first-person shooter built around the ability to **reshape and manipulate the environment**. It mixes fast action with environmental puzzles. As you progress, you uncover secrets about your journey."
             },
             {
                 "title": "MY ROLE",
-                "content": "**Impact** is a first-person shooter built around the ability to reshape and manipulate the environment. Combining fast-paced action with environmental puzzles, players must overcome evolving challenges while uncovering the mysteries behind their journey."
+                "content": "I was **in charge of the game design** and the documentation, while also building some of the levels. We started from scratch, with the **force impact** as the very first thing to prototype. Everything else, from the enemies to the puzzles, grew out of that one mechanic."
             },
             {
                 "title": "DESIGN CHALLENGES",
-                "content": "**Impact** is a first-person shooter built around the ability to reshape and manipulate the environment. Combining fast-paced action with environmental puzzles, players must overcome evolving challenges while uncovering the mysteries behind their journey."
+                "content": "Early on, we realized the game would have to handle **thousands of cubes** at once. Optimization became the real challenge, and we had to drop a few ideas we loved. From then on, every new feature was weighed against what the game could run."
             }
         ],
         "titleToy": {

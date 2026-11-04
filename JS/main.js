@@ -1609,6 +1609,22 @@ projectView.addEventListener("wheel", (event) => {
   if (event.target instanceof Element && event.target.closest(".gallery")) mediaAutoplayStopped = true;
 }, { capture: true, passive: true });
 
+// Hovering a link in the text to one of the media lights up that media's thumbnails in the strip, to show where the
+// link leads.
+function highlightLinkedThumbnails(mediaLink, on) {
+  const gallery = mediaLink.closest(".project-layout")?.querySelector(".gallery");
+  gallery?.querySelectorAll(`.gallery-thumb[data-image="${mediaLink.dataset.showMedia}"]`)
+    .forEach((thumbnail) => thumbnail.classList.toggle("is-link-target", on));
+}
+projectView.addEventListener("pointerover", (event) => {
+  const mediaLink = event.target instanceof Element && event.target.closest("[data-show-media]");
+  if (mediaLink && !mediaLink.contains(event.relatedTarget)) highlightLinkedThumbnails(mediaLink, true);
+});
+projectView.addEventListener("pointerout", (event) => {
+  const mediaLink = event.target instanceof Element && event.target.closest("[data-show-media]");
+  if (mediaLink && !mediaLink.contains(event.relatedTarget)) highlightLinkedThumbnails(mediaLink, false);
+});
+
 projectView.addEventListener("click", (event) => {
   // A link in the text to one of the media does what its thumbnail does: the copy nearest the middle of the strip, as
   // the strip repeats its thumbnails.

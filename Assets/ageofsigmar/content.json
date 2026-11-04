@@ -4,7 +4,7 @@
         "tags": [
             "Quality Assurance",
             "Multiplayer Testing",
-            "Test Planning"
+            "Regression Testing"
         ],
         "context": "Gasket Games · Focus Entertainment",
         "facts": {
@@ -15,15 +15,15 @@
         "sections": [
             {
                 "title": "THE GAME",
-                "content": "**Age of Sigmar: Storm Ground** is a turn-based strategy game set in the dark fantasy universe of Warhammer. Lead highly customizable armies through tactical battles, challenging roguelike campaigns, and competitive online multiplayer."
+                "content": "**Age of Sigmar: Storm Ground** is a turn-based strategy game set in the dark fantasy universe of Warhammer. You lead one of three factions through roguelike campaigns, building up your forces from battle to battle. You can also play against other players online."
             },
             {
                 "title": "MY ROLE",
-                "content": "**Age of Sigmar: Storm Ground** is a turn-based strategy game set in the dark fantasy universe of Warhammer. Lead highly customizable armies through tactical battles, challenging roguelike campaigns, and competitive online multiplayer."
+                "content": "I took care of the everyday QA work, from following test plans to tracking bugs in Jira. With each new build, I ran **regression tests** to make sure nothing had broken. I also spent a lot of time on the console versions and the multiplayer, using **PlayStation and Xbox test kits**."
             },
             {
                 "title": "TESTING SCOPE",
-                "content": "**Age of Sigmar: Storm Ground** is a turn-based strategy game set in the dark fantasy universe of Warhammer. Lead highly customizable armies through tactical battles, challenging roguelike campaigns, and competitive online multiplayer."
+                "content": "I worked on almost every part of QA on this game, including **TRC/XR compliance** and even some localization. But one feature kept us especially busy: **cross-platform multiplayer**, letting PC, PlayStation and Xbox players face each other. Every week, we went head to head with the whole dev team in online matches."
             }
         ]
     }

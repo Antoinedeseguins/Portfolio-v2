@@ -17,15 +17,15 @@
         "sections": [
             {
                 "title": "THE GAME",
-                "content": "**Space Age Racer** is a racing game inspired by the podracers from Star Wars. You take on rival pods across deserts, forests and frozen bases. I made it for fun, to race with my friends while learning more about Unity and Arduino."
+                "content": "**Space Age Racer** is a racing game inspired by the **podracers from Star Wars**. You take on rival pods across deserts, forests and icy wastelands. I made it for fun, to race with my friends while learning more about **Unity and Arduino**."
             },
             {
                 "title": "THE CONTROLLER",
-                "content": "The idea was a **homemade arcade game**, played on [a controller](media:-2) I built out of wood. Each lever of the controller drives one engine: give one more power than the other and the pod turns. A button on the right handle adds a boost."
+                "content": "The idea was a **homemade arcade game**, played on [a custom controller](media:-2) I built myself. Each lever of the controller drives one engine: give one more power than the other and the pod turns. A button on the right handle adds a boost."
             },
             {
                 "title": "DESIGN CHALLENGES",
-                "content": "I developed **the whole game in Unity**. The real challenge was making the levers feel natural to drive, which meant reworking almost everything, again and again. I also built several prototype tracks to test different ideas, with my friends as playtesters. Little by little, racing started to feel fun."
+                "content": "I developed the whole game in Unity. The real challenge was making the pods **feel natural to drive**, which meant iterating a lot on the physics, the camera and the controls. I also built several **prototype tracks** to test different ideas, with my friends as playtesters. Little by little, racing started to feel fun."
             }
         ]
     }
